@@ -25,7 +25,7 @@ int main(int argc,char** argv)
 		{
 			Csz::ErrQuit("torrent file no info data\n");
 		}
-		auto info_num= Csz::GetDictCount()(data.c_str()+ info_flag+ 4,data.size()- info_flag- 4);
+		auto info_num= Csz::GetDictLength()(data.c_str()+ info_flag+ 4,data.size()- info_flag- 4);
 		//20*8= 160bit
 		char info_buf[21]={0};
 		Sha1(data.c_str()+ info_flag+ 4,info_num,(unsigned char*)info_buf);

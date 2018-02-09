@@ -3,7 +3,7 @@
 namespace Csz
 {
 	//d***
-	int GetDictCount::operator()(const char* T_str,int T_len)const
+	int GetDictLength::operator()(const char* T_str,int T_len)const
 	{
 		if (nullptr== T_str || T_len<= 0)
 			return -1;

@@ -90,7 +90,7 @@ namespace Csz
 			std::unordered_map<std::string,BDataType*> data;
 	};
 	//d***e
-	struct GetDictCount : public std::binary_function<const char*,int,int>
+	struct GetDictLength : public std::binary_function<const char*,int,int>
 	{
 		int operator()(const char* T_str,int T_len) const;
 	};

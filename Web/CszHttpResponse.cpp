@@ -113,7 +113,7 @@ namespace Csz
 				{
 					if (isdigit(status_line[i]))
 					{
-						status= status* 10+ status_line[i]= '0';
+						status= status* 10+ status_line[i]- '0';
 					}
 					else
 						return status;

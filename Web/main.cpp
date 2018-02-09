@@ -44,7 +44,7 @@ int main(int argc,char** argv)
 #ifdef CszTest
 	printf("Catpurer info:\n");
 #endif
-	response.Catpurer(socket_fd,cache);
+	response.Capturer(socket_fd,cache);
 	close(socket_fd);
 	//exit使shared_ptr失效(具体使引用计数失效)
 	//exit(0); 

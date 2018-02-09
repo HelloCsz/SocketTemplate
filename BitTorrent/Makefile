@@ -1,23 +1,51 @@
-far_objects= CszError.o CszHttpRequest.o CszHttpResponse.o CszUrlEscape.o CszTcpConnect.o CszCacheRegio.o\
-			 CszFcntl.o CszCreateSocket.o CszSocketHostServNull.o	
-far_heads= CszError.h CszWeb.h CszSocket.h
+include ../config.mk
 
-curr_objects= main.o CszBInt.o CszBStr.o CszBList.o CszBDict.o CszTorrentFile.o CszTracker.o CszTrackerInfo.o CszGetDictCount.o
-curr_heads= CszBitTorrent.h	CszNonCopyAble.hpp sha1.h
+TARGET= BitTorrent
+HDR_DIR= $(SRC)/Error $(SRC)/Web $(SRC)/Sock
 
-flag= -std=c++11 -W
+SOURCES= $(SRC)/BitTorrent/main.cpp\
+		 $(SRC)/BitTorrent/CszBInt.cpp\
+		 $(SRC)/BitTorrent/CszBStr.cpp\
+		 $(SRC)/BitTorrent/CszBList.cpp\
+		 $(SRC)/BitTorrent/CszBDict.cpp\
+		 $(SRC)/BitTorrent/CszTorrentFile.cpp\
+		 $(SRC)/BitTorrent/CszTracker.cpp\
+		 $(SRC)/BitTorrent/CszTrackerInfo.cpp\
+		 $(SRC)/BitTorrent/CszGetDictLength.cpp\
+		 $(SRC)/BitTorrent/sha1.c\
+		 $(SRC)/Error/CszError.cpp\
+		 $(SRC)/Web/CszHttpRequest.cpp\
+		 $(SRC)/Web/CszHttpResponse.cpp\
+		 $(SRC)/Web/CszUrlEscape.cpp\
+		 $(SRC)/Web/CszCacheRegio.cpp\
+		 $(SRC)/Sock/CszTcpConnect.cpp\
+		 $(SRC)/Sock/CszFcntl.cpp\
+		 $(SRC)/Sock/CszCreateSocket.cpp\
+		 $(SRC)/Sock/CszSocketHostServNull.cpp
 
-vpath % ../Web ../Error ../Sock
+OBJECTS= $(addsuffix .o, $(basename $(SOURCES)))
 
-BitTorrent:$(curr_objects) $(far_objects) sha1.o $(curr_heads) $(far_heads)
-	g++ $(flag) -o BitTorrent $(curr_objects) $(far_objects) sha1.o 
-sha1.o: sha1.h
-	g++ $(flag) -c sha1.c -o sha1.o
-$(curr_objects): %.o:%.cpp	
-	g++ $(flag) -c $< -o $@
-$(far_objects):%.o:%.cpp	
-	g++ $(flag) -c $< -I ./$@
-.PHONY:clean	
+LIB_DIR=
+
+HDR_INCLUDE= $(addprefix -I, $(HDR_DIR))
+LIB_LINK= $(addprefix -L, $(LIB_DIR))
+
+CXXFLAGS= -std=c++11 -g -W
+STATICLINK_FLAGS= #-lgflags
+DYNAMICLINK_FLAGS= #-pthread
+
+all:$(TARGET)
+
+$(TARGET):$(OBJECTS)
+	@echo "Linking $@"
+	@$(CXX) $(LIB_LINK) -Xlinker "-(" $(OBJECTS) -Wl,-Bstatic $(STATICLINK_FLAGS) -Wl,-Bdynamic -Xlinker "-)" $(DYNAMICLINK_FLAGS) -o $@
+
 clean:
-	rm *.o
-
+	@echo "Cleaning BitTorrent"
+	@rm -frv $(OBJECTS) $(TARGET)
+%.o:%.cpp
+	@echo "Compiling $@"
+	@$(CXX) -c $(HDR_INCLUDE) $(CXXFLAGS) $< -o $@
+%.o:%.c
+	@echo "Compiling $@"
+	@$(CXX) -c $(HDR_INCLUDE) $(CXXFLAGS) $< -o $@

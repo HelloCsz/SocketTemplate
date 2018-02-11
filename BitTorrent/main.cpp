@@ -1,7 +1,8 @@
+#include "CszBitTorrent.h"
 #include <string>
 #include <fstream>
 #include <iostream>
-#include "CszBitTorrent.h"
+
 int main(int argc,char** argv)
 {
 	if (argc< 2)

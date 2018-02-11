@@ -3,6 +3,7 @@
 namespace Csz
 {
 	Tracker::Tracker(){}
+
 	Tracker::~Tracker()
 	{
 		for (const auto& val : info)
@@ -14,6 +15,7 @@ namespace Csz
 		printf("destructor Tracker\n");
 #endif
 	}
+
 	std::vector<int> Tracker::RetSocket()const
 	{
 		std::vector<int> ret;
@@ -25,21 +27,24 @@ namespace Csz
 				ret.push_back(val.socket_fd);
 			}
 		}
-		return std::move(ret);
 #ifdef CszTest
 		printf("Tracker have socket:\n");
 		for (const auto& val : ret)
 			printf("socket=%d\n",val);
 #endif
+		return std::move(ret);
 	}
+
 	void Tracker::SetTrackInfo(TrackerInfo T_data)
 	{
 		info.push_back(std::move(T_data));
 	}
+
 	void Tracker::SetInfoHash(std::string T_data)
 	{
 		info_hash.assign(std::move(T_data));
 	}
+
 	void Tracker::Connect()
 	{
 		struct addrinfo* res;
@@ -94,16 +99,18 @@ namespace Csz
 			}
 			else
 			{
-				Csz::ErrMsg("Tracker can't connect server,socket type is unknow,%s\n",val.host.c_str());
-				val.socket_fd= -1;
+				Csz::ErrMsg("Tracker can't connect server,socket type is unknow,%s,fd=%d\n",val.host.c_str(),val.socket_fd);
+				//val.socket_fd= -1;
 			}
 		}
 	}
+
 	void Tracker::SetParameter(std::string T_data)
 	{
 		parameter_msg.append(1,'&');
 		parameter_msg.append(std::move(T_data));
 	}
+
 	void Tracker::GetPeerList(HttpRequest* T_request,HttpResponse* T_response,std::shared_ptr<CacheRegio> T_cache,int T_sec)
 	{
 		fd_set wset,rset,rset_save,wset_save;
@@ -196,6 +203,7 @@ namespace Csz
 		}
 		return ;
 	}
+
 	inline void Tracker::Delivery(HttpRequest* T_request,const int& T_socket_fd,const std::string& T_uri)
 	{
 		std::string request_line;
@@ -230,11 +238,13 @@ namespace Csz
 #endif
 		T_request->ClearMethod();
 	}
+
 	inline void Tracker::Capturer(HttpResponse* T_response,std::shared_ptr<CacheRegio> T_cache,const int& T_socket_fd)
 	{
 		T_response->Capturer(T_socket_fd,T_cache);
 		T_response->Clear();
 	}
+
 #ifdef CszTest
 	void Tracker::COutInfo()
 	{

@@ -3,6 +3,11 @@
 ////////////////////////
 #define CszTest
 
+#include "../Error/CszError.h"
+#include "../Web/CszWeb.h" //CszHttpRequest,CszHttpResponse,CszUrlEscape
+#include "../Sock/CszSocket.h" //CszTcpConnect,CszFcntl,CszSocketHostServNull
+#include "sha1.h" 
+#include "../CszNonCopyAble.hpp"
 #include <unistd.h> //write in CszBStr
 #include <sys/uio.h> //writev
 #include <ctime> //time
@@ -16,11 +21,7 @@
 #include <functional> //std::function,binary_function
 #include <utility> //std::make_pair
 #include <memory> //shared_ptr
-#include "../Error/CszError.h"
-#include "../Web/CszWeb.h" //CszHttpRequest,CszHttpResponse,CszUrlEscape
-#include "../Sock/CszSocket.h" //CszTcpConnect,CszFcntl,CszSocketHostServNull
-#include "sha1.h" 
-#include "CszNonCopyAble.hpp"
+
 
 namespace Csz
 {
@@ -35,6 +36,7 @@ namespace Csz
 			virtual void COutInfo()= 0;
 #endif
 	};
+
 	class BInt : public BDataType
 	{
 		public:
@@ -48,6 +50,7 @@ namespace Csz
 		private:
 			std::uint64_t data;
 	};
+
 	class BStr : public BDataType
 	{
 		public:
@@ -62,6 +65,7 @@ namespace Csz
 		//private:
 			std::string data;
 	};
+
 	class BList : public BDataType
 	{
 		public:
@@ -75,6 +79,7 @@ namespace Csz
 		private:
 			std::vector<BDataType*> data;
 	};
+
 	class BDict : public BDataType
 	{
 		public:
@@ -89,13 +94,17 @@ namespace Csz
 		private:
 			std::unordered_map<std::string,BDataType*> data;
 	};
+
 	//d***e
 	struct GetDictLength : public std::binary_function<const char*,int,int>
 	{
 		int operator()(const char* T_str,int T_len) const;
 	};
+
+//tracker
 	struct TrackerInfo
 	{
+        //tcp set -1,udp set -2
 		TrackerInfo():socket_fd(-3){}
 		TrackerInfo(TrackerInfo&&);
 		std::string host;
@@ -103,6 +112,7 @@ namespace Csz
 		std::string uri;
 		int socket_fd;
 	};
+
 	class Tracker
 	{
 		public:
@@ -125,6 +135,7 @@ namespace Csz
 			std::string info_hash;
 			std::string parameter_msg;
 	};
+
 	class TorrentFile
 	{
 		private:
@@ -166,5 +177,6 @@ namespace Csz
 			void COutInfo();
 #endif
 	};
+
 }
 #endif

@@ -101,6 +101,7 @@ namespace Csz
 			auto serv_flag= val.find(':',host_flag);
 			if (val.npos== host_flag || val.npos== uri_flag)
 			{
+                //TODO 不退出,将所有正确结果读取出来
 				Csz::ErrQuit("TorrentFile can't catch host or announce,string:%s",val.c_str());
 				return ;
 			}

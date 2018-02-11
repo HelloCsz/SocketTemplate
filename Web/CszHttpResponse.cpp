@@ -2,17 +2,23 @@
 
 namespace Csz
 {
-	void HttpResponse::Capturer(const int& T_socket_fd,std::shared_ptr<CacheRegio>& T_cache)
+	void HttpResponse::Capturer(const int& T_socket_fd,CacheRegio* const T_cache)
 	{
-		if (!T_cache)
+		if (nullptr== T_cache)
 		{
 			Csz::ErrMsg("HttpResponseHead can't Catpurer,CacheRegio is empty");
 			return ;
 		}
+        //1.read status head
 		std::string line= T_cache->ReadLine(T_socket_fd);
 		if (line.empty())
 			return;
 		CatchFirstLine(std::move(line));
+        //2.check status
+        if (GetStatus()== 200)
+        {
+               
+        }
 		while (!(line= T_cache->ReadLine(T_socket_fd)).empty())
 		{
 			if (line.size()<= 2 && '\r'==line[0])
@@ -37,7 +43,9 @@ namespace Csz
 #ifdef CszTest
 		printf("status line:\n%s\n",status_line.c_str());
 #endif
+        return ;
 	}
+
 	inline void HttpResponse::CatchHeader(std::string&& T_data)
 	{
 		/*
@@ -62,30 +70,22 @@ namespace Csz
 #ifdef CszTest
 		printf("%s\n",T_data.c_str());
 #endif
+        return ;
 	}
-	void HttpResponse::SaveBody(const int& T_socket_fd,std::shared_ptr<CacheRegio>& T_cache)const
+
+	void HttpResponse::SaveBody(const int& T_socket_fd,CacheRegio* const T_cache) 
 	{
-		std::string file_name(std::to_string(time(NULL)+ (long)getpid()));
-		file_name.append(1,'.');
+		//TODO 大小写敏感
 		auto result= header_data.find("Content-Type");
 		if (header_data.end()== result)
 		{
 			return ;
 		}
-		auto flag= result->second.find('/');
-		if (flag!= result->second.npos)
-			file_name.append(result->second.c_str()+flag+ 1,result->second.size()- flag- 2);// text/html/r/n /n被标识为结束
-		else
-			Csz::ErrMsg("HttpResponse SaveBody can't catch content type %s",result->second.c_str());
-		FILE* file= fopen(file_name.c_str(),"w");
-		if (NULL== file)
-		{
-			Csz::ErrSys("SaveBody can't open %s",file_name.c_str());
-		}
 		int num;
 		result= header_data.find("Content-Length");
 		if (result!= header_data.end())
 		{
+            //throw exception
 			num= std::stoi(result->second);
 		}
 		else
@@ -93,15 +93,19 @@ namespace Csz
 			Csz::ErrMsg("SaveBody can't find Content-Length");
 			return ;
 		}
-		T_cache->ReadBuf(T_socket_fd,fileno(file),num);
-		fclose(file);
+		body.assign(std::move(T_cache->ReadBuf(T_socket_fd,num)));
+        return ;
 	}
+
 	void HttpResponse::Clear()
 	{
 		//清除数据,但是不改变已申请的空间大小
 		status_line.clear();
 		header_data.clear();
+        body.clear();
+        return ;
 	}
+
 	int HttpResponse::GetStatus()const
 	{
 		int status= 0;
@@ -120,7 +124,9 @@ namespace Csz
 				}
 			}
 		}
+        return -1;
 	}
+
 	//不能返回引用,因为在找不到情况下需要返回一个空数据,但空数据是临时变量
 	//返回值需要const,因为引用可以修改到内部real数据,且key value不能修改,若
 	//修改则破坏了容器的内部结构
@@ -131,6 +137,7 @@ namespace Csz
 			return "";
 		return result->second;
 	}
+
 #ifdef CszTest
 	void HttpResponse::COutInfo()const
 	{

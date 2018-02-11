@@ -1,20 +1,39 @@
-far_objects= CszError.o CszTcpConnect.o CszSocketNtoPHost.o
-far_heads= CszError.h CszSocket.h
+include ../config.mk
 
-curr_objects= main.o CszHttpRequest.o CszHttpResponse.o CszCacheRegio.o
-curr_heads= CszWeb.h
+TARGET= Web
+HDR_DIR= $(SRC)/Error $(SRC)/Web $(SRC)/Sock
 
-flag= -std=c++11
-vpath % ../Error ../Sock
+SOURCES= ./main.cpp\
+		 ./CszHttpRequest.cpp\
+		 ./CszHttpResponse.cpp\
+	     ./CszCacheRegio.cpp\
+		 $(SRC)/Error/CszError.cpp\
+		 $(SRC)/Sock/CszTcpConnect.cpp\
+		 $(SRC)/Sock/CszSocketNtoPHost.cpp\
 
-Web:$(curr_objects) $(curr_heads) $(far_objects) $(far_heads)
-	g++ $(flag) -o web $(curr_objects) $(far_objects)
+OBJECTS= $(addsuffix .o, $(basename $(SOURCES)))
 
-$(curr_objects):%.o:%.cpp
-	g++ $(flag) -c $<
-$(far_objects):%.o:%.cpp
-	g++ $(flag) -c $< -I $@
+LIB_DIR=
 
-.PHONY:clean
+HDR_INCLUDE= $(addprefix -I, $(HDR_DIR))
+LIB_LINK= $(addprefix -L, $(LIB_DIR))
+
+CXXFLAGS= -std=c++11 -g -W
+STATICLINK_FLAGS= #-lgflags
+DYNAMICLINK_FLAGS= #-pthread
+
+all:$(TARGET)
+
+$(TARGET):$(OBJECTS)
+	@echo "Linking $@"
+	@$(CXX) $(LIB_LINK) -Xlinker "-(" $(OBJECTS) -Wl,-Bstatic $(STATICLINK_FLAGS) -Wl,-Bdynamic -Xlinker "-)" $(DYNAMICLINK_FLAGS) -o $@
+
 clean:
-	rm *.o
+	@echo "Cleaning BitTorrent"
+	@rm -frv $(OBJECTS) $(TARGET)
+%.o:%.cpp
+	@echo "Compiling $@"
+	@$(CXX) -c $(HDR_INCLUDE) $(CXXFLAGS) $< -o $@
+%.o:%.c
+	@echo "Compiling $@"
+	@$(CXX) -c $(HDR_INCLUDE) $(CXXFLAGS) $< -o $@

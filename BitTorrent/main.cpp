@@ -54,7 +54,8 @@ int main(int argc,char** argv)
 	request.SetHeader("User-Agent","Super Max");
 	request.SetHeader("Accept","text/html");
 	Csz::HttpResponse response;
-	std::shared_ptr<Csz::CacheRegio> cache= Csz::CacheRegio::GetSingleton();
+	Csz::CacheRegio cache;
+    //set get method uri parameter
 	{
 		auto id1= time(NULL);
 		auto id2= std::rand()%100000000+ 1000000000;
@@ -80,6 +81,9 @@ int main(int argc,char** argv)
 		tracker.SetParameter(std::move(parameter));
 	}
 	tracker.Connect();
-	tracker.GetPeerList(&request,&response,cache,60);
+    //60s time out
+    std::vector<std::string> peer_list= tracker.GetPeerList(&request,&response,&cache,60);
+    std::cout<<"peer list info:\n"<<peer_list<<"\n";
+    //select
 	return 0;
 }

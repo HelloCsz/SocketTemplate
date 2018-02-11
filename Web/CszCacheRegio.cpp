@@ -1,8 +1,7 @@
 #include "CszWeb.h"
-
+#include <sstream> //ostringstream
 namespace Csz
 {
-	std::weak_ptr<CacheRegio> CacheRegio::singleton;
 	CacheRegio::CacheRegio():read_cnt(0)
 	{
 		size_t len= CACHESIZE;
@@ -48,6 +47,7 @@ namespace Csz
 		read_ptr= read_buf;
 		*/
 	}
+
 	CacheRegio::~CacheRegio()
 	{
 #ifdef CszTest
@@ -59,27 +59,8 @@ namespace Csz
 			read_buf= nullptr;
 		}
 	}
-	std::shared_ptr<CacheRegio> CacheRegio::GetSingleton()
-	{
-		std::shared_ptr<CacheRegio> ret;
-		//must atomic
-		if (!(ret= singleton.lock()))
-		{
-			ret.reset(new CacheRegio(),[](const CacheRegio* T_cache_regio)
-					{
-						delete T_cache_regio;
-					});
-			singleton= ret;
-#ifdef CszTest
-			printf("not have shared space,so create share space\n");
-#endif
-		}
-#ifdef CszTest
-		printf("return singleton\n");
-#endif
-		return ret;
-	}
-	//设置超时
+
+	//TODO 设置超时
 	inline int CacheRegio::AddCache(int T_socket_fd)
 	{
 		while (read_cnt<= 0)
@@ -109,6 +90,7 @@ namespace Csz
 #endif
 		return read_cnt;
 	}
+
 	std::string CacheRegio::ReadLine(int T_socket_fd)
 	{
 		std::string line;
@@ -139,19 +121,21 @@ namespace Csz
 		}
 		return line;
 	}
-	//设置超时
-	void CacheRegio::ReadBuf(const int& T_socket_fd,const int& T_save_fd,int T_save_num)
-	{
+
+	//TODO 设置超时
+	std::string CacheRegio::ReadBuf(const int& T_socket_fd,int T_save_num)
+	{   
+        std::string ret_str;
 		int curr_num;
 		while (T_save_num> 0)
 		{
 			curr_num= T_save_num> read_cnt ? read_cnt : T_save_num;
-			curr_num= write(T_save_fd,read_ptr,curr_num);
+            ret_str.append(read_ptr,curr_num);
 			T_save_num-= curr_num;
 			read_cnt-= curr_num;
 			if (read_cnt<= 0)
 				AddCache(T_socket_fd);
 		}
-		return ;
+		return std::move(ret_str);
 	}
 }

@@ -1,5 +1,9 @@
 #ifndef CszWEB_H
 #define CszWEB_H
+#include "../Sock/CszSocket.h" //TcpConnect,SocketNtoPHost
+#include "../Signal/CszSignal.h" //Signal
+#include "../CszNonCopyAble.hpp"
+
 #include <sys/types.h> //msghdr
 #include <sys/socket.h> //getsockname
 #include <sys/uio.h> //writev
@@ -15,17 +19,17 @@
 #include <unordered_map> //unordered_map
 //#include <sstream> //istringstream
 #include <memory> //shared_ptr
-#include "../Sock/CszSocket.h" //TcpConnect,SocketNtoPHost
-#include "../Signal/CszSignal.h" //Signal
+
 
 #define CACHESIZE 1024* 1
 #define CszTest
 namespace Csz
 {
-	struct UrlEscape
+	struct UrlEscape : public std::unary_function<std::string,std::string>
 	{
 		std::string operator()(std::string);
 	};
+
 	class HttpRequest
 	{
 		public:
@@ -48,14 +52,16 @@ namespace Csz
 			const std::string head_end;
 			std::vector<std::string> data;
 	};
+
 	class CacheRegio;
 	class HttpResponse
 	{
 		public:
-			void Capturer(const int&,std::shared_ptr<CacheRegio>&);
+			void Capturer(const int&,CacheRegio*const);
 			void Clear();
 			int GetStatus()const;
 			const std::string SearchHeader(const std::string&);
+            std::string GetBody()const{return body;}
 #ifdef CszTest
 			void COutInfo()const;
 #endif
@@ -66,28 +72,23 @@ namespace Csz
 		private:
 			void CatchFirstLine(std::string&&);
 			void CatchHeader(std::string&&);
-			//empty
-			void SaveBody(const int&,std::shared_ptr<CacheRegio>&)const;
+			void SaveBody(const int&,CacheRegio*const);
 	};
-	//singleton pattern(不安全) 变种 用shared_ptr对内存进行共享
-	class CacheRegio
+
+	//目的:并非多线程共享一个内存
+	class CacheRegio : public NonCopyAble
 	{
 		private:
 			int read_cnt;
 			char* read_ptr;
 			char* read_buf;
 		private:
-			static std::weak_ptr<CacheRegio> singleton;
-		private:
 			int AddCache(int);
-		protected:
-			CacheRegio();
-			CacheRegio& operator=(const CacheRegio&)=delete;
 		public:
+            CacheRegio();
 			~CacheRegio();
-			static std::shared_ptr<CacheRegio> GetSingleton();
 			std::string ReadLine(int);
-			void ReadBuf(const int&,const int&,int);
+			std::string ReadBuf(const int&,int);
 			//empty
 			void Clear();
 	};

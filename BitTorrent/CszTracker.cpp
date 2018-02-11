@@ -111,8 +111,9 @@ namespace Csz
 		parameter_msg.append(std::move(T_data));
 	}
 
-	void Tracker::GetPeerList(HttpRequest* T_request,HttpResponse* T_response,std::shared_ptr<CacheRegio> T_cache,int T_sec)
+	std::vector<std::string> Tracker::GetPeerList(HttpRequest* T_request,HttpResponse* T_response,CacheRegio* const T_cache,int T_sec)
 	{
+        std::vector<std::string> ret_str;
 		fd_set wset,rset,rset_save,wset_save;
 		int fd_max= -1;
 		struct timeval time_val;
@@ -148,7 +149,7 @@ namespace Csz
 				//time out
 				errno= ETIMEDOUT;
 				Csz::ErrMsg("Tracker get peer list time out");
-				return ;
+				return std::move(ret_str);
 			}
 			//即可读又可写不同环境计算值不同,有的只计1,有些计2
 			for (auto& val :info)
@@ -194,6 +195,7 @@ namespace Csz
 					printf("Capturer host:%s,serv:%s,%d\n",val.host.c_str(),val.serv.c_str(),val.socket_fd);
 #endif
 					Capturer(T_response,T_cache,val.socket_fd);
+                    ret_str.emplace_back(std::move(T_response->GetBody()));
 					FD_CLR(val.socket_fd,&rset_save);
 					--quit_num;
 				}
@@ -201,7 +203,7 @@ namespace Csz
 			rset= rset_save;
 			wset= wset_save;
 		}
-		return ;
+		return std::move(ret_str);
 	}
 
 	inline void Tracker::Delivery(HttpRequest* T_request,const int& T_socket_fd,const std::string& T_uri)
@@ -239,10 +241,10 @@ namespace Csz
 		T_request->ClearMethod();
 	}
 
-	inline void Tracker::Capturer(HttpResponse* T_response,std::shared_ptr<CacheRegio> T_cache,const int& T_socket_fd)
+	inline void Tracker::Capturer(HttpResponse* T_response,CacheRegio* const T_cache,const int& T_socket_fd)
 	{
+        T_response->Clear();
 		T_response->Capturer(T_socket_fd,T_cache);
-		T_response->Clear();
 	}
 
 #ifdef CszTest

@@ -123,12 +123,12 @@ namespace Csz
 			void SetTrackInfo(TrackerInfo);
 			void SetInfoHash(std::string);
 			void SetParameter(std::string);
-			void GetPeerList(HttpRequest*,HttpResponse*,std::shared_ptr<CacheRegio>,int);
+			std::vector<std::string> GetPeerList(HttpRequest*,HttpResponse*,CacheRegio*const,int);
 #ifdef CszTest
 			void COutInfo();
 #endif
 		private:
-			void Capturer(HttpResponse*,std::shared_ptr<CacheRegio>,const int&);
+			void Capturer(HttpResponse*,CacheRegio*const,const int&);
 			void Delivery(HttpRequest*,const int&,const std::string&);
 		private:
 			std::vector<TrackerInfo> info;
@@ -177,6 +177,23 @@ namespace Csz
 			void COutInfo();
 #endif
 	};
-
+    
+    class PeerManager
+    {
+        public:
+            PeerManager(const std::vector<std::string> &T_socket_list);
+            ~PeerManager();
+            void LoadPeerList(const std::vector<std::string> &T_socket_list);
+            void AddSocket(const int T_socket)
+            {
+                if (T_socket>= 0)
+                    peer_list.emplace_back(T_socket);
+            }
+            void Run();
+        privete:
+            void LoadPeerListImpl(const std::string& T_socket_list);
+        private:
+            std::vector<int> peer_list;
+    };
 }
 #endif

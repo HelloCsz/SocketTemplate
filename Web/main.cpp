@@ -1,5 +1,5 @@
 #include "CszWeb.h"
-
+#include <iostream>
 #define IOVECSIZE 32
 
 int main(int argc,char** argv)
@@ -39,12 +39,13 @@ int main(int argc,char** argv)
 	request.COutInfo();
 #endif
 	writev(socket_fd,data_arry,msg_num);
-	std::shared_ptr<Csz::CacheRegio> cache= Csz::CacheRegio::GetSingleton();
+	Csz::CacheRegio cache;
 	Csz::HttpResponse response;
 #ifdef CszTest
 	printf("Catpurer info:\n");
 #endif
-	response.Capturer(socket_fd,cache);
+	response.Capturer(socket_fd,&cache);
+    std::cerr<<"body info:\n"<<response.GetBody()<<"\n"<<"body len="<<response.GetBody().size();
 	close(socket_fd);
 	//exit使shared_ptr失效(具体使引用计数失效)
 	//exit(0); 

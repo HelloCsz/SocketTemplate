@@ -83,7 +83,6 @@ int main(int argc,char** argv)
 	tracker.Connect();
     //60s time out
     std::vector<std::string> peer_list= tracker.GetPeerList(&request,&response,&cache,60);
-    std::cout<<"peer list info:\n"<<peer_list<<"\n";
     //select
 	return 0;
 }

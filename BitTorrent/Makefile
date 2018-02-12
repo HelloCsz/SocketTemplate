@@ -24,28 +24,50 @@ SOURCES= $(SRC)/BitTorrent/main.cpp\
 		 $(SRC)/Sock/CszSocketHostServNull.cpp
 
 OBJECTS= $(addsuffix .o, $(basename $(SOURCES)))
+OBJECTS+= $(PROTOS:.proto=.pb.o)
 
-LIB_DIR=
+HDR_DIR+= $(BRPC_SRC_DIR)/output/lib
+HDR_DIR+= $(PROTOS_DIR)
+
+LIB_DIR= $(BRPC_SRC_DIR)/output/lib
 
 HDR_INCLUDE= $(addprefix -I, $(HDR_DIR))
 LIB_LINK= $(addprefix -L, $(LIB_DIR))
 
 CXXFLAGS= -std=c++11 -g -W
-STATICLINK_FLAGS= #-lgflags
-DYNAMICLINK_FLAGS= #-pthread
+STATICLINK_FLAGS= -lgflags -lprotobuf -lbrpc
+DYNAMICLINK_FLAGS= -pthread -lssl 
 
-all:$(TARGET)
+.PHONY:
+all:$(TARGET) 
 
-$(TARGET):$(OBJECTS)
+brpc-conf:$(BRPC_SRC_DIR)/config_brpc.sh
+	@echo "Configuring brpc"
+	@cd $(BRPC_SRC_DIR) && sh ./config_brpc.sh --headers=/usr/include --libs=/usr/lib
+
+brpc:$(BRPC_SRC_DIR)/Makefile brpc-conf
+	@echo "Building brpc"
+	@make -C $(BRPC_SRC_DIR)
+
+$(TARGET):brpc $(OBJECTS)
 	@echo "Linking $@"
 	@$(CXX) $(LIB_LINK) -Xlinker "-(" $(OBJECTS) -Wl,-Bstatic $(STATICLINK_FLAGS) -Wl,-Bdynamic -Xlinker "-)" $(DYNAMICLINK_FLAGS) -o $@
 
+.PHONY:
 clean:
 	@echo "Cleaning BitTorrent"
 	@rm -frv $(OBJECTS) $(TARGET)
+	@echo "Cleaning brpc"
+	#@make -C $(BRPC_SRC_DIR) clean 
+
+%.pb.cc %.pb.h: %.proto
+	@echo "Generating $@"
+	@(PROTOC) --cpp_out=$(PROTOS_DIR) --proto_path=$(PROTOS_DIR) $(PROTOC_EXTRA_ARGS) $<
+
 %.o:%.cpp
 	@echo "Compiling $@"
 	@$(CXX) -c $(HDR_INCLUDE) $(CXXFLAGS) $< -o $@
+
 %.o:%.c
 	@echo "Compiling $@"
 	@$(CXX) -c $(HDR_INCLUDE) $(CXXFLAGS) $< -o $@

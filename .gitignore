@@ -1,6 +1,12 @@
-*.o
 BitTorrent
 Web
-*.out
-*.html
+
 record
+
+*.html
+
+*.o
+*.pb.h
+*.pb.c
+*.out
+

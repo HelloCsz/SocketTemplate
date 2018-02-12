@@ -190,10 +190,62 @@ namespace Csz
                     peer_list.emplace_back(T_socket);
             }
             void Run();
-        privete:
+        private:
             void LoadPeerListImpl(const std::string& T_socket_list);
         private:
             std::vector<int> peer_list;
     };
+
+    //bt message type
+    //1.handshake
+    //TODO pstr is fixation
+    class HandShake
+    {
+        private:
+            char data[68];
+        public:
+            HandShake(){bzero(data,sizeof(data);}
+            ~HandShake()=default;
+            void SetParameter(const char* T_reserved,const char* T_info_hash,const char* T_peer_id);
+            const char* GetSendData()const {return data;}
+            int GetDataSize()const {return 68;}
+    };
+
+    //2.keep alive
+    struct KeepAlive
+    {
+        const char alive_pack[4];
+        KeepAlive():bzero(alive_pack,sizeof(alive_pack)){}
+        const char* GetSendData()const {return alive_pack;}
+        const char* operator()(){return GetSendData();}
+        int GetDataSize()const {return 4;}
+    };
+
+    //3.choke id= 0
+    struct Choke
+    {
+        char choke[5];
+        Choke(){bzero(choke,sizeof(choke));choke[4]= 0;}
+        const char* GetSendData()const {return choke;}
+        const char* operator()(){return GetSendData();}
+        int GetDataSize()const {return 5;}
+    };
+
+    //4.unchoke id= 1
+    struct UnChoke
+    {
+        char nonchoke[5];
+        UnChoke(){bzero(nonchoke,sizeof(onochoke));nonchoke[4]= 1;}
+        const char* GetSendData()const {return nonchoke;}
+        const char* operator()(){return GetSendData();}
+        int GetDataSize()const {return 5;}
+    };
+    
+    //5.interested
+    struct Interested
+    {
+
+    };
+    
 }
 #endif

@@ -2,11 +2,12 @@
 
 namespace Csz
 {
+/*
     PeerManager::PeerManager(const std::vector<std::string>& T_socket_list)
     {
         LoadPeerList(T_socket_list);   
     }
-
+*/
     void PeerManager::LoadPeerList(const std::vector<std::string>& T_socket_list)
     {
         if (T_socket_list.empty())
@@ -16,13 +17,14 @@ namespace Csz
         }
         for (const auto& val : T_socket_list)
         {
-            LoadPeerListImpl(val);
+            _LoadPeerList(val);
         }
         return ;
     }
 
-    inline void PeerManager::LoadPeerListImpl(const std::string& T_socket_list)
+    void PeerManager::_LoadPeerList(const std::string& T_socket_list)
     {
+		std::vector<int> ret;
         auto flag= T_socket_list.find("peers");
         if (std::string::npos== flag)
         {
@@ -32,38 +34,47 @@ namespace Csz
         //1.load length num
         //throw invalid_argument or out_of_range
         size_t num_length;
-        int num= std::stoi(std::string(T_socket_list.begin()+ flag,T_sock_list.begin()+ flag+ 3),&num_length);
+        int num= std::stoi(std::string(T_socket_list.begin()+ flag,T_socket_list.begin()+ flag+ 3),&num_length);
         //peersxxx:
         auto start= T_socket_list.c_str()+ flag+ num_length+ 1;
         auto stop= T_socket_list.c_str()+ T_socket_list.size();
         //TODO 2.check comopact??
-        for (num> 0 && start< stop)
+        while (num> 0 && start< stop)
         {
             sockaddr_in addr;
-            bzer(&addr,sizeof(addr));
+            bzero(&addr,sizeof(addr));
             addr.sin_family= AF_INET;
-            addr.sin_addr= *(static_cast<int32_t*>(start));
-            addr.sin_port= *(static_cast<int16_t*>(start+ 4));
+            addr.sin_addr.s_addr= *(reinterpret_cast<int32_t*>(const_cast<char*>(start)));
+            addr.sin_port= *(reinterpret_cast<int16_t*>(const_cast<char*>(start+ 4)));
             start= start+ 6;
             //tcp  connect,only support ipv4
             int socket= Csz::CreateSocket(AF_INET,SOCK_STREAM,IPPROTO_TCP);
             //3.set nonblock
             auto old_flag= Csz::Fcntl(socket,F_GETFL,0);
             Csz::Fcntl(socket,F_SETFL,old_flag | O_NONBLOCK);
-            if (connect(socket,static_cast<sockaddr*>(&addr),sizeof(addr))< 0)
+            if (connect(socket,reinterpret_cast<sockaddr*>(&addr),sizeof(addr))< 0)
             {
                 if (errno!= EINPROGRESS)
                 {
-                    Csz::ErrMSG("PeerManager can't connect peer,nonblocking connection error");
-                    Csz::ErrMsg("addr=%d,port=%d",ntohl(addr.sin_addr),ntohs(addr.sin_port));
+                    Csz::ErrMsg("PeerManager can't connect peer,nonblocking connection error");
+                    Csz::ErrMsg("addr=%d,port=%d",ntohl(addr.sin_addr.s_addr),ntohs(addr.sin_port));
                     close(socket);
                     continue;
                 }
             }
             //4.set old_flag
             Fcntl(socket,F_SETFL,old_flag);
-            peer_list.emplace_back(socket);
+            ret.emplace_back(socket);
         }
+		//5.ensure connect and send hand shake
+		_Connected(ret);
+		//6.recv hand shake
+		_Verification(ret);
+		//7.send bit field
+		_SendBitField(ret);
+		//TODO 8.lock and update peer list and socket_map_id
+		NeedPiece::GetInstance()->SocketMapId(ret);
+		peer_list.insert(ret.begin(),ret.end());
         return ;       
     }
 
@@ -78,20 +89,23 @@ namespace Csz
             }
         }
     }
-    void PeerManager::Run()
+
+    void PeerManager::_Connected(std::vector<int>& T_ret)
     {
+		if (T_ret.empty())
+			return ;
         //1.init select
         fd_set wset,rset;
         fd_set wset_save,rset_save;
         int fd_max= -1;
         
-        //TODO 2.tracker interval
+        //1.time out
         struct timeval time_val;
-        time_val.tv_sec= 0;
+        time_val.tv_sec= 60;
         time_val.tv_usec= 0;  
         
         FD_ZERO(&wset);
-        for (const auto& val : peer_list)
+        for (const auto& val : T_ret)
         {
             if (val>= 0)
             {
@@ -102,53 +116,215 @@ namespace Csz
                 FD_SET(val,&wset);
             }
         }
+		int stop= T_ret.size();
         rset_save= rset= wset_save= wset;
         //3.wait socket change able read or write
-        while (true)
+		int code;
+        while (stop> 0)
         {
-            if (0==(select(fd_max+ 1,&rset,&wset,time_val.tv_sec> 0? &time_val : NULL)))
+            if (0==(code=select(fd_max+ 1,&rset,&wset,NULL,&time_val)))
             {
                 //time out
                 errno= ETIMEDOUT;
                 Csz::ErrMsg("wait peer time out");
                 //TODO 继续循环
+				for (auto& val : T_ret)
+				{
+					if (FD_ISSET(val,&rset_save) || FD_ISSET(val,&wset_save))
+					{
+						val= -1;
+					}
+				}
+				//clear failed socket
+				std::vector<int> ret;
+				for (const auto& val : T_ret)
+				{
+					if (val >= 0)
+					{
+						ret.emplace_back(val);
+					}
+				}
+				T_ret.swap(ret);
                 return ;
             }
-            for (auto& val : peer_list)
+			if (code< 0)
+			{
+				Csz::ErrSys("select can't used");
+				return ;
+			}
+            for (auto& val : T_ret)
             {
                 if (val< 0)
-                    continue;
-                if (FD_ISSET(val,&wset)
+                    continue ;
+                if (FD_ISSET(val,&wset) || FD_ISSET(val,&rset))
                 {
+					FD_CLR(val,&rset_save);
+					FD_CLR(val,&wset_save);
+					--stop;
                     int errno_save= 0;
-                    sockelen_t errno_len= sizeof(errno_save);
+                    socklen_t errno_len= sizeof(errno_save);
                     if (getsockopt(val,SOL_SOCKET,SO_ERROR,&errno_save,&errno_len)< 0)
                     {
                         Csz::ErrRet("PeerManager can't connect peer");
                         close(val);
                         val= -1;
-                        continue;
+                        continue ;
                     }
                     //getsockopt return 0 if error
                     else if (errno_save)
                     {
                         //strerror non-sofathread
-                        Csz::ErrMsg("PeerManager can't connect peer:%s",strerror(errno_save);
+                        Csz::ErrMsg("PeerManager can't connect peer:%s",strerror(errno_save));
                         close(val);
                         val= -1;
-                        continue;
+                        continue ;
                     }
+					//TODO auto
                     //nonmal socket
-                    
-                }
-                if (FD_ISSET(val,&rset)
-                {
-                    //
+					auto hand_shake= HandShake::GetInstance();
+					send(val,hand_shake->GetSendData(),hand_shake->GetDataSize(),0);
                 }
             }
             rset= rset_save;
             wset= wset_save;
         }
+		//clear failed socket
+		std::vector<int> ret;
+		for (const auto& val : T_ret)
+		{
+			if (val >= 0)
+			{
+				ret.emplace_back(val);
+			}
+		}
+		T_ret.swap(ret);
         return ;
     }
+
+	void PeerManager::_Verification(std::vector<int>& T_ret)
+	{
+		if (T_ret.empty())
+			return ;
+		auto hand_shake= HandShake::GetInstance();
+        //1.init select
+        fd_set rset,rset_save;
+        int fd_max= -1;
+        
+        //1.time out
+        struct timeval time_val;
+        time_val.tv_sec= 60;
+        time_val.tv_usec= 0;  
+        
+        FD_ZERO(&rset_save);
+        for (const auto& val : T_ret)
+        {
+            if (val>= 0)
+            {
+				//set horizontal mark
+				int lowat= 68;
+				setsockopt(val,SOL_SOCKET,SO_RCVLOWAT,&lowat,sizeof(lowat));
+                if (fd_max< val)
+                {
+                    fd_max= val;
+                }
+                FD_SET(val,&rset_save);
+            }
+        }
+		int stop= T_ret.size();
+        rset= rset_save;
+        //3.wait socket change able read
+		int code;
+        while (stop> 0)
+        {
+            if (0==(code=select(fd_max+ 1,&rset,NULL,NULL,&time_val)))
+            {
+                //time out
+                errno= ETIMEDOUT;
+                Csz::ErrMsg("wait peer time out");
+                //TODO 继续循环
+				for (auto& val : T_ret)
+				{
+					if (FD_ISSET(val,&rset_save))
+					{
+						val= -1;
+					}
+				}
+				//clear failed socket
+				std::vector<int> ret;
+				for (const auto& val : T_ret)
+				{
+					if (val >= 0)
+					{
+						ret.emplace_back(val);
+					}
+				}
+				T_ret.swap(ret);
+                return ;
+            }
+			if (code< 0)
+			{
+				Csz::ErrSys("select can't used");
+				return ;
+			}
+            for (auto& val : T_ret)
+            {
+                if (val< 0)
+                    continue ;
+                if (FD_ISSET(val,&rset))
+                {
+					FD_CLR(val,&rset_save);
+					--stop;
+					//TODO auto
+					char buf[69]={0};
+					if (68!=recv(val,buf,68,MSG_WAITALL))
+					{
+						val= -1;
+					}
+					else if (!(hand_shake->Varification(buf)))
+					{
+						val= -1;
+					}
+                }
+            }
+            rset= rset_save;
+        }
+		//clear failed socket
+		std::vector<int> ret;
+		for (const auto& val : T_ret)
+		{
+			if (val >= 0)
+			{
+				//set horizontal mark
+				int lowat= 1;
+				setsockopt(val,SOL_SOCKET,SO_RCVLOWAT,&lowat,sizeof(lowat));
+				ret.emplace_back(val);
+			}
+		}
+		T_ret.swap(ret);
+        return ;
+	}
+
+	void PeerManager::_SendBitField(std::vector<int>& T_ret)
+	{
+		if (T_ret.empty())
+			return ;
+		auto local_bit_field= LocalBitField::GetInstance();
+		for (const auto& val : T_ret)
+		{
+			send(val,local_bit_field->GetSendData(),local_bit_field->GetDataSize(),0);
+		}
+		return ;
+	}
+
+	void PeerManager::CloseSocket(int T_socket)
+	{
+		auto result= peer_list.find(T_socket);
+		if (result!= peer_list.end())
+		{
+			Csz::Close(T_socket);
+			//lock
+			peer_list.erase(result);
+		}
+		return ;
+	}
 }

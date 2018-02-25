@@ -13,6 +13,13 @@ SOURCES= $(SRC)/BitTorrent/main.cpp\
 		 $(SRC)/BitTorrent/CszTrackerInfo.cpp\
 		 $(SRC)/BitTorrent/CszGetDictLength.cpp\
 		 $(SRC)/BitTorrent/sha1.c\
+		 $(SRC)/BitTorrent/CszHandShake.cpp\
+		 $(SRC)/BitTorrent/CszBitField.cpp\
+		 $(SRC)/BitTorrent/CszDownSpeed.cpp\
+		 $(SRC)/BitTorrent/CszNeedPiece.cpp\
+		 $(SRC)/BitTorrent/CszPeerManager.cpp\
+		 $(SRC)/BitTorrent/CszPiece.cpp\
+		 $(SRC)/BitTorrent/CszReqCleBase.cpp\
 		 $(SRC)/Error/CszError.cpp\
 		 $(SRC)/Web/CszHttpRequest.cpp\
 		 $(SRC)/Web/CszHttpResponse.cpp\
@@ -26,8 +33,9 @@ SOURCES= $(SRC)/BitTorrent/main.cpp\
 OBJECTS= $(addsuffix .o, $(basename $(SOURCES)))
 OBJECTS+= $(PROTOS:.proto=.pb.o)
 
-HDR_DIR+= $(BRPC_SRC_DIR)/output/lib
-HDR_DIR+= $(PROTOS_DIR)
+HDR_DIR+= $(BRPC_SRC_DIR)/output/include	
+
+HDR_DIR+= $(PROTOS_DIR)	
 
 LIB_DIR= $(BRPC_SRC_DIR)/output/lib
 
@@ -57,8 +65,8 @@ $(TARGET):brpc $(OBJECTS)
 clean:
 	@echo "Cleaning BitTorrent"
 	@rm -frv $(OBJECTS) $(TARGET)
-	@echo "Cleaning brpc"
-	#@make -C $(BRPC_SRC_DIR) clean 
+	@echo "Cleaning brpc"	
+#	@make -C $(BRPC_SRC_DIR) clean 
 
 %.pb.cc %.pb.h: %.proto
 	@echo "Generating $@"

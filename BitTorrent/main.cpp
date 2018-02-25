@@ -81,8 +81,15 @@ int main(int argc,char** argv)
 		tracker.SetParameter(std::move(parameter));
 	}
 	tracker.Connect();
+	HandShake::GetInstance()->SetParameter(nullptr,tracker.GetInfoHash().c_str(),nullptr);
+	LocalBitField::GetInstance()->SetParameter(std::string(torrent_file.GetIndexTotal(),0));
+	LocalBitField::GetInstance()->SetEndBit(torrent_file.GetEndBit());
     //60s time out
     std::vector<std::string> peer_list= tracker.GetPeerList(&request,&response,&cache,60);
+	PeerManager;:GetInstance()->LoadPeerList(peer_list);
     //select
+	{
+
+	}
 	return 0;
 }

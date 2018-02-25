@@ -80,12 +80,14 @@ namespace Csz
 					infos.length= *(std::uint64_t*)T_data;
 				});
 	}
+
 	TorrentFile::~TorrentFile()
 	{
 #ifdef CszTest
 		printf("destructor TorrentFile\n");
 #endif
 	}
+
 	void TorrentFile::GetTrackInfo(Tracker* T_tracker)
 	{
 		if (announce_list.empty())
@@ -133,6 +135,7 @@ namespace Csz
 			T_tracker->SetTrackInfo(std::move(data));
 		}
 	}
+
 	std::string TorrentFile::GetIndexHash(int T_index)
 	{
 		if ((T_index+ 1)* 20 > (int)infos.pieces.size() || T_index< 0)
@@ -142,7 +145,8 @@ namespace Csz
 		}
 		return infos.pieces.substr(T_index,20);
 	}
-	std::uint64_t TorrentFile::GetTotal()const
+
+	std::uint64_t TorrentFile::GetFileTotal()const
 	{
 		uint64_t ret= 0;
 		if (infos.single)
@@ -155,6 +159,59 @@ namespace Csz
 			{
 				ret+= val.length;
 			}
+		}
+		return ret;
+	}
+
+	std::uint32_t TorrentFile::GetIndexTotal()const
+	{
+		if (infos.pieces.empty())
+		{
+			Csz::ErrMsg("TorrentFile can't return index total,pieces is empty");
+			return 0;
+		}
+		uint32_t ret=  infos.pieces.size()/ 20;
+		return ret% 8== 0? ret/ 8 : ret/ 8 + 1;
+	}
+	char TorrentFile::GetEndBit()const
+	{
+		int choice= (infos.pieces.size()/ 20)% 8;
+		char ret= 0x00;
+		switch (choice)
+		{
+			case 0:
+				ret= 0x00;
+				break;
+			case 1:
+				//0000 0001
+				ret= 0x01;
+				break;
+			case 2:
+				//0000 0011
+				ret= 0x03;
+				break;
+			case 3:
+				//0000 0111
+				ret= 0x07;
+				break;
+			case 4:
+				//0000 1111
+				ret= 0x0F;
+				break;
+			case 5:
+				//0001 1111
+				ret= 0x1F;
+				break;
+			case 6:
+				//0011 1111
+				ret= 0x3F;
+				break;
+			case 7:
+				//0111 1111
+				ret= 0x7F;
+				break;
+			default:
+				Csz::ErrSys("get end bit failed");
 		}
 		return ret;
 	}

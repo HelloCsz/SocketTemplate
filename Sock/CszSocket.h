@@ -28,9 +28,13 @@ namespace Csz
 #endif	
 	char* SocketNtoP(const struct sockaddr*,socklen_t);
 	char* SocketNtoPHost(const struct sockaddr*,socklen_t);
-	int CreateSocket(int,int,int);
+	int CreateSocket(int T_domain,int T_type,int T_protocol);
 	int TcpConnect(const char*,const char*);
 	int TcpConnectTime(const char*,const char*,int);
 	int Fcntl(int,int,int);
+	int Close(int T_socket);
+	int Bind(int T_socket,const struct sockaddr* T_addr,socklen_t T_addrlen);
+	int Listen(int T_socket,int T_backlog);
+	int Accept(int T_socket,struct sockaddr* addr,socklen_t* T_addrlen);
 }
 #endif

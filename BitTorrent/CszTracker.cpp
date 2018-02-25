@@ -160,6 +160,7 @@ namespace Csz
 				//但Tracker是特例
 				if (FD_ISSET(val.socket_fd,&wset) /*|| FD_ISSET(val->socket_fd,&rset)*/)
 				{
+					FD_CLR(val.socket_fd,&wset_save);
 					int errno_save= 0;
 					socklen_t errno_len= sizeof(errno_save);
 					if (getsockopt(val.socket_fd,SOL_SOCKET,SO_ERROR,&errno_save,&errno_len)< 0)
@@ -191,6 +192,7 @@ namespace Csz
 				}
 				if (FD_ISSET(val.socket_fd,&rset))
 				{
+					FD_CLR(val.socket_fd,&rset_save);
 #ifdef CszTest
 					printf("Capturer host:%s,serv:%s,%d\n",val.host.c_str(),val.serv.c_str(),val.socket_fd);
 #endif

@@ -4,7 +4,7 @@ Web/Web
 record
 
 *.html
-
+*.swp
 *.o
 *.pb.h
 *.pb.c

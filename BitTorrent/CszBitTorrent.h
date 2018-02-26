@@ -540,6 +540,7 @@ namespace Csz
 			void AddTotal(std::vector<std::pair<int,uint32_t>>& T_queue);
 			//four
 			std::vector<int> RetSocket();
+			bool CheckSocket(const int T_socket)const
 	};
 
 	//Need Piece

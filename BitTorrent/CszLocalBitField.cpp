@@ -2,7 +2,9 @@
 
 namespace Csz
 {
-	void LocalBitField::RecvHave(int T_socket,int T_index)
+	bool LocalBitField::CheckBitField(int32_t T_index)
+
+	void LocalBitField::RecvHave(int T_socket,int32_t T_index)
 	{
 		if (!BitField::CheckPiece(T_index))
 		{

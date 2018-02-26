@@ -35,17 +35,35 @@ namespace Csz
 	//have peer send interested
 	std::vector<int> DownSpeed::RetSocket()
 	{
+		auto stop= queue.cend();
 		if (queue.size()> 4)
 		{
 			//并非绝对排序
 			std::nth_element(queue.begin(),queue.begin()+ 4,queue.end(),DSComp);
+			stop= queue.cbegin()+ 4;
 		}
 		std::vector<int> ret;
 		ret.reserve(4);
-		for (auto start= queue.cbegin(),stop= queue.cbegin()+ 4,end= queue.cend(); start< stop && start< end; ++start)
+		for (auto start= queue.cbegin(); start< stop; ++start)
 		{
 			ret.emplace_back(start->second);
 		}
 		return std::move(ret);
+	}
+
+	bool DownSpeed::CheckSocket(const int T_socket)
+	{
+		auto stop= queue.cend();
+		if (queue.size()> 4)
+		{
+			std::nth_element(queue.begin(),queue.begin()+ 4,queue.end(),DSComp);
+			stop= queue.cbegin()+ 4;
+		}
+		for (auto start= queue.cbegin(); start< stop; ++start)
+		{
+			if (T_socket== start->second)
+				return true;
+		}
+		return false;
 	}
 }

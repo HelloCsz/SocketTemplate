@@ -147,7 +147,7 @@ namespace Csz
 		int code;
 		for (int i= 0; i< 3 && len> 0; ++i)
 		{
-			code= recv(T_data->socket,T_data->buf+ cur_len,len,MSG_DONTWAIT);
+			code= recv(T_data->socket,T_data->buf+ cur_len,T_data->len,MSG_DONTWAIT);
 			if (-1== code)
 			{
 				//not buffer
@@ -160,8 +160,13 @@ namespace Csz
 				Csz::ErrRet("Select Switch async recv bit field");
 				break;
 			}
+			else if (0== code)
+			{
+				Csz::ErrMsg("Select Switch can't recv,peer close");
+				PeerManager::GetInstance()->CloseSocket(T_data->socket);
+			}
 			T_data->cur_len += code;
-			len -= code;
+			T_data->len -= code;
 		}
 		//2.1success recv
 		if (0== T_data->len)
@@ -182,5 +187,10 @@ namespace Csz
 	{
 		if (nullptr== T_data)
 			return ;
+		std::unique_ptr<Parameter> guard(T_data);
+		if (DownSpeed::GetInstance()->CheckSocket(T_data->socket))
+		{
+
+		}
 	}
 }

@@ -1,94 +1,97 @@
 #ifndef CszTASKQUEUE_HPP
 #define CszTASKQUEUE_HPP
 
-//max heap
-#define TQComp [](const Data& T_lhs,const Data& T_rhs)\
-{\
-	return T_lhs.priority< T_rhs.priority;\
-}
 
-template<class Parameter,int TASKNUM>
-TaskQueue<Parameter,TASKNUM>::TaskQueue():stop(false)
+namespace Csz
 {
+	//max heap
+	#define TQComp [](const Data& T_lhs,const Data& T_rhs)\
+	{\
+		return T_lhs.priority< T_rhs.priority;\
+	}
+
+	template<class Parameter,int TASKNUM>
+	TaskQueue<Parameter,TASKNUM>::TaskQueue():stop(false)
+	{
 		
-}
-
-template<class Parameter,int TASKNUM>
-TaskQueue<Parameter,TASKNUM>::~TaskQueue()
-{
-	task_queue.clear();
-}
-
-template<class Parameter,int TASKNUM>
-inline void TaskQueue<Parameter,TASKNUM>::_Push(TaskQueue::Type* T_task)
-{
-	if (nullptr== T_task)
-		return ;
-	std::unique_lock<Mutex> guard(queue_mutex);
-	while (!stop && (task_queue.size()== TASKNUM))
-	{
-		//sleep 3s
-		push_cond.wait_for(guard,3000000);
 	}
-	if (stop)
+
+	template<class Parameter,int TASKNUM>
+	TaskQueue<Parameter,TASKNUM>::~TaskQueue()
 	{
-		return ;
+		task_queue.clear();
 	}
-	task_queue.emplace_back(std::move(*T_rask));
-	std::push_heap(task_queue.begin(),task_queue.end(),TQComp);
-	guard.unlock();
-	pop_cond.notify_one();
-	return ;
-}
 
-template<class Parameter,int TASKNUM>
-inline bool TaskQueue<Parameter,int TASKNUM>::_Pop(TaskQueue::Type* T_task)
-{
-	if (nullptr== T_task)
-		return false;
-	std::unique_lock<Mutex> guard(queue_mutex);
-	while (!stop && Empty())
+	template<class Parameter,int TASKNUM>
+	inline void TaskQueue<Parameter,TASKNUM>::_Push(TaskQueue::Type* T_task)
 	{
-		//sleep 3s
-		pop_cond.wait_for(guard,3000000);
-	}
-	if (stop)
-	{
-		return false;
-	}
-	std::pop_heap(task_queue.begin(),task_queue.end(),TQComp);
-	auto& ret= task_queue.back();
-	T_task->first= std::move(ret->func);
-	T_task->second= ret->parameter;
-	task_queue.pop_back();
-	guard.unlock();
-	push_cond.notify_one();
-	return true;
-}
-
-template<class Parameter,int TASKNUM>
-void TaskQueue<Parameter,int TASKNUM>::Push(TaskQueue::Type* T_task)
-{
-	_Push(T_task);
-	return ;
-}
-
-template<class Parameter,int TASKNUM>
-bool TaskQueue<Parameter,int TASKNUM>::Pop(TaskQueue::Type* T_task)
-{
-	return _Pop(T_task);
-}
-
-template<class Parameter,int TASKNUM>
-void TaskQueue<Parameter,int TASKNUM>::Stop()
-{
-	{
+		if (nullptr== T_task)
+			return ;
 		std::unique_lock<Mutex> guard(queue_mutex);
-		stop= true;
+		while (!stop && (task_queue.size()== TASKNUM))
+		{
+			//sleep 3s
+			push_cond.wait_for(guard,3000000);
+		}
+		if (stop)
+		{
+			return ;
+		}
+		task_queue.emplace_back(std::move(*T_rask));
+		std::push_heap(task_queue.begin(),task_queue.end(),TQComp);
+		guard.unlock();
+		pop_cond.notify_one();
+		return ;
 	}
-	push_cond.notify_all();
-	pop_cond.notify_all();
-	return ;
-}
 
+	template<class Parameter,int TASKNUM>
+	inline bool TaskQueue<Parameter,int TASKNUM>::_Pop(TaskQueue::Type* T_task)
+	{
+		if (nullptr== T_task)
+			return false;
+		std::unique_lock<Mutex> guard(queue_mutex);
+		while (!stop && Empty())
+		{
+			//sleep 3s
+			pop_cond.wait_for(guard,3000000);
+		}
+		if (stop)
+		{
+			return false;
+		}
+		std::pop_heap(task_queue.begin(),task_queue.end(),TQComp);
+		auto& ret= task_queue.back();
+		T_task->first= std::move(ret->func);
+		T_task->second= ret->parameter;
+		task_queue.pop_back();
+		guard.unlock();
+		push_cond.notify_one();
+		return true;
+	}
+
+	template<class Parameter,int TASKNUM>
+	void TaskQueue<Parameter,int TASKNUM>::Push(TaskQueue::Type* T_task)
+	{
+		_Push(T_task);
+		return ;
+	}
+
+	template<class Parameter,int TASKNUM>
+	bool TaskQueue<Parameter,int TASKNUM>::Pop(TaskQueue::Type* T_task)
+	{
+		return _Pop(T_task);
+	}
+
+	template<class Parameter,int TASKNUM>
+	void TaskQueue<Parameter,int TASKNUM>::Stop()
+	{
+		{
+			std::unique_lock<Mutex> guard(queue_mutex);
+			stop= true;
+		}
+		push_cond.notify_all();
+		pop_cond.notify_all();
+		return ;
+	}
+}
 #endif //CszTASKQUEUE_HPP

@@ -59,10 +59,9 @@ namespace Csz
 			static void* Run(void*);
 			void Stop();
 	};
+}
+#endif //CszTHREAD_HPP
 
 //impl
 #include "CszTaskQueue.hpp"
 #include "CszBthreadPool.hpp"
-
-}
-#endif //CszTHREAD_HPP

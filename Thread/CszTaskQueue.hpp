@@ -27,7 +27,7 @@ namespace Csz
 	{
 		if (nullptr== T_task)
 			return ;
-		std::unique_lock<Mutex> guard(queue_mutex);
+		std::unique_lock<bthread::Mutex> guard(queue_mutex);
 		while (!stop && (task_queue.size()== TASKNUM))
 		{
 			//sleep 3s
@@ -49,7 +49,7 @@ namespace Csz
 	{
 		if (nullptr== T_task)
 			return false;
-		std::unique_lock<Mutex> guard(queue_mutex);
+		std::unique_lock<bthread::Mutex> guard(queue_mutex);
 		while (!stop && Empty())
 		{
 			//sleep 3s
@@ -86,7 +86,7 @@ namespace Csz
 	void TaskQueue<Parameter,int TASKNUM>::Stop()
 	{
 		{
-			std::unique_lock<Mutex> guard(queue_mutex);
+			std::unique_lock<bthread::Mutex> guard(queue_mutex);
 			stop= true;
 		}
 		push_cond.notify_all();

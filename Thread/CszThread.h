@@ -50,8 +50,9 @@ namespace Csz
 			std::vector<bthread_t> pool;
 			TaskQueue<Parameter,TASKNUM> task_list;
 		public:
-			BthreadPool(int T_num);
+			BthreadPool()= default;
 			~BthreadPool();
+            void Init(int T_num);
 			void SetConcurrency(int T_num);
 			int GetConcurrency();
 			void Push(TaskQueue::Type* T_task);

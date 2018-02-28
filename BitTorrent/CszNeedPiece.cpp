@@ -1,5 +1,9 @@
 #include "CszBitTorrent.h"
 #include <algorithm>
+
+//micro
+#include "CszMicro.hpp"
+
 namespace Csz
 {
 	void NeedPiece::PushNeed(const int32_t T_index,int T_socket)

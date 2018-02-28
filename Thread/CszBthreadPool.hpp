@@ -4,7 +4,7 @@
 namespace Csz
 {
 	template<class Parameter,int TASKNUM>
-	void BthreadPool<Parameter,TASKNUM>::BthreadPool(int T_num)
+	void BthreadPool<Parameter,TASKNUM>::Init(int T_num)
 	{
 		pool.resize(T_num);
 		for (auto& val : pool)
@@ -34,7 +34,7 @@ namespace Csz
 
 	template<class Parameter,int TASKNUM>
 	static void* BthreadPool<Parameter,TASKNUM>::Run(void* T_this)
-	{
+	{       
 		auto cur_this= static_cast<BthreadPool*>(T_this);
 		TaskQueue<Paramter,TASKNUM> task;
 		while (cur_this->Pop(&task))

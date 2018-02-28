@@ -1,4 +1,5 @@
 #include "CszBitTorrent.h"
+#include <butil/files/file.h> 
 
 namespace Csz
 {
@@ -136,13 +137,7 @@ namespace Csz
 	{
 		if (nullptr== T_data)
 			return ;
-		std::unique_ptr<Parameter,std::function<void(Parameter*)>> guard(T_data,[](const Parameter* T_del)
-		{
-			//roll bakc
-			//lock ?
-			FD_SET(T_del->socket,rset_save);
-			delete T_del;
-		});
+		std::unique_ptr<Parameter,std::function<void(Parameter*)>> guard(T_data);
 		//1.go on recv
 		int code;
 		for (int i= 0; i< 3 && len> 0; ++i)
@@ -163,7 +158,7 @@ namespace Csz
 			else if (0== code)
 			{
 				Csz::ErrMsg("Select Switch can't recv,peer close");
-				PeerManager::GetInstance()->CloseSocket(T_data->socket);
+                break;
 			}
 			T_data->cur_len += code;
 			T_data->len -= code;
@@ -172,11 +167,12 @@ namespace Csz
 		if (0== T_data->len)
 		{
 			//RAII,unique_ptr repeat free memory
+            FD_SET(origin->socket,rset_save);
 			auto origin= guard.release();
 			DBitField(origin);
 		}
 		//2.3 time out,give up socket len < 0
-		else
+		else if (0== code || T_data->len!= 0)
 		{
 			PeerManager::GetInstance()->CloseSocket(T_data->socket);
 		}
@@ -188,9 +184,26 @@ namespace Csz
 		if (nullptr== T_data)
 			return ;
 		std::unique_ptr<Parameter> guard(T_data);
+        //1.check sort 1...4
 		if (DownSpeed::GetInstance()->CheckSocket(T_data->socket))
 		{
-
+            //network byte
+            int32_t index= ntohl(*reinterpret_cast<int32_t*>(T_data->buf));
+            //2.have peice
+            if (LocalBitField::GetInstance()->CheckBitField(index))
+            {
+                int32_t begin= ntohl(*reinterpret_cast<int32_t*>(T_data->buf+ 4));
+                int32_t length= ntohl(*reinterpret_cast<int32_t*>(T_data->buf+ 8);
+                //3.get mutex
+                std::unique_lock<bthread::Mutex> mutex_guard(PeerManager::GetInstance()->GetSocketMutex(T_data->socket));
+                _SendPiece(T_data->socket,index,begin,length);
+            }                
 		}
 	}
+    
+    void _SendPiece(int T_socket,int32_t T_index,int32_t T_begin,int32_t T_length)
+    {
+                      
+        return ;
+    }
 }

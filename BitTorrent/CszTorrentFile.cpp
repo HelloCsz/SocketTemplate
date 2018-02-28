@@ -140,7 +140,7 @@ namespace Csz
 	{
 		if ((T_index+ 1)* 20 > (int)infos.pieces.size() || T_index< 0)
 		{
-			Csz::ErrQuit("TorrentFile can't get hash,index %d",T_index);
+			Csz::ErrMsg("TorrentFile can't get hash,index %d",T_index);
 			return "";
 		}
 		return infos.pieces.substr(T_index,20);
@@ -173,6 +173,7 @@ namespace Csz
 		uint32_t ret=  infos.pieces.size()/ 20;
 		return ret% 8== 0? ret/ 8 : ret/ 8 + 1;
 	}
+
 	char TorrentFile::GetEndBit()const
 	{
 		int choice= (infos.pieces.size()/ 20)% 8;
@@ -215,6 +216,18 @@ namespace Csz
 		}
 		return ret;
 	}
+    
+    std::string TorrentFile::GetFileName(int32_t T_index)
+    {
+        std::string ret;
+        if (T_index< 0)
+        {
+            Csz::ErrMsg("torrent file get file name failed index< 0");
+            return ret;
+        }
+        
+    }
+    
 #ifdef CszTest
 	void TorrentFile::COutInfo()
 	{

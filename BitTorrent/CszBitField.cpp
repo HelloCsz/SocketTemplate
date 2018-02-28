@@ -92,16 +92,18 @@ namespace Csz
 		return ;
 	}
 
-	bool BitField::CheckPiece(int32_t T_index)
+	bool BitField::CheckPiece(int32_t& T_index)
 	{
 		if (T_index< 0)
 		{
 			Csz::ErrMsg("Check Piece failed,index < 0");
+            T_index= -1;
 			return true;
 		}
 		if (prefix_and_bit_field.size()<= 5)
 		{
 			Csz::ErrMsg("bit field too small,not found index");
+            T_index= -1;
 			return true;
 		}
 		//every bit express one field

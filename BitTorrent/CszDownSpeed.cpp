@@ -1,7 +1,8 @@
 #include "CszBitTorrent.h"
 #include <algorithm> //nth_element
 
-
+//micro
+#include "CszMicro.hpp"
 
 namespace Csz
 {

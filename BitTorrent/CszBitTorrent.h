@@ -146,6 +146,16 @@ namespace Csz
 
 	class TorrentFile
 	{
+        private:
+            TorrentFile();
+            ~TorrentFile();
+        public:
+            static TorrentFile* GetInstance()
+            {
+                return butil::get_leaky_singleton<TorrentFile>();
+            }
+        private:
+            friend void butil::GetLeakySingleton<TorrentFile>::create_leaky_singleton();
 		private:
 			struct File
 			{
@@ -181,6 +191,7 @@ namespace Csz
 			std::uint32_t GetIndexTotal() const;
 			char GetEndBit() const;
 			std::string GetIndexHash(int);
+            std::string GetFileName(int32_t T_index);
 			TorrentFile();
 			~TorrentFile();
 #ifdef CszTest
@@ -211,18 +222,20 @@ namespace Csz
 			const std::vector<int>& RetSocketList()const {return peer_list;}
 			void CloseSocket(int T_socket);
 			void CloseSocket(std::vector<int>* T_sockets);
+            bthread::Mutex& GetSocketMutex(int T_socket){return peer_list[T_socket];}
         private:
             void _LoadPeerList(const std::string& T_socket_list);
 			void _Connected(std::vector<int>& T_ret);
             void _Verification(std::vector<int>& T_ret);
 			void _SendBitField(std::vector<int>& T_ret);
         private:
-            std::set<int> peer_list;
+            std::unordered_map<int,bthread::Mutex> peer_list;
     };
 
     //bt message type
 	//base method
-/*	struct PeerMessage
+/*	
+ 	struct PeerMessage
 	{
 	};
 */
@@ -383,7 +396,7 @@ namespace Csz
 			}
 			void SetParameter(std::string T_bit_field);
 			void FillBitField(int32_t T_index);
-			bool CheckPiece(int32_t T_index);
+			bool CheckPiece(int32_t& T_index);
 			const char* GetSendData()const{return prefix_and_bit_field.c_str();}
 			const char* operator()(){return GetSendData();}
 			int GetDataSize()const {return prefix_and_bit_field.size();}
@@ -507,11 +520,13 @@ namespace Csz
 			friend void butil::GetLeakySingleton<LocalBitField>::create_leaky_singleton();
 		private:
 			char end_bit;
+            int32_t piece_length;
 		public:
 			void SetEndBit(const char T_ch){end_bit= T_ch;}
 			bool GameOver()const{return BitField::GameOver(end_bit);}
 			void RecvHave(int T_socket,int32_t T_index);
 			void RecvBitField(int T_socket,const char* T_bit_field,const int T_eln);
+            int32_t GetPieceLength()const {return piece_length;}
 	};
 
 	//DownSpeed
@@ -616,6 +631,8 @@ namespace Csz
 		static void AsyncDPiece(Parameter* T_data);
 		static void DCancle(Parameter* T_data);
 		static void DPort(Parameter* T_data);
+        private:
+        void _SendPiece(int T_socket,int32_t T_index,int32_t T_begin,int32_t T_length);
 	};
 }
 #endif

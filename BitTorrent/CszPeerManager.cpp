@@ -74,7 +74,15 @@ namespace Csz
 		_SendBitField(ret);
 		//TODO 8.lock and update peer list and socket_map_id
 		NeedPiece::GetInstance()->SocketMapId(ret);
-		peer_list.insert(ret.begin(),ret.end());
+        for (const auto& val : ret)
+        {
+            if (peer_list.find(val)!= peer_list.end())
+            {
+                Csz::ErrMsg("Peer Manager peer list insert already exist");
+                continue;  
+            }
+            peer_list.emplace(val,bthread::Mutex());
+        }
         return ;       
     }
 
@@ -84,8 +92,8 @@ namespace Csz
         {
             if (val>= 0)
             {
-                close(val);
-                val= -1;
+                close(val.first);
+                val.first= -1;
             }
         }
     }

@@ -217,16 +217,42 @@ namespace Csz
 		return ret;
 	}
     
-    std::string TorrentFile::GetFileName(int32_t T_index)
+	std::vector<std::string> TorrentFile::GetFileName(int32_t T_index,int32_t T_begin,int32_t T_length)
     {
-        std::string ret;
+        std::vector<std::string> ret;
         if (T_index< 0)
         {
             Csz::ErrMsg("torrent file get file name failed index< 0");
-            return ret;
+            return std::move(ret);
         }
-        
+		//1.single file
+		if (single)
+		{
+			ret.emplace_back(infos.name);
+			return std::move(ret);
+		}
+		//TODO multi file
+		ret.resize(infos.files.size(),infos.name)
+		uint64_t cur_total= (T_index)* infos.piece_length+ T_begin();
+		for (auto& start= infos.files.cbegin(),stop= infos.files.cend(); start< stop; ++start)
+		{
+			cur_total-= start->length;
+			if (cur_total<= 0)
+			{
+				//TODO dir name/dir1/dir2/name
+				//ret[0].append()
+			}
+		}
+		Csz::ErrMsg("Torrent File get file name,cur total > 0");
+		ret.clear();
+		return std::move(ret);
     }
+
+	uint32_t TorrentFile::GetOffSetOf(int32_t T_index)
+	{
+		//TODO multi file
+		return T_index* infos.piece_length;
+	}
     
 #ifdef CszTest
 	void TorrentFile::COutInfo()

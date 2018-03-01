@@ -1,5 +1,6 @@
 #include "CszBitTorrent.h"
 #include <butil/files/file.h> 
+#include <butil/files/file_path.h>
 
 namespace Csz
 {
@@ -184,7 +185,7 @@ namespace Csz
 		if (nullptr== T_data)
 			return ;
 		std::unique_ptr<Parameter> guard(T_data);
-        //1.check sort 1...4
+        //1.check socket sort 1...4
 		if (DownSpeed::GetInstance()->CheckSocket(T_data->socket))
 		{
             //network byte
@@ -194,16 +195,48 @@ namespace Csz
             {
                 int32_t begin= ntohl(*reinterpret_cast<int32_t*>(T_data->buf+ 4));
                 int32_t length= ntohl(*reinterpret_cast<int32_t*>(T_data->buf+ 8);
-                //3.get mutex
-                std::unique_lock<bthread::Mutex> mutex_guard(PeerManager::GetInstance()->GetSocketMutex(T_data->socket));
                 _SendPiece(T_data->socket,index,begin,length);
+				return ;
             }                
 		}
+		return ;
 	}
     
-    void _SendPiece(int T_socket,int32_t T_index,int32_t T_begin,int32_t T_length)
+    void SelectSwitch::_SendPiece(int T_socket,int32_t T_index,int32_t T_begin,int32_t T_length)
     {
-                      
+		auto torrent_file= TorrentFile::GetInstance();
+		auto file_name= torrent_file->GetFileName(T_index,T_begin+ T_length);
+		if (file_name.empty())
+		{
+			Csz::ErrMsg("Select Switch send piece file name is empty");
+			return ;
+		}
+		//TODO need do multi file
+		//1.single
+		std::string piece_data(T_length,'\0');
+		butil::FilePath file_path(file_name[0]);
+		butil::File file(file_path,butil::File::FLAG_OPEN | butil::FLAG_READ);
+		auto offset= torrent_file->GetOffSetOf(T_index);
+		auto read_byte= file.Read(offset,&piece_data[0],T_length);
+		if (T_length!= read_byte)
+		{
+			Csz::ErrMsg("Select Switch send piece length!= read byte");
+			return ;
+		}
+		Piece piece;
+		piece.SetParameter(T_index,T_begin,piece_data);
+        //2.get mutex
+        std::unique_lock<bthread::Mutex> mutex_guard(PeerManager::GetInstance()->GetSocketMutex(T_data->socket));
+		send(T_socket,piece.GetSendData(),piece.GetDataSize(),0);
         return ;
     }
+	
+	void SelectSwitch::Piece(Parameter* T_data)
+	{
+		if (nullptr== T_data)
+			return ;
+		std::unique_ptr<Parameter> guard(T_data);
+
+	}
+	
 }

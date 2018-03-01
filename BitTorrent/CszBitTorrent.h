@@ -168,11 +168,11 @@ namespace Csz
 			{
 				Info():length(0),piece_length(0),single(true){}
 				std::vector<File> files;
+				//hash info
 				std::string pieces;
 				//单文件模式
 				std::string name;
 				std::uint64_t length;
-				//
 				std::uint64_t piece_length;
 				bool single;
 			};
@@ -191,7 +191,8 @@ namespace Csz
 			std::uint32_t GetIndexTotal() const;
 			char GetEndBit() const;
 			std::string GetIndexHash(int);
-            std::string GetFileName(int32_t T_index);
+			std::vector<std::string> GetFileName(int32_t T_index,int32_t T_begin,int32_t T_length);
+			uint32_t GetOffSetOf(int32_t T_index);
 			TorrentFile();
 			~TorrentFile();
 #ifdef CszTest

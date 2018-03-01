@@ -14,7 +14,7 @@ namespace Csz
 	{
 		if (!BitField::CheckPiece(T_index))
 		{
-			auto need_piece= NeedPiece::GetInstance()->PushNeed(T_index,T_socket);
+			NeedPiece::GetInstance()->PushNeed(T_index,T_socket);
 		}
 		return ;
 	}

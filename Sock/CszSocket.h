@@ -36,5 +36,6 @@ namespace Csz
 	int Bind(int T_socket,const struct sockaddr* T_addr,socklen_t T_addrlen);
 	int Listen(int T_socket,int T_backlog);
 	int Accept(int T_socket,struct sockaddr* addr,socklen_t* T_addrlen);
+    int RecvTime_us(int T_socket,void* T_buf,size_t T_len,int T_time);
 }
 #endif

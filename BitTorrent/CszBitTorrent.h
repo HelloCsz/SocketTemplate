@@ -27,6 +27,7 @@
 #include <arpa/inet.h> //htonl
 //brpc
 #include <butil/memory/singleton_on_pthread_once.h> //brpc::singleton
+#include <butil/resource_pool.h> //butil::ResourcePool
 //micro
 #include "CszMicro.hpp"
 
@@ -193,6 +194,8 @@ namespace Csz
 			std::string GetIndexHash(int);
 			std::vector<std::string> GetFileName(int32_t T_index,int32_t T_begin,int32_t T_length);
 			uint32_t GetOffSetOf(int32_t T_index);
+            uint32_t GetPieceLength(int32_t T_index);
+            uint32_t GetPieceBit(int32_t T_index);
 			TorrentFile();
 			~TorrentFile();
 #ifdef CszTest
@@ -528,6 +531,7 @@ namespace Csz
 			void RecvHave(int T_socket,int32_t T_index);
 			void RecvBitField(int T_socket,const char* T_bit_field,const int T_eln);
             int32_t GetPieceLength()const {return piece_length;}
+            bool CheckBitField(int32_t T_index);
 	};
 
 	//DownSpeed
@@ -593,6 +597,7 @@ namespace Csz
 			void PushNeed(const std::vector<int32_t>* T_index,const int T_socket);
 			void PushNeed(const int32_t T_index,int T_socket);
 			std::pair<int32_t,std::vector<int>> PopNeed();
+            std::pair<int32_t,std::vector<int>> PopPointNeed(int32_t T_index);
 			bool Empty()const;
 			void SocketMapId(std::vector<int>& T_ret);
 			void NPChoke(int T_socket);
@@ -628,12 +633,48 @@ namespace Csz
 		static void DBitField(Parameter* T_data);
 		static void AsyncDBitField(Parameter* T_data);
 		static void DRequest(Parameter* T_data);
+        //lock socket,FD_CLR
 		static void DPiece(Pararmeter* T_data);
 		static void AsyncDPiece(Parameter* T_data);
 		static void DCancle(Parameter* T_data);
 		static void DPort(Parameter* T_data);
         private:
         void _SendPiece(int T_socket,int32_t T_index,int32_t T_begin,int32_t T_length);
+        bool _LockPiece(int T_socket,int32_t T_begin);
 	};
+    
+    struct BT
+    {
+        char data[64* 1024];
+    };
+
+    //memory manager
+    class BitMemory
+    {
+        private:
+            BitMemory()=default;
+            ~BitMemory();
+        public:
+            static BitMemory* GetInstance()
+            {
+                return butil::get_leaky_singleton<BitMemory>();
+            }
+        private:
+            friend void butil::GetLeakySingleton<BitMemory>::create_leaky_singleton();
+        private:
+            int32_t index_end;
+            int32_t length_end;
+            using DataType= std::vector<std::pair<butil::ResourceId<BT>,char*>>;
+            //left cur_len,resource id
+            using Type= std::pair<int32_t,DataType>;
+            using TypeP= std::shared_ptr<Type>;
+            std::unordered_map<int32_t,TypeP> memory_pool;
+        public:
+            void Write(int32_t T_index,int32_t T_begin,const char* T_buf,int32_t T_length);
+            void Init(int32_t T_index_end,int32_t T_length_end);
+        private:
+            void Clear();
+            void _Write(int32_t T_index);
+    };
 }
 #endif

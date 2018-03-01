@@ -141,9 +141,9 @@ namespace Csz
 		std::unique_ptr<Parameter,std::function<void(Parameter*)>> guard(T_data);
 		//1.go on recv
 		int code;
-		for (int i= 0; i< 3 && len> 0; ++i)
+		for (int i= 0; i< 3 && T_data->len> 0; ++i)
 		{
-			code= recv(T_data->socket,T_data->buf+ cur_len,T_data->len,MSG_DONTWAIT);
+			code= recv(T_data->socket,T_data->buf+ T_data->cur_len,T_data->len,MSG_DONTWAIT);
 			if (-1== code)
 			{
 				//not buffer
@@ -230,13 +230,57 @@ namespace Csz
 		send(T_socket,piece.GetSendData(),piece.GetDataSize(),0);
         return ;
     }
-	
-	void SelectSwitch::Piece(Parameter* T_data)
+    
+    //FD_SET socket
+	void SelectSwitch::DPiece(Parameter* T_data)
 	{
 		if (nullptr== T_data)
 			return ;
 		std::unique_ptr<Parameter> guard(T_data);
-
+        if (SLICESIZE!= (T_data->cur_len- 8))
+        {
+            Csz::ErrMsg("Select Switch recv piece is error,slice !=%d",SLICESIZE);
+            return ;
+        }
+        //network byte
+        int32_t index= ntohl(*reinterpret_cast<int32_t*>(T_data->buf));
+        int32_t begin= ntohl(*reinterpret_cast<int32_t*>(T_data->buf+ 4));
+        int32_t length= T_data->cur_len- 8;
+        auto memory_pool= BitMemory::GetInstance();
+        memory_pool->Write(index,begin,T_data->buf+ 8,length);
+        //lock piece
+        auto local_bit_field= LocalBitField::GetInstance();
+        auto peer= NeedPiece::GetInstance();
+        std::vector<uint8_t> over(TorrentFile::GetInstance()->GetPieceBit(index), 0);
+        over[begin/SLICESIZE]= 1;
+        int cur_socket= T_data->socket;
+        while (!local_bit_field->CheckBitField(index))
+        {
+            
+            for (auto& val : over)
+            {
+            }
+        }
+        return ;
 	}
-	
+    
+    inline bool SelectSwitch::_LockPiece(int T_socket,int32_t T_index,int32_t T_begin)
+    {
+        Request request;
+        request.SetParameter(T_index,T_begin,SLICESIZE);
+        {
+            std::unique_lock<bthread::Mutex> mutex_guard(PeerManager::GetInstance()->GetSocketMutex(T_socket));
+            if (send(T_socket,request.GetSendData(),request.GetDataSize(),0)!= SLICESIZE)
+            {
+                Csz::ErrMsg("Select Switch lock piece failed,send size!=%d",SLICESIZE)
+                return false;
+            }
+        }
+        int32_t len;
+        uint8_t id;
+        int32_t index;
+        int32_t begin;
+        char* block;
+            
+    }       
 }

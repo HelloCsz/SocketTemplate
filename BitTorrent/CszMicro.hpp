@@ -22,4 +22,8 @@
 #define INTERESTED		0x04
 #define UNINTERESTED	0x08
 
+//
+//Slice Size
+#define SLICESIZE       (16* 1024)
+
 #endif //CszMICRO_HPP

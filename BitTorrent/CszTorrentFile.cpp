@@ -254,6 +254,66 @@ namespace Csz
 		return T_index* infos.piece_length;
 	}
     
+    uint32_t TorrentFile::GetPieceLength(int32_t T_index)
+    {
+        uint64_t ret= 0;
+        if (T_index< 0)
+        {
+            Csz::ErrMsg("TorrentFile get piece length failed,index< 0");
+            return ret;   
+        }
+        auto index_count= infos.pieces.size()/ 20;
+        //synch index
+        --index_count;
+        if (index_count== T_index && 0== index_count)
+        {
+            if (single)
+            {
+                ret= length;
+            }
+            else
+            {
+                for (auto &val : infos.files)
+                {
+                    ret+= val.length;
+                }
+            }
+        }
+        else
+        {
+            if (index_count== T_index)
+            {   
+                if (single)
+                {
+                    ret= infos.length- index_count* infos.piece_length;
+                }
+                else
+                {
+                    for (const auto& val : infos.files)
+                    {
+                        ret+= val.length;
+                    }
+                    ret= ret- index_count* infos.piece_length;
+                }
+            }
+            else
+            {
+                ret= infos.piece_length;
+            }       
+        }
+        return ret;       
+    }
+
+    uint32_t TorrentFile::GetPieceBit(int32_t T_index)
+    {
+        auto ret= GetPieceLength(T_index);
+        if (ret% SLICESIZE== 0)
+        {
+            return ret/ SLICESIZE;
+        }
+        return ret/ SLICESIZE + 1;
+    }
+
 #ifdef CszTest
 	void TorrentFile::COutInfo()
 	{

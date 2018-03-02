@@ -77,8 +77,10 @@ namespace Csz
             block->first= block->first- T_length;                                           \
             if (0== block->first)                                                           \
             {                                                                               \
+                //md5                                                                        \
                 /*write file*/                                                              \
                 _Write(T_index);                                                            \
+                ClearIndex(T_index);                                                        \
                 /*TODO update bitfield,send have*/                                          \
                 ..                                                                          \
             }                                                                               
@@ -109,5 +111,19 @@ namespace Csz
     }
 
 #undef  MEMORYPOOL_DEAL
-
+    
+    void BitMemory::ClearIndex(int32_t T_index)
+    {
+        auto flag= memory_pool.find(T_index);
+        if (flag== memory_pool.end())
+        {
+            return ;
+        }
+        auto resource_pool= butil::ResourcePool<BT>::singleton();
+        for (auto& val : flag->second->second)
+        {
+            resource_pool.return_resource(val.first);
+        }
+        return ;
+    }
 }

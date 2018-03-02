@@ -26,4 +26,9 @@
 //Slice Size
 #define SLICESIZE       (16* 1024)
 
+//socket timeout s to us
+#define TIMEOUT1000MS   (1000000)
+#define TIMEOUT2000MS   (2000000)
+#define TIMEOUT3000MS   (3000000)
+
 #endif //CszMICRO_HPP

@@ -226,7 +226,13 @@ namespace Csz
 		Piece piece;
 		piece.SetParameter(T_index,T_begin,piece_data);
         //2.get mutex
-        std::unique_lock<bthread::Mutex> mutex_guard(PeerManager::GetInstance()->GetSocketMutex(T_data->socket));
+        auto mutex= PeerManager::GetInstance()->GetSocketMutex(T_data->socket);
+        if (nullptr== mutex)
+        {
+            Csz::ErrMsg("Select Switch send piece failed,return mutex is nullptr");
+            return ;
+        }
+        std::unique_lock<bthread::Mutex> mutex_guard(*mutex);
 		send(T_socket,piece.GetSendData(),piece.GetDataSize(),0);
         return ;
     }
@@ -237,50 +243,283 @@ namespace Csz
 		if (nullptr== T_data)
 			return ;
 		std::unique_ptr<Parameter> guard(T_data);
-        if (SLICESIZE!= (T_data->cur_len- 8))
-        {
-            Csz::ErrMsg("Select Switch recv piece is error,slice !=%d",SLICESIZE);
-            return ;
-        }
         //network byte
         int32_t index= ntohl(*reinterpret_cast<int32_t*>(T_data->buf));
         int32_t begin= ntohl(*reinterpret_cast<int32_t*>(T_data->buf+ 4));
         int32_t length= T_data->cur_len- 8;
+        auto local_bit_field= LocalBitField::GetInstance();
+
+        //fix bug end_piece,len < slice size
+        auto real_end_slice= local_bit_field->CheckEndSlice(index,begin);
+        if (!real_end_slice.first && SLICESIZE!= length)
+        {
+            Csz::ErrMsg("Select Switch recv piece is error,slice !=%d",SLICESIZE);
+            return ;
+        }
+        if (real_end_slice.first && real_end_slice.second!= length)
+        {
+            Csz::ErrMsg("Select Switch recv piece is error,slice !=%d",real_end_slice.second);
+            return ;
+        }
+
+        //1.write memory
         auto memory_pool= BitMemory::GetInstance();
         memory_pool->Write(index,begin,T_data->buf+ 8,length);
-        //lock piece
-        auto local_bit_field= LocalBitField::GetInstance();
-        auto peer= NeedPiece::GetInstance();
-        std::vector<uint8_t> over(TorrentFile::GetInstance()->GetPieceBit(index), 0);
+
+        //2.lock piece
+        auto need_piece= NeedPiece::GetInstance();
+        auto peer_manager= PeerManager::GetInstance();
+        std::vector<uint8_t> over(TorrentFile::GetInstance()->GetPieceBit(index),0);
         over[begin/SLICESIZE]= 1;
         int cur_socket= T_data->socket;
-        while (!local_bit_field->CheckBitField(index))
-        {
-            
-            for (auto& val : over)
+        int fill= 1;
+        const int size= over.size();
+        auto end_slice= local_bit_field->CheckEndSlice(index);
+
+        //if index is end_end,upon write is fill piece space
+        //2.1 quick donwload piece
+        std::vector<int> sockets_alive;
+        while (!local_bit_field->CheckBitField(index) && fill< size)
+        { 
+            for (int i= 0; i< size; ++i)
             {
+                //lack slice
+                if (over[i]== 0)
+                {   
+                    int code;
+                    //2.1.1 end slice
+                    if ((i== size- 1) && end_slice.first)
+                    {
+                        code= _LockPiece(cur_socket,index,i* SLICESIZE,end_slice.second);
+                    }
+                    //2.1.2 normal slice
+                    else
+                    {
+                        code= _LockPiece(cur_socket,index,i* SLICESIZE,T_SLICESIZE);
+                    }
+                    //success recv slice
+                    if (true== code)
+                    {
+                        over[i]= 1;
+                        ++fill;
+                    }
+                    // failed socket,unoder
+                    else if (!sockets_alive.empyt())
+                    {
+                        //close failed socket
+                        peer_manager->CloseSocket(cur_socket);
+
+                        cur_socket= sockets_alive.back();
+                        socket_alive.bakc_pop();
+                    }
+                    else
+                    {
+                        //close failed socket
+                        peer_manager->CloseSocket(cur_socket);
+
+                        //init cur_socket
+                        cur_socket= -1;
+
+                        //notify peer mamager
+                        peer_mamager->CloseSocket(cur_socket);
+
+                        //get new hot socket for piece
+                        int time_out= TIMEOUT1000MS;
+                        for (int num= 0; num< 7; ++num)
+                        {
+                            sockets_alive= std::move(need_piece->PopPointNeed(index));
+                            if (sockets_alive.empty())
+                            {
+                                Csz::ErrMsg("Select Switch deal piece time out,pop point need piece");
+                                bthread_usleep(time_out);
+                                time_cout*= 2;   
+                            }
+                            else
+                            {
+                                cur_socket= sockets_alive.back();
+                                sockets_alive.back_pop();
+                                break;
+                            }
+                        }
+                        if (cur_socket< 0)
+                        {
+                            break;
+                        }
+                    }
+                }
             }
+            if (cur_socket< 0)
+            {    
+                BitMemory::GetInstance()->ClearIndex(index);
+                break;
+            }  
         }
         return ;
 	}
     
-    inline bool SelectSwitch::_LockPiece(int T_socket,int32_t T_index,int32_t T_begin)
+    inline bool SelectSwitch::_LockPiece(int T_socket,int32_t T_index,int32_t T_begin,int32_t T_length)
     {
-        Request request;
-        request.SetParameter(T_index,T_begin,SLICESIZE);
         {
-            std::unique_lock<bthread::Mutex> mutex_guard(PeerManager::GetInstance()->GetSocketMutex(T_socket));
-            if (send(T_socket,request.GetSendData(),request.GetDataSize(),0)!= SLICESIZE)
+            Request request;
+            request.SetParameter(T_index,T_begin,T_length);
+            auto mutex= PeerManager::GetInstance()->GetSocketMutex(T_socket);
+            if (nullptr== mutex)
             {
-                Csz::ErrMsg("Select Switch lock piece failed,send size!=%d",SLICESIZE)
+                Csz::ErrMsg("Select Switch look piece failed,return mutex is nullptr");
+                return false;
+            }
+            std::unique_lock<bthread::Mutex> mutex_guard(*mutex);
+            if (send(T_socket,request.GetSendData(),request.GetDataSize(),0)!= T_length)
+            {
+                Csz::ErrMsg("Select Switch lock piece failed,send size!=%d",T_length)
                 return false;
             }
         }
-        int32_t len;
-        uint8_t id;
-        int32_t index;
-        int32_t begin;
-        char* block;
-            
+        bool ret= false;
+        for (int i= 0; i< 3; ++i)
+        {
+            Parameter* parameter;
+            std::unique_ptr<Parameter> guard(new Parameter);
+            parameter->socket= T_socket;
+            int code= Csz::RecvTime_us(parameter->socket,&parameter->len,sizeof(parameter->len),TIMEOUT1000MS);
+            if (-1== code)
+            {
+                break;
+            }
+            //catch keep alive
+            if (0== parameter->len)
+            {
+                continue;
+            }
+            //network byte
+            parameter->len= ntohl(parameter->len);
+            if (parameter->len< 0)
+            {
+                Csz::ErrMsg("Select Switch lock piece recv len < 0");
+                break;
+            }
+            char id;
+            --parameter->len;
+            parameter->buf= new(std::nothrow) char[parameter->len];
+            if (nullptr== parameter->buf)
+            {
+                Csz::ErrMsg("Select Switch lock piece new failed");
+                break;
+            }
+            code= Csz::RecvTime_us(parameter->socket,&id,1,TIMEOUT1000MS);
+            if (-1== code)
+            {
+                break;
+            }
+            if (0== id)//catch choke
+            {
+                break;
+            }
+            else if (1== id)//catch unchoke
+            {
+                NeedPiece::GetInstance()->NPUnChoke(parameter->socket);
+            }
+            else if (2== id)//catch interested
+            {
+                NeedPiece::GetInstance()->NPInterested(parameter->socket);
+            }
+            else if (3== id)//catch not interested
+            {
+                NeedPiece::GetInstance()->NPUnInterester(parameter->socket);
+            }
+            else if (4== id)//catch have
+            {
+                if (parameter->len!= 4)
+                {
+                    Csz::ErrMsg("Select Switch lock piece recv have,but len!= 4");
+                    break;
+                }
+                code= Csz::RecvTime_us(parameter->socket,parameter->buf,parameter->len,TIMEOUT1000MS);
+                if (-1== code)
+                    break;
+                parameter->len-= code;
+                parameter->cur_len+= code;
+                guard.release();
+                DHave(parameter);
+            }
+            else if (5== id)//catch bit field
+            {
+                Csz::ErrMsg("Select Switch lock piece recv bit field");
+            }
+            else if (6== id)//catch request
+            {   
+                if (parameter->len!= 12)
+                {
+                    Csz::ErrMsg("Select Switch lock piece recv request,but len!= 12");
+                    break;
+                }
+                code= Csz::RecvTime_us(parameter->socket,parameter->buf,parameter->len,TIMEOUT1000MS);
+                if (-1== code)
+                    break;
+                parameter->len-= code;
+                parameter->cur_len+= code;
+                guard.release();
+                DRequest(parameter);
+            }
+            else if (7== id)//catch piece
+            {
+                if (T_length!= (parameter->len- 8))
+                {
+                    break;
+                }
+                code= Csz::RecvTime_us(parameter->socket,parameter->buf,parameter->len,TIMEOUT3000MS);
+                if (-1== code)
+                    break;
+                int32_t index= ntohl(*reinterpret_cast<int32_t*>(parameter->buf));
+                if (T_index!= index)
+                {
+                    Csz::ErrMsg("Select Switch lock piece recv piece,but index is mismatch");
+                    continue;
+                }
+                int32_t begin= ntohl(*reinterpret_cast<int32_t*>(parameter->buf+ 4));
+                if (T_begin!= begin)
+                {
+                    continue;   
+                }
+                BitMemory::GetInstance()->Write(index,begin,parameter->buf+ 8,parameter->len -8);
+                ret= true;
+                break;
+            }
+            else if (8== id)//catch cancle
+            {
+                if (parameter->len!= 12)
+                {
+                    Csz::ErrMsg("Select Switch lock piece recv cancle,but len!= 12");
+                    break;
+                }
+                code= Csz::RecvTime_us(parameter->socket,parameter->buf,parameter->len,TIMEOUT1000MS);
+                if (-1== code)
+                    break;
+                parameter->len-= code;
+                parameter->cur_len+= code;
+                guard.release();
+                DCancle(parameter);
+            }
+            else if (9== id)//catch port
+            {
+                if (parameter->len!= 2)
+                {
+                    Csz::ErrMsg("Select Switch lock piece recv port,but len!= 2");
+                    break;
+                }
+                code= Csz::RecvTime_us(parameter->socket,parameter->buf,parameter->len,TIMEOUT1000MS);
+                if (-1== code)
+                    break;
+                parameter->len-= code;
+                parameter->cur_len+= code;
+                guard.release();
+                DPort(parameter);
+            }
+            else
+            {
+                Csz::ErrMsg("Select Switch lock piece recv unknow id%d",(int)id);
+            }
+        }
+        return ret;   
     }       
 }

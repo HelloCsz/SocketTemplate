@@ -332,7 +332,47 @@ namespace Csz
 			Csz::Close(T_socket);
 			//lock
 			peer_list.erase(result);
+            NeedPiece::GetInstance()->ClearSocket(T_socket);
 		}
 		return ;
 	}
+
+    void PeerManager::SendHave(int32_t T_index)
+    {
+        if (T_index< 0)
+        {
+            Csz::ErrMsg("Peer Manager send have failed,index< 0");
+            return ;
+        }
+        std::vector<peer_list::iterator> del_sockets;
+        Have have;
+        have.SetParameter(T_index);
+        int code;
+        for (auto& start= peer_list.begin(),stop= peer_list.end(); start< stop; ++start)
+        {
+            std::unique_lock<bthread::Mutex> guard(start->second);
+            code= send(start->first,have.GetSendData(),have.GetDataSize(),0);
+            if (-1== code || 0== code || code!= have.GetDataSize())
+            {
+                del_sockets.emplace_back(start);
+            }      
+        }
+        //TODO lock peer_list 
+        for (const auto & val : del_sockets)
+        {
+            peer_list.erase(val->first);
+        }
+        return ;
+    }
+    
+    bthread::Mutex* PeerManager::GetSocketMutex(int T_socket)
+    {
+        auto flag= peer_list.find(T_socket);
+        if (flag== peer_list.end())
+        {
+            return nullptr;
+        }
+        return &flag->second;
+    } 
+   
 }

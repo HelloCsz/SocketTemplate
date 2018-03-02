@@ -1,5 +1,7 @@
 #include "CszSocket.h"
 
+#define TIMEOUT300MS (300000)
+
 namespace Csz
 {
     int RecvTime_us(int T_socket,void* T_buf,size_t T_len,int T_time)
@@ -10,7 +12,7 @@ namespace Csz
             return -1;
         }
         //300ms once
-        int time_count= T_time/ 300000;
+        int time_count= T_time/ TIMEOUT300MS;
         int cur_len= 0;
         for (int i= 0; i< time_count && T_len> 0; ++i)
         {
@@ -20,7 +22,7 @@ namespace Csz
                 if (errno== EAGAIN || errno== EWOULDBLOCK)
                 {
                     //300ms
-                    bthread_usleep(300000);
+                    bthread_usleep(TIMEOUT300MS);
                     continue;
                 }
                 Csz::ErrRet("recv time failed");

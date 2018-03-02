@@ -60,7 +60,7 @@ namespace Csz
 		std::pair<int32_t,std::vector<int>> ret;
 		if (queue.empty())
 		{
-			Csz::ErrMsg("NeedPiece is empty");
+			Csz::ErrMsg("Need Piece,queue is empty");
 			return ret;
 		}
 		//TODO lock
@@ -112,6 +112,49 @@ namespace Csz
 		return std::move(ret);
 	}
 
+    std::vector<int> NeedPiece::PopPointNeed(int32_t T_index)
+    {
+        std::vector<int> ret;
+        if (T_index< 0)
+        {
+            Csz::ErrMsg("Need Piece pop point need,index < 0");
+            return ret;
+        }
+        if (queue.empty())
+        {
+            Csz::ErrMsg("Need Piece pop point need,queue is empty");
+        }
+        //TODO lock
+        //index vector
+        for (auto& val : queue)
+        {
+            //1.find 
+            if (val.first== T_index)
+            {
+                //2.cur socket vector
+                for (auto& fd : *(val.second))
+                {
+                    auto step1= socket_cur.find(fd);
+                    if (setp1!= socket_cur.end())
+                    {
+                        //3.socket queue
+                        auto step2= socket_queue.find(step1->second);
+                        if (step2!= socket_queue.end())
+                        {
+                            //4.check status
+                            if (step2->second & UNCHOKE)
+                            {
+                                ret.emplace_back(fd);
+                            }
+                        }
+                    }
+                }
+                break;
+            }
+        }
+        return std::move(ret);
+    }
+
 	bool NeedPiece::Empty()const
 	{
 		return queue.empty() || socket_cur.empty();
@@ -124,10 +167,19 @@ namespace Csz
 		{
 			int id= cur_id++;
 			socket_cur.emplace(val,id);
-			socket_queue.emplace(id,false);
+			socket_queue.emplace(id,0);
 		}
 		return ;
 	}
+    
+    void NeedPiece::ClearSocket(int T_socket)
+    {
+        //TODO lock
+        if (socket_cur.find(T_socket)!= socket_cur.end())
+        {
+            socket_cur.erase(T_socket);
+        }
+    }
 
 	inline bool NeedPiece::_SetSocketStatus(int T_socket,char T_status)
 	{

@@ -192,10 +192,12 @@ namespace Csz
 			std::uint32_t GetIndexTotal() const;
 			char GetEndBit() const;
 			std::string GetIndexHash(int);
-			std::vector<std::string> GetFileName(int32_t T_index,int32_t T_begin,int32_t T_length);
-			uint32_t GetOffSetOf(int32_t T_index);
-            uint32_t GetPieceLength(int32_t T_index);
-            uint32_t GetPieceBit(int32_t T_index);
+			std::vector<std::string> GetFileName(int32_t T_index,int32_t T_begin,int32_t T_length) const;
+			uint32_t GetOffSetOf(int32_t T_index) const;
+            uint32_t GetPieceLength(int32_t T_index) const;
+            uint32_t GetPieceBit(int32_t T_index) const;
+            std::pair<bool,int32_t> CheckEndSlice(int32_t T_index);
+            std::pair<bool,int32_t> CheckEndSlice(int32_t T_index,int32_t T_begin);
 			TorrentFile();
 			~TorrentFile();
 #ifdef CszTest
@@ -226,7 +228,8 @@ namespace Csz
 			const std::vector<int>& RetSocketList()const {return peer_list;}
 			void CloseSocket(int T_socket);
 			void CloseSocket(std::vector<int>* T_sockets);
-            bthread::Mutex& GetSocketMutex(int T_socket){return peer_list[T_socket];}
+            void SendHave(int32_t T_index);
+            bthread::Mutex* GetSocketMutex(int T_socket);
         private:
             void _LoadPeerList(const std::string& T_socket_list);
 			void _Connected(std::vector<int>& T_ret);
@@ -509,7 +512,7 @@ namespace Csz
 	
 	//set singleton
 	//local bitfield 
-	class LocalBitField : public BitField
+	class LocalBitField
 	{
 		//TODO valid bit length
 		private:
@@ -524,14 +527,16 @@ namespace Csz
 			friend void butil::GetLeakySingleton<LocalBitField>::create_leaky_singleton();
 		private:
 			char end_bit;
-            int32_t piece_length;
+            BitField bit_field;
+            //int32_t piece_length;
 		public:
 			void SetEndBit(const char T_ch){end_bit= T_ch;}
-			bool GameOver()const{return BitField::GameOver(end_bit);}
+			bool GameOver()const{return bit_field.GameOver(end_bit);}
 			void RecvHave(int T_socket,int32_t T_index);
 			void RecvBitField(int T_socket,const char* T_bit_field,const int T_eln);
-            int32_t GetPieceLength()const {return piece_length;}
+            //int32_t GetPieceLength()const {return piece_length;}
             bool CheckBitField(int32_t T_index);
+            void FillBitField(int32_t T_index){bit_field.FillBitField(T_index);}
 	};
 
 	//DownSpeed
@@ -585,7 +590,7 @@ namespace Csz
 		private:
 			//piece map N socket
 			//min priority
-			//index->counter
+			//index->sockets
 			std::vector<std::pair<int32_t,std::shared_ptr<std::vector<int>>>> queue;
 			//socket may be reuse
 			//id->choke/unchoke and interested/uninterested 
@@ -597,7 +602,7 @@ namespace Csz
 			void PushNeed(const std::vector<int32_t>* T_index,const int T_socket);
 			void PushNeed(const int32_t T_index,int T_socket);
 			std::pair<int32_t,std::vector<int>> PopNeed();
-            std::pair<int32_t,std::vector<int>> PopPointNeed(int32_t T_index);
+            std::vector<int> PopPointNeed(int32_t T_index);
 			bool Empty()const;
 			void SocketMapId(std::vector<int>& T_ret);
 			void NPChoke(int T_socket);
@@ -615,7 +620,7 @@ namespace Csz
 		static fd_set rset_save;
 		struct Parameter
 		{
-			Parameter():socket(-1),len(0),buf(nullptr),cur_len(){}
+			Parameter():socket(-1),len(0),buf(nullptr),cur_len(0){}
 			~Parameter(){if (buf!= nullptr) delete[] buf;}
 			int socket;
 			//not include id len
@@ -640,7 +645,7 @@ namespace Csz
 		static void DPort(Parameter* T_data);
         private:
         void _SendPiece(int T_socket,int32_t T_index,int32_t T_begin,int32_t T_length);
-        bool _LockPiece(int T_socket,int32_t T_begin);
+        bool _LockPiece(int T_socket,int32_t T_begin,int32_t T_length);
 	};
     
     struct BT
@@ -672,6 +677,7 @@ namespace Csz
         public:
             void Write(int32_t T_index,int32_t T_begin,const char* T_buf,int32_t T_length);
             void Init(int32_t T_index_end,int32_t T_length_end);
+            void ClearIndex(int32_t T_index);
         private:
             void Clear();
             void _Write(int32_t T_index);

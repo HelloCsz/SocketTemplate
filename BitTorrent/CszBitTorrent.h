@@ -28,6 +28,8 @@
 //brpc
 #include <butil/memory/singleton_on_pthread_once.h> //brpc::singleton
 #include <butil/resource_pool.h> //butil::ResourcePool
+#include <butil/files/file_path.h> //butil::file_path
+#include <butil/files/file.h> //butil::file
 //micro
 #include "CszMicro.hpp"
 
@@ -161,7 +163,7 @@ namespace Csz
 			struct File
 			{
 				File():length(0){}
-				File(std::string T_file_path,uint64_t T_length):file_path(T_file_path),length(T_length){}
+				File(std::string T_file_path,uint64_t T_length):file_path(std::move(T_file_path)),length(T_length){}
 				std::uint64_t length;
 				std::string file_path;
 			};
@@ -191,13 +193,17 @@ namespace Csz
 			std::uint64_t GetFileTotal() const;
 			std::uint32_t GetIndexTotal() const;
 			char GetEndBit() const;
-			std::string GetIndexHash(int);
-			std::vector<std::string> GetFileName(int32_t T_index,int32_t T_begin,int32_t T_length) const;
-			uint32_t GetOffSetOf(int32_t T_index) const;
-            uint32_t GetPieceLength(int32_t T_index) const;
-            uint32_t GetPieceBit(int32_t T_index) const;
-            std::pair<bool,int32_t> CheckEndSlice(int32_t T_index);
-            std::pair<bool,int32_t> CheckEndSlice(int32_t T_index,int32_t T_begin);
+			std::string GetHash(int32_t T_index) const;
+			//begin|length
+			using WRITEINFO= std::pair<int32_t,int32_t>;
+			//file name | begin | length
+			using FILEINFO= std::pair<std::string,WRITEINFO>;
+			std::vector<FILEINFO> GetFileName(int32_t T_index,int32_t T_begin,int32_t T_length) const;
+			std::vector<FILEINFO> GetFileName(int32_t T_index) const;
+            int32_t GetPieceLength(int32_t T_index) const;
+            int32_t GetPieceBit(int32_t T_index) const;
+            std::pair<bool,int32_t> CheckEndSlice(int32_t T_index) const;
+            std::pair<bool,int32_t> CheckEndSlice(int32_t T_index,int32_t T_begin) const;
 			TorrentFile();
 			~TorrentFile();
 #ifdef CszTest
@@ -629,29 +635,29 @@ namespace Csz
 			int cur_len;
 		};
 		bool operator()()const;
-		static void DKeepAlive(Parameter* T_data);
-		static void DChoke(Parameter* T_data);
-		static void DUnChoke(Parameter* T_data);
-		static void DInterested(Parameter* T_data);
-		static void DUnInterested(Pararmeter* T_data);
-		static void DHave(Parameter* T_data);
-		static void DBitField(Parameter* T_data);
-		static void AsyncDBitField(Parameter* T_data);
-		static void DRequest(Parameter* T_data);
+		void DKeepAlive(Parameter* T_data);
+		void DChoke(Parameter* T_data);/*id=0*/
+		void DUnChoke(Parameter* T_data);/*id= 1*/
+		void DInterested(Parameter* T_data);/*id= 2*/
+		void DUnInterested(Pararmeter* T_data);/*id=3 */
+		static void DHave(Parameter* T_data);/*id= 4*/
+		static void DBitField(Parameter* T_data);/*id= 5*/
+		static void AsyncDBitField(Parameter* T_data);/*id= 5*/
+		static void DRequest(Parameter* T_data);/*id= 6*/
         //lock socket,FD_CLR
-		static void DPiece(Pararmeter* T_data);
-		static void AsyncDPiece(Parameter* T_data);
-		static void DCancle(Parameter* T_data);
-		static void DPort(Parameter* T_data);
+		static void DPiece(Pararmeter* T_data);/*id= 7*/
+		static void AsyncDPiece(Parameter* T_data);/*id= 7*/
+		static void DCancle(Parameter* T_data);/*id= 8*/
+		static void DPort(Parameter* T_data);/*id= 9*/
         private:
         void _SendPiece(int T_socket,int32_t T_index,int32_t T_begin,int32_t T_length);
         bool _LockPiece(int T_socket,int32_t T_begin,int32_t T_length);
 	};
     
-    struct BT
-    {
-        char data[64* 1024];
-    };
+	struct BT
+	{
+		char data[512* 1024];
+	};
 
     //memory manager
     class BitMemory
@@ -669,6 +675,7 @@ namespace Csz
         private:
             int32_t index_end;
             int32_t length_end;
+			int32_t length_normal;
             using DataType= std::vector<std::pair<butil::ResourceId<BT>,char*>>;
             //left cur_len,resource id
             using Type= std::pair<int32_t,DataType>;
@@ -679,7 +686,7 @@ namespace Csz
             void Init(int32_t T_index_end,int32_t T_length_end);
             void ClearIndex(int32_t T_index);
         private:
-            void Clear();
+            void _Clear();
             void _Write(int32_t T_index);
     };
 }

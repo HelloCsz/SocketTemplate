@@ -42,9 +42,9 @@ namespace Csz
 						
 						infos.files.emplace_back("",*((std::uint64_t*)T_data));
 					}
-					else if (infos.files[infos.files.size()-1].length== 0)
+					else if (infos.files.back().length== 0)
 					{
-						infos.files[infos.files.size()-1].length=*(std::uint64_t*)T_data;
+						infos.files.back().length=*(std::uint64_t*)T_data;
 					}
 					else
 					{
@@ -59,9 +59,9 @@ namespace Csz
 					{
 						infos.files.emplace_back(*(std::string*)T_data,0);
 					}
-					else if (infos.files[infos.files.size()- 1].file_path.size()== 0)
+					else if (infos.files.back().file_path.size()== 0)
 					{
-						infos.files[infos.files.size()- 1].file_path= std::move(*((std::string*)T_data));
+						infos.files.back().file_path.emplace_back(std::move(*((std::string*)T_data)));
 					}
 					else
 					{
@@ -136,14 +136,14 @@ namespace Csz
 		}
 	}
 
-	std::string TorrentFile::GetIndexHash(int T_index) const
+	std::string TorrentFile::GetHash(int32_t T_index) const
 	{
-		if ((T_index+ 1)* 20 > (int)infos.pieces.size() || T_index< 0)
+		if ((T_index+ 1)* 20 > infos.pieces.size() || T_index< 0)
 		{
 			Csz::ErrMsg("TorrentFile can't get hash,index %d",T_index);
 			return "";
 		}
-		return infos.pieces.substr(T_index,20);
+		return infos.pieces.substr(T_index* 20,20);
 	}
 
 	std::uint64_t TorrentFile::GetFileTotal()const
@@ -217,46 +217,83 @@ namespace Csz
 		return ret;
 	}
     
-	std::vector<std::string> TorrentFile::GetFileName(int32_t T_index,int32_t T_begin,int32_t T_length) const
+	//file name | begin | length
+	//send piece,wirte piece
+	std::vector<FILEINFO> TorrentFile::GetFileName(int32_t T_index,int32_t T_begin,int32_t T_length) const
     {
-        std::vector<std::string> ret;
+        std::vector<FILEINFO> ret;
         if (T_index< 0)
         {
             Csz::ErrMsg("torrent file get file name failed index< 0");
             return std::move(ret);
         }
+
 		//1.single file
 		if (single)
 		{
-			ret.emplace_back(infos.name);
+			//check begin+ length < sizeof(BT)
+			FILEINFO data;
+			data.first= infos.name;
+			data.second.first= T_index* infos.piece_length+ T_begin;
+			data.second.second= T_length;
+			ret.emplace_back(std::move(data));
 			return std::move(ret);
 		}
-		//TODO multi file
-		ret.resize(infos.files.size(),infos.name)
+
+		//2.multi file
+		ret.resize(infos.files.size(),std::make_pair(infos.name+ "/",std::make_pair(0,0)));
 		uint64_t cur_total= (T_index)* infos.piece_length+ T_begin();
-		for (auto& start= infos.files.cbegin(),stop= infos.files.cend(); start< stop; ++start)
+		int file_index= 0;
+		for (auto start= infos.files.cbegin(),stop= infos.files.cend(); start< stop; ++start)
 		{
 			cur_total-= start->length;
-			if (cur_total<= 0)
+			if (cur_total< 0)
 			{
-				//TODO dir name/dir1/dir2/name
-				//ret[0].append()
+				ret[file_index].first.append(start->file_path);
+				//begin
+				ret[file_index].first.second.first= cur_total+ start->length;
+				//sure require index in cur file
+				if (cur_total+ T_length<= 0)
+				{
+					ret[file_index].first.second.second= T_length;
+				}
+				else
+				{
+					ret[file_index].first.second.second= start->length;
+					++file_index;
+					T_length+= cur_total;
+					++start;
+					while (T_length> 0 && start< stop)
+					{
+						ret[file_index].first.append(start->file_path);
+						ret[file_index].second.first= 0;
+						if (T_length- start->length> 0)
+						{
+							ret[file_index].second.second= start->length;
+						}
+						else
+						{
+							ret[file_index].second.second= T_length; 
+						}
+						T_length-= start->length;
+						++file_index;
+						++start;
+					}
+				}
+				break;
 			}
 		}
-		Csz::ErrMsg("Torrent File get file name,cur total > 0");
-		ret.clear();
 		return std::move(ret);
     }
 
-	uint32_t TorrentFile::GetOffSetOf(int32_t T_index) const
+	std::vector<FILEINFO> TorrentFile::GetFileName(int32_t T_index) const
 	{
-		//TODO multi file
-		return T_index* infos.piece_length;
+		return GetFileName(T_index,0,infos.piece_length);
 	}
-    
-    uint32_t TorrentFile::GetPieceLength(int32_t T_index) const
+
+    int32_t TorrentFile::GetPieceLength(int32_t T_index) const
     {
-        uint64_t ret= 0;
+        int32_t ret= 0;
         if (T_index< 0)
         {
             Csz::ErrMsg("TorrentFile get piece length failed,index< 0");
@@ -304,7 +341,7 @@ namespace Csz
         return ret;       
     }
 
-    uint32_t TorrentFile::GetPieceBit(int32_t T_index) const
+    int32_t TorrentFile::GetPieceBit(int32_t T_index) const
     {
         auto ret= GetPieceLength(T_index);
         if (ret% SLICESIZE== 0)
@@ -327,7 +364,7 @@ namespace Csz
         return std::move(ret);
     }
     
-    std::pair<bool,int32_t> TorrentFile::CheckEndSlice(int32_t T_index,int32_t T_begin)
+    std::pair<bool,int32_t> TorrentFile::CheckEndSlice(int32_t T_index,int32_t T_begin) const
     {
         std::pair<bool,int32_t> ret;
         ret.first= false;

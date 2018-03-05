@@ -352,7 +352,7 @@ namespace Csz
         {
             std::unique_lock<bthread::Mutex> guard(start->second);
             code= send(start->first,have.GetSendData(),have.GetDataSize(),0);
-            if (-1== code || 0== code || code!= have.GetDataSize())
+            if (-1== code || code!= have.GetDataSize())
             {
                 del_sockets.emplace_back(start);
             }      

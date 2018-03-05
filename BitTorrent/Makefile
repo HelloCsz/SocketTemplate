@@ -4,7 +4,8 @@ TARGET= BitTorrent
 HDR_DIR= $(SRC)/Error $(SRC)/Web $(SRC)/Sock
 
 SOURCES= $(SRC)/BitTorrent/main.cpp\
-		 $(SRC)/BitTorrent/CszBInt.cpp\
+		 $(SRC)/BitTorrent/sha1.c
+#		 $(SRC)/BitTorrent/CszBInt.cpp\
 		 $(SRC)/BitTorrent/CszBStr.cpp\
 		 $(SRC)/BitTorrent/CszBList.cpp\
 		 $(SRC)/BitTorrent/CszBDict.cpp\
@@ -12,7 +13,6 @@ SOURCES= $(SRC)/BitTorrent/main.cpp\
 		 $(SRC)/BitTorrent/CszTracker.cpp\
 		 $(SRC)/BitTorrent/CszTrackerInfo.cpp\
 		 $(SRC)/BitTorrent/CszGetDictLength.cpp\
-		 $(SRC)/BitTorrent/sha1.c\
 		 $(SRC)/BitTorrent/CszHandShake.cpp\
 		 $(SRC)/BitTorrent/CszBitField.cpp\
 		 $(SRC)/BitTorrent/CszDownSpeed.cpp\
@@ -42,7 +42,7 @@ LIB_DIR= $(BRPC_SRC_DIR)/output/lib
 HDR_INCLUDE= $(addprefix -I, $(HDR_DIR))
 LIB_LINK= $(addprefix -L, $(LIB_DIR))
 
-CXXFLAGS= -std=c++11 -g -W
+CXXFLAGS= -std=c++11 -W -O2
 STATICLINK_FLAGS= -lgflags -lprotobuf -lbrpc
 DYNAMICLINK_FLAGS= -pthread -lssl 
 

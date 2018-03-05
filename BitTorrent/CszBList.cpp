@@ -3,6 +3,7 @@
 namespace Csz
 {
 	BList::BList(){}
+
 	BList::~BList()
 	{
 #ifdef CszTest
@@ -14,6 +15,7 @@ namespace Csz
 			val= nullptr;
 		}
 	}
+
 	void BList::Decode(std::string& T_content)
 	{
 #ifdef CszTest
@@ -94,15 +96,34 @@ namespace Csz
 		}
 		return ;
 	}
+
 	void BList::ReadData(const std::string& T_name,TorrentFile* T_connect)
 	{
 		if (data.empty())
 			return ;
-		for (const auto& val : data)
+		auto start= data.begin();
+		auto stop= data.end();
+		if (T_name== "infofilespath")
 		{
-			val->ReadData(T_name,T_connect);
+			auto path= start;
+			++start;
+			for (;start< stop; ++start)
+			{
+				(path->data).append("/");
+				(path->data).append(*start);
+			}
+			path->ReadData(T_name,T_connect);
 		}
+		else//normal type
+		{
+			for (const auto& val : data)
+			{
+				val->ReadData(T_name,T_connect);
+			}
+		}
+		return ;
 	}
+
 #ifdef CszTest
 	void BList::COutInfo()
 	{
@@ -112,6 +133,7 @@ namespace Csz
 			val->COutInfo();
 		}
 		printf("}\n");
+		return ;
 	}
 #endif
 }

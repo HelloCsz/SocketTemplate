@@ -1,10 +1,10 @@
 #include "CszSocket.h"
-
+#include <bthread/bthread.h>
 #define TIMEOUT300MS (300000)
 
 namespace Csz
 {
-    int RecvTime_us(int T_socket,void* T_buf,size_t T_len,int T_time)
+    int RecvTime_us(int T_socket,char* T_buf,size_t T_len,int T_time)
     {
         if (T_time<= 0)
         {
@@ -14,9 +14,10 @@ namespace Csz
         //300ms once
         int time_count= T_time/ TIMEOUT300MS;
         int cur_len= 0;
+        int code= 0;
         for (int i= 0; i< time_count && T_len> 0; ++i)
         {
-            int code =recv(T_socket,T_buf+ cur_len,T_len,MSG_DONTWAIT);
+            code =recv(T_socket,T_buf+ cur_len,T_len,MSG_DONTWAIT);
             if (-1== code)
             {
                 if (errno== EAGAIN || errno== EWOULDBLOCK)
@@ -43,7 +44,7 @@ namespace Csz
 		if (code!= 0)
 		{
 			//four recv
-			int code =recv(T_socket,T_buf+ cur_len,T_len,MSG_DONTWAIT);
+			code =recv(T_socket,T_buf+ cur_len,T_len,MSG_DONTWAIT);
 			if (-1== code)
 			{
 				if (errno== EAGAIN || errno== EWOULDBLOCK)
@@ -63,7 +64,7 @@ namespace Csz
 			return 0;
         return -1;
     }
-    int RecvTimeP_us(int T_socket,void* T_buf,size_t* T_len,int T_time)
+    int RecvTimeP_us(int T_socket,char* T_buf,size_t* T_len,int T_time)
     {
         if (T_time<= 0)
         {
@@ -73,9 +74,10 @@ namespace Csz
         //300ms once
         int time_count= T_time/ TIMEOUT300MS;
         int cur_len= 0;
+        int code= 0;
         for (int i= 0; i< time_count && *T_len> 0; ++i)
         {
-            int code =recv(T_socket,T_buf+ cur_len,*T_len,MSG_DONTWAIT);
+            code =recv(T_socket,T_buf+ cur_len,*T_len,MSG_DONTWAIT);
             if (-1== code)
             {
                 if (errno== EAGAIN || errno== EWOULDBLOCK)
@@ -102,7 +104,7 @@ namespace Csz
 		if (code!= 0)
 		{
 			//four recv
-			int code =recv(T_socket,T_buf+ cur_len,*T_len,MSG_DONTWAIT);
+			code =recv(T_socket,T_buf+ cur_len,*T_len,MSG_DONTWAIT);
 			if (-1== code)
 			{
 				if (errno== EAGAIN || errno== EWOULDBLOCK)

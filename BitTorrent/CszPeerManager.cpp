@@ -8,6 +8,18 @@ namespace Csz
         LoadPeerList(T_socket_list);   
     }
 */
+    std::vector<int> PeerManager::RetSocketList() const
+    {
+        std::vector<int> ret;
+        ret.reserve(peer_list.size());
+        for (auto& val : peer_list)
+        {
+            if (val.first>= 0)
+                ret.emplace_back(val.first);
+        }
+        return std::move(ret);
+    }   
+
     void PeerManager::LoadPeerList(const std::vector<std::string>& T_socket_list)
     {
         if (T_socket_list.empty())
@@ -81,19 +93,19 @@ namespace Csz
                 Csz::ErrMsg("Peer Manager peer list insert already exist");
                 continue;  
             }
-            peer_list.emplace(val,bthread::Mutex());
+            std::shared_ptr<bthread::Mutex> mutex(new bthread::Mutex);
+            peer_list.emplace(val,mutex);
         }
         return ;       
     }
-
+    
     PeerManager::~PeerManager()
     {
         for (auto& val : peer_list)
         {
-            if (val>= 0)
+            if (val.first>= 0)
             {
                 close(val.first);
-                val.first= -1;
             }
         }
     }
@@ -344,13 +356,13 @@ namespace Csz
             Csz::ErrMsg("Peer Manager send have failed,index< 0");
             return ;
         }
-        std::vector<peer_list::iterator> del_sockets;
+        std::vector<decltype(peer_list)::const_iterator> del_sockets;
         Have have;
         have.SetParameter(T_index);
         int code;
-        for (auto& start= peer_list.begin(),stop= peer_list.end(); start< stop; ++start)
+        for (auto start= peer_list.cbegin(),stop= peer_list.cend(); start!= stop; ++start)
         {
-            std::unique_lock<bthread::Mutex> guard(start->second);
+            std::unique_lock<bthread::Mutex> guard(*(start->second));
             code= send(start->first,have.GetSendData(),have.GetDataSize(),0);
             if (-1== code || code!= have.GetDataSize())
             {
@@ -365,6 +377,7 @@ namespace Csz
         return ;
     }
     
+    //TODO safe
     bthread::Mutex* PeerManager::GetSocketMutex(int T_socket)
     {
         auto flag= peer_list.find(T_socket);
@@ -372,7 +385,7 @@ namespace Csz
         {
             return nullptr;
         }
-        return &flag->second;
+        return flag->second.get();
     } 
    
 }

@@ -148,7 +148,7 @@ namespace Csz
 			Csz::ErrMsg("bit field too small,found lack need piece failed");
 			return ret;
 		}
-		if (nullptr== T_bit_field || T_len+ 5!= prefix_and_bit_field.size() )
+		if (nullptr== T_bit_field || T_len+ 5!= (int)prefix_and_bit_field.size() )
 		{
 			Csz::ErrMsg("Bit Field not found bit field,bit field is nullptr or len != bit field len");
 			return ret;

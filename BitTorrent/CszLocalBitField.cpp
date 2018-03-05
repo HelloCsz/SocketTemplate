@@ -19,9 +19,9 @@ namespace Csz
 		return ;
 	}
 
-	void LoacalBitField::RecvBitField(int T_socket,const char* T_bit_field,const int T_len)
+	void LocalBitField::RecvBitField(int T_socket,const char* T_bit_field,const int T_len)
 	{
-		if (T_bit_filed.empty())
+		if (nullptr== T_bit_field)
 		{
 			Csz::ErrMsg("Local BitField recv empty bit filed");
 			return ;

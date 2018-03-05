@@ -8,6 +8,7 @@
 #include "../Sock/CszSocket.h" //CszTcpConnect,CszFcntl,CszSocketHostServNull
 #include "sha1.h" 
 #include "../CszNonCopyAble.hpp"
+#include "../Thread/CszSingletonThread.hpp"
 #include <unistd.h> //write in CszBStr
 #include <sys/select.h> //select
 #include <sys/uio.h> //writev
@@ -26,10 +27,11 @@
 #include <cstring> //bzero,memcpy
 #include <arpa/inet.h> //htonl
 //brpc
-#include <butil/memory/singleton_on_pthread_once.h> //brpc::singleton
+#include <butil/memory/singleton_on_pthread_once.h> //butil::singleton
 #include <butil/resource_pool.h> //butil::ResourcePool
 #include <butil/files/file_path.h> //butil::file_path
 #include <butil/files/file.h> //butil::file
+#include <bthread/mutex.h>  //Mutex
 //micro
 #include "CszMicro.hpp"
 
@@ -204,8 +206,6 @@ namespace Csz
             int32_t GetPieceBit(int32_t T_index) const;
             std::pair<bool,int32_t> CheckEndSlice(int32_t T_index) const;
             std::pair<bool,int32_t> CheckEndSlice(int32_t T_index,int32_t T_begin) const;
-			TorrentFile();
-			~TorrentFile();
 #ifdef CszTest
 			void COutInfo();
 #endif
@@ -229,9 +229,12 @@ namespace Csz
             void AddSocket(const int T_socket)
             {
                 if (T_socket>= 0)
-                    peer_list.emplace(T_socket);
+                {
+                    std::shared_ptr<bthread::Mutex> mutex(new bthread::Mutex());
+                    peer_list.emplace(std::make_pair(T_socket,mutex));
+                }
             }
-			const std::vector<int>& RetSocketList()const {return peer_list;}
+			std::vector<int> RetSocketList()const;
 			void CloseSocket(int T_socket);
 			void CloseSocket(std::vector<int>* T_sockets);
             void SendHave(int32_t T_index);
@@ -242,7 +245,7 @@ namespace Csz
             void _Verification(std::vector<int>& T_ret);
 			void _SendBitField(std::vector<int>& T_ret);
         private:
-            std::unordered_map<int,bthread::Mutex> peer_list;
+            std::unordered_map<int,std::shared_ptr<bthread::Mutex>> peer_list;
     };
 
     //bt message type
@@ -542,7 +545,10 @@ namespace Csz
 			void RecvBitField(int T_socket,const char* T_bit_field,const int T_eln);
             //int32_t GetPieceLength()const {return piece_length;}
             bool CheckBitField(int32_t T_index);
-            void FillBitField(int32_t T_index){bit_field.FillBitField(T_index);}
+            void FillBitField(int32_t T_index);
+            void SetParameter(std::string T_bit_field){bit_field.SetParameter(T_bit_field);return ;}
+            const char* GetSendData()const {return bit_field.GetSendData();}
+            int32_t GetDataSize()const {return bit_field.GetDataSize();}
 	};
 
 	//DownSpeed
@@ -561,6 +567,7 @@ namespace Csz
 		private:
 			//10s update
 			//priority queue
+			//socket | download speed
 			std::vector<std::pair<int,uint32_t>> queue;
 		public:
 			void AddMember(const int T_socket)
@@ -571,7 +578,7 @@ namespace Csz
 			void AddTotal(std::vector<std::pair<int,uint32_t>>& T_queue);
 			//four
 			std::vector<int> RetSocket();
-			bool CheckSocket(const int T_socket)const
+			bool CheckSocket(const int T_socket);
 	};
 
 	//Need Piece
@@ -615,6 +622,7 @@ namespace Csz
 			void NPUnChoke(int T_socket);
 			void NPInterested(int T_socket);
 			void NPUnInterested(int T_socket);
+            void ClearSocket(int T_socket);
 		private:
 			bool _SetSocketStatus(int T_socket,char T_status);
 			bool _ClearSocketStatus(int T_socket,char T_status);
@@ -634,24 +642,24 @@ namespace Csz
 			char* buf;
 			int cur_len;
 		};
-		bool operator()()const;
+		bool operator()();
 		void DKeepAlive(Parameter* T_data);
 		void DChoke(Parameter* T_data);/*id=0*/
 		void DUnChoke(Parameter* T_data);/*id= 1*/
 		void DInterested(Parameter* T_data);/*id= 2*/
-		void DUnInterested(Pararmeter* T_data);/*id=3 */
+		void DUnInterested(Parameter* T_data);/*id=3 */
 		static void DHave(Parameter* T_data);/*id= 4*/
 		static void DBitField(Parameter* T_data);/*id= 5*/
 		static void AsyncDBitField(Parameter* T_data);/*id= 5*/
 		static void DRequest(Parameter* T_data);/*id= 6*/
         //lock socket,FD_CLR
-		static void DPiece(Pararmeter* T_data);/*id= 7*/
+		static void DPiece(Parameter* T_data);/*id= 7*/
 		static void AsyncDPiece(Parameter* T_data);/*id= 7*/
 		static void DCancle(Parameter* T_data);/*id= 8*/
 		static void DPort(Parameter* T_data);/*id= 9*/
         private:
-        void _SendPiece(int T_socket,int32_t T_index,int32_t T_begin,int32_t T_length);
-        bool _LockPiece(int T_socket,int32_t T_begin,int32_t T_length);
+        static void _SendPiece(int T_socket,int32_t T_index,int32_t T_begin,int32_t T_length);
+        static bool _LockPiece(int T_socket,int32_t T_index,int32_t T_begin,int32_t T_length);
 	};
     
 	struct BT
@@ -683,11 +691,11 @@ namespace Csz
             std::unordered_map<int32_t,TypeP> memory_pool;
         public:
             void Write(int32_t T_index,int32_t T_begin,const char* T_buf,int32_t T_length);
-            void Init(int32_t T_index_end,int32_t T_length_end);
+            void Init(int32_t T_index_end,int32_t T_length_end,int32_t T_length_normal);
             void ClearIndex(int32_t T_index);
         private:
             void _Clear();
-            void _Write(int32_t T_index);
+            int32_t _Write(int32_t T_index);
     };
 }
 #endif

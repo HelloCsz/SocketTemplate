@@ -28,7 +28,7 @@ namespace Csz
 		//2.not found
 		if (start== stop)
 		{
-			std::shared_ptr<std::vector<int>> data(new std::vecotr<int>);
+			std::shared_ptr<std::vector<int>> data(new std::vector<int>);
 			data->emplace_back(T_socket);
 			queue.emplace_back(std::make_pair(T_index,data));
 			std::push_heap(queue.begin(),queue.end(),NPComp);
@@ -42,13 +42,13 @@ namespace Csz
 	}
 	void NeedPiece::PushNeed(const std::vector<int32_t>* T_indexs,const int T_socket)
 	{
-		if (nullptr== T_index || T_indexs.empty())
+		if (nullptr== T_indexs || T_indexs->empty())
 		{
 			Csz::ErrMsg("NeedPiece can't push,indexs is nullptr or empty");
 			return ;
 		}
 		//iterator invalid,must lock
-		for (const auto& val : *T_index)
+		for (const auto& val : *T_indexs)
 		{
 			PushNeed(val,T_socket);
 		}
@@ -135,7 +135,7 @@ namespace Csz
                 for (auto& fd : *(val.second))
                 {
                     auto step1= socket_cur.find(fd);
-                    if (setp1!= socket_cur.end())
+                    if (step1!= socket_cur.end())
                     {
                         //3.socket queue
                         auto step2= socket_queue.find(step1->second);

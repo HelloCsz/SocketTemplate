@@ -59,9 +59,9 @@ namespace Csz
 					{
 						infos.files.emplace_back(*(std::string*)T_data,0);
 					}
-					else if (infos.files.back().file_path.size()== 0)
+					else if (infos.files.back().file_path.empty()== 0)
 					{
-						infos.files.back().file_path.emplace_back(std::move(*((std::string*)T_data)));
+						infos.files.back().file_path.assign(std::move(*((std::string*)T_data)));
 					}
 					else
 					{
@@ -138,7 +138,7 @@ namespace Csz
 
 	std::string TorrentFile::GetHash(int32_t T_index) const
 	{
-		if ((T_index+ 1)* 20 > infos.pieces.size() || T_index< 0)
+		if ((T_index+ 1)* 20 > (int)infos.pieces.size() || T_index< 0)
 		{
 			Csz::ErrMsg("TorrentFile can't get hash,index %d",T_index);
 			return "";
@@ -219,9 +219,9 @@ namespace Csz
     
 	//file name | begin | length
 	//send piece,wirte piece
-	std::vector<FILEINFO> TorrentFile::GetFileName(int32_t T_index,int32_t T_begin,int32_t T_length) const
+	std::vector<TorrentFile::FILEINFO> TorrentFile::GetFileName(int32_t T_index,int32_t T_begin,int32_t T_length) const
     {
-        std::vector<FILEINFO> ret;
+        std::vector<TorrentFile::FILEINFO> ret;
         if (T_index< 0)
         {
             Csz::ErrMsg("torrent file get file name failed index< 0");
@@ -229,10 +229,10 @@ namespace Csz
         }
 
 		//1.single file
-		if (single)
+		if (infos.single)
 		{
 			//check begin+ length < sizeof(BT)
-			FILEINFO data;
+			TorrentFile::FILEINFO data;
 			data.first= infos.name;
 			data.second.first= T_index* infos.piece_length+ T_begin;
 			data.second.second= T_length;
@@ -242,7 +242,7 @@ namespace Csz
 
 		//2.multi file
 		ret.resize(infos.files.size(),std::make_pair(infos.name+ "/",std::make_pair(0,0)));
-		uint64_t cur_total= (T_index)* infos.piece_length+ T_begin();
+		int64_t cur_total= (T_index)* infos.piece_length+ T_begin;
 		int file_index= 0;
 		for (auto start= infos.files.cbegin(),stop= infos.files.cend(); start< stop; ++start)
 		{
@@ -251,15 +251,15 @@ namespace Csz
 			{
 				ret[file_index].first.append(start->file_path);
 				//begin
-				ret[file_index].first.second.first= cur_total+ start->length;
+				ret[file_index].second.first= cur_total+ start->length;
 				//sure require index in cur file
 				if (cur_total+ T_length<= 0)
 				{
-					ret[file_index].first.second.second= T_length;
+					ret[file_index].second.second= T_length;
 				}
 				else
 				{
-					ret[file_index].first.second.second= start->length;
+					ret[file_index].second.second= start->length;
 					++file_index;
 					T_length+= cur_total;
 					++start;
@@ -286,7 +286,7 @@ namespace Csz
 		return std::move(ret);
     }
 
-	std::vector<FILEINFO> TorrentFile::GetFileName(int32_t T_index) const
+	std::vector<TorrentFile::FILEINFO> TorrentFile::GetFileName(int32_t T_index) const
 	{
 		return GetFileName(T_index,0,infos.piece_length);
 	}
@@ -299,14 +299,14 @@ namespace Csz
             Csz::ErrMsg("TorrentFile get piece length failed,index< 0");
             return ret;   
         }
-        auto index_count= infos.pieces.size()/ 20;
+        int32_t index_count= infos.pieces.size()/ 20;
         //synch index
         --index_count;
         if (index_count== T_index && 0== index_count)
         {
-            if (single)
+            if (infos.single)
             {
-                ret= length;
+                ret= infos.length;
             }
             else
             {
@@ -320,7 +320,7 @@ namespace Csz
         {
             if (index_count== T_index)
             {   
-                if (single)
+                if (infos.single)
                 {
                     ret= infos.length- index_count* infos.piece_length;
                 }
@@ -355,7 +355,7 @@ namespace Csz
     {
         std::pair<bool,int32_t> ret;
         ret.first= false;
-        if (T_index== (infos.pieces.size()/ 20)- 1)
+        if (T_index== (int)(infos.pieces.size()/ 20)- 1)
         {
             ret.first= true;
             auto piece_len= GetPieceLength(T_index);
@@ -369,7 +369,7 @@ namespace Csz
         std::pair<bool,int32_t> ret;
         ret.first= false;
         //1.check end piece
-        if (T_index== (infos.pieces.size()/ 20)- 1)
+        if (T_index== (int)(infos.pieces.size()/ 20)- 1)
         {
             //2.end_piece length
             auto piece_len= GetPieceLength(T_index);

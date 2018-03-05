@@ -37,13 +37,13 @@ int main(int argc,char** argv)
 	printf("Dict Info:\n");
 	match.COutInfo();
 #endif
-	Csz::TorrentFile torrent_file;
-	match.ReadData("",&torrent_file);
+	auto torrent_file= Csz::TorrentFile::GetInstance();
+	match.ReadData("",torrent_file);
 #ifdef CszTest
 	printf("Standard Info:\n");
-	torrent_file.COutInfo();
+	torrent_file->COutInfo();
 #endif
-	torrent_file.GetTrackInfo(&tracker);
+	torrent_file->GetTrackInfo(&tracker);
 #ifdef CszTest
 	printf("Tracker extract info:\n");
 	tracker.COutInfo();
@@ -72,7 +72,7 @@ int main(int argc,char** argv)
 		parameter.assign("downloaded=0");
 		tracker.SetParameter(std::move(parameter));
 		parameter.assign("left=");
-		parameter.append(std::to_string(torrent_file.GetTotal()));
+		parameter.append(std::to_string(torrent_file->GetFileTotal()));
 		tracker.SetParameter(std::move(parameter));
 		parameter.assign("event=started");
 		tracker.SetParameter(std::move(parameter));
@@ -80,12 +80,12 @@ int main(int argc,char** argv)
 		tracker.SetParameter(std::move(parameter));
 	}
 	tracker.Connect();
-	HandShake::GetInstance()->SetParameter(nullptr,tracker.GetInfoHash().c_str(),nullptr);
-	LocalBitField::GetInstance()->SetParameter(std::string(torrent_file.GetIndexTotal(),0));
-	LocalBitField::GetInstance()->SetEndBit(torrent_file.GetEndBit());
+	Csz::HandShake::GetInstance()->SetParameter(nullptr,tracker.GetInfoHash().c_str(),nullptr);
+	Csz::LocalBitField::GetInstance()->SetParameter(std::string(torrent_file->GetIndexTotal(),0));
+	Csz::LocalBitField::GetInstance()->SetEndBit(torrent_file->GetEndBit());
     //60s time out
     std::vector<std::string> peer_list= tracker.GetPeerList(&request,&response,&cache,60);
-	PeerManager;:GetInstance()->LoadPeerList(peer_list);
+	Csz::PeerManager::GetInstance()->LoadPeerList(peer_list);
     //select
 	{
 

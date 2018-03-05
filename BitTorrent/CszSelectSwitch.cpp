@@ -4,15 +4,15 @@
 
 namespace Csz
 {
+    fd_set SelectSwitch::rset_save;
 	//TODO sinnal deal or pselect
-	bool SelectSwitch::operator()() const
+	bool SelectSwitch::operator()()
 	{
 		using Task= Csz::TaskQueue<SelectSwitch::Parameter,THREADNUM>::Type;
-		auto peer_manager= PeerManaget::GetInstance();
-		auto& peer_list= peer_manager->RetSocketList();
+		auto thread_pool= SingletonThread<SelectSwitch::Parameter,THREADNUM>::GetInstance();
+		auto peer_manager= PeerManager::GetInstance();
+		auto peer_list= std::move(peer_manager->RetSocketList());
 		//auto need_piece= NeedPiece::GetInstance();
-		auto thread_pool= SingleTonTHread<SelectSwitch::Parameter,THREADNUM>::GetInstance();
-		auto thread_pool
 		if (peer_list.empty())
 		{
 			Csz::ErrMsg("select can't switch message type,peer list is empty");
@@ -36,13 +36,13 @@ namespace Csz
 				FD_SET(val,&rset_save);
 			}
 		}
-		rest= rest_save;
+		rset= rset_save;
 		timeval time_out;
 		time_out.tv_sec= 60;
-		time_out.tv_uset= 0;
+		time_out.tv_usec= 0;
 		int code;
 		//2.select
-		while ((code= select(fd_max+ 1,&rest,NULL,NULL,&time_out))>= 0)
+		while ((code= select(fd_max+ 1,&rset,NULL,NULL,&time_out))>= 0)
 		{
 			if (0 == code)
 			{
@@ -54,6 +54,10 @@ namespace Csz
 			int32_t len= 0;
 			for (const auto& val : peer_list)
 			{
+                if (code<= 0)
+                    break;
+                if (val< 0)
+                    continue;
 				if (FD_ISSET(val,&rset))
 				{
 					--code;
@@ -67,7 +71,7 @@ namespace Csz
 						//keep alive
 						if (0== len)
 						{
-							DKeepAlice(nullptr);
+							DKeepAlive(NULL);
 							continue;
 						}
 						char id;
@@ -85,13 +89,14 @@ namespace Csz
 							continue;
 						}
 						//normal socket
-						//reduce id len
-						--len;
 						//thorw exception new
 						Parameter* data= new(std::nothrow) Parameter();
 						if (nullptr== data)
 						{
+                            //TODO wait,bug socket already take data(eg len and id),should close socket
 							Csz::ErrMsg("Select Switch operator() failed,new parameter is nullptr");
+                            peer_manager->CloseSocket(val);
+                            FD_CLR(val,&rset_save);
 							continue;
 						}
 						data->socket= val;
@@ -115,31 +120,81 @@ namespace Csz
 							DUnInterested(data);
 							continue;
 						}
+						//reduce id len
+						--len;
 						data->buf= new(std::nothrow) char[len];
 						if (nullptr== data->buf)
 						{
+                            //TODO wait,bug socket already take data(eg len and id),should close socket
 							Csz::ErrMsg("Select Switch operator() failed,new buf is nullptr");
+                            peer_manager->CloseSocket(data->socket);
+                            FD_CLR(data->socket,&rset_save);
 							continue;
 						}
 						data->len= len;
-						error_code= Csz::RecvTimeP_us(data->socket,data->buf,&data->len,TIMEOUT300MS);
+						error_code= Csz::RecvTimeP_us(data->socket,data->buf,reinterpret_cast<size_t*>(&data->len),TIMEOUT300MS);
 						if (error_code== -1)
 						{
 							if (errno== EAGAIN || errno== EWOULDBLOCK)
 							{
+                                data->cur_len= len- data->len;
 								if (5== id)
 								{
-									Task task(std::make_pair(&AsynDBitField,data);
-									thread_pool.Push(task);
-									continue;
+									Task task(std::make_pair(&AsyncDBitField,data));
+									thread_pool->Push(&task);
+                                    continue;
 								}
 								else if (7== id)
 								{
 									Task task(std::make_pair(&AsyncDPiece,data));
-									thread_Pool.Push(task);
+									thread_pool->Push(&task);
+                                    continue;
 								}
 							}
+                            peer_manager->CloseSocket(data->socket);
+                            FD_CLR(data->socket,&rset_save);
+                            continue;
 						}
+                        //success recv all data
+                        data->cur_len= len;
+                        Task task;
+                        task.second= data;
+                        if (4== id)
+                        {
+                            task.first= &DHave;
+                            thread_pool->Push(&task);
+                            continue;
+                        }
+                        else if (5== id)
+                        {
+                            task.first= &DBitField;
+                            thread_pool->Push(&task);
+                            continue;
+                        }
+                        else if (6== id)
+                        {
+                            task.first= &DRequest;
+                            thread_pool->Push(&task);
+                            continue;
+                        }
+                        else if (7== id)
+                        {
+                            task.first= &DPiece;
+                            thread_pool->Push(&task);
+                            continue;
+                        }
+                        else if (8== id)
+                        {
+                            //task.first= &DCancle;
+                            //thread_pool->Push(&task);
+                            continue;
+                        }
+                        else if (9== id)
+                        {
+                            //task.first= &DPort;
+                            //thread_pool->Push(&task);
+                            continue;
+                        }
 					}
 				}
 			}
@@ -154,7 +209,7 @@ namespace Csz
 	{
 		if (nullptr== T_data)
 		{
-			Csz::ErrMsg("Select Switch keep alive,parameter is nullptr")
+			Csz::ErrMsg("Select Switch keep alive,parameter is nullptr");
 			return ;
 		}
 		std::unique_ptr<Parameter> guard(T_data);
@@ -164,7 +219,7 @@ namespace Csz
 	{
 		if (nullptr== T_data)
 		{
-			Csz::ErrMsg("Select Switch choke,parameter is nullptr")
+			Csz::ErrMsg("Select Switch choke,parameter is nullptr");
 			return ;
 		}
 		std::unique_ptr<Parameter> guard(T_data);
@@ -176,7 +231,7 @@ namespace Csz
 	{
 		if (nullptr== T_data)
 		{
-			Csz::ErrMsg("Select Switch unchoke,parameter is nullptr")
+			Csz::ErrMsg("Select Switch unchoke,parameter is nullptr");
 			return ;
 		}
 		std::unique_ptr<Parameter> guard(T_data);
@@ -188,7 +243,7 @@ namespace Csz
 	{
 		if (nullptr== T_data)
 		{
-			Csz::ErrMsg("Select Switch interested,parameter is nullptr")
+			Csz::ErrMsg("Select Switch interested,parameter is nullptr");
 			return ;
 		}
 		std::unique_ptr<Parameter> guard(T_data);
@@ -200,7 +255,7 @@ namespace Csz
 	{
 		if (nullptr== T_data)
 		{
-			Csz::ErrMsg("Select Switch uninterested,parameter is nullptr")
+			Csz::ErrMsg("Select Switch uninterested,parameter is nullptr");
 			return ;
 		}
 		std::unique_ptr<Parameter> guard(T_data);
@@ -208,11 +263,11 @@ namespace Csz
 		return ;
 	}
 
-	static void SelectSwitch::DHave(Parameter* T_data)
+	void SelectSwitch::DHave(Parameter* T_data)
 	{
 		if (nullptr== T_data)
 		{
-			Csz::ErrMsg("Select Switch have,parameter is nullptr")
+			Csz::ErrMsg("Select Switch have,parameter is nullptr");
 			return ;
 		}
 		std::unique_ptr<Parameter> guard(T_data);
@@ -223,23 +278,23 @@ namespace Csz
 		return ;
 	}
 
-	static void SelectSwitch::DBitField(Parameter* T_data)
+	void SelectSwitch::DBitField(Parameter* T_data)
 	{
 		if (nullptr== T_data)
 		{
-			Csz::ErrMsg("Select Switch bit field,parameter is nullptr")
+			Csz::ErrMsg("Select Switch bit field,parameter is nullptr");
 			return ;
 		}
 		std::unique_ptr<Parameter> guard(T_data);
-		LoaclBitField::GetINstance()->RecvBitField(T_data->socket,T_data->buf,T_data->cur_len);
+		LocalBitField::GetInstance()->RecvBitField(T_data->socket,T_data->buf,T_data->cur_len);
 		return ;
 	}
 
-	static void SelectSwitch::AsyncDBitField(Parameter* T_data)
+	void SelectSwitch::AsyncDBitField(Parameter* T_data)
 	{
 		if (nullptr== T_data)
 		{
-			Csz::ErrMsg("Select Switch async bit field,parameter is nullptr")
+			Csz::ErrMsg("Select Switch async bit field,parameter is nullptr");
 			return ;
 		}
 		std::unique_ptr<Parameter> guard(T_data);
@@ -272,7 +327,7 @@ namespace Csz
 		if (0== T_data->len)
 		{
 			//RAII,unique_ptr repeat free memory
-            FD_SET(T_data->socket,rset_save);
+            FD_SET(T_data->socket,&rset_save);
 			auto origin= guard.release();
 			DBitField(origin);
 		}
@@ -284,11 +339,11 @@ namespace Csz
 		return ;
 	}
 
-	static void SelectSwitch::DRequest(Parameter* T_data)
+	void SelectSwitch::DRequest(Parameter* T_data)
 	{
 		if (nullptr== T_data)
 		{
-			Csz::ErrMsg("Select Switch request,parameter is nullptr")
+			Csz::ErrMsg("Select Switch request,parameter is nullptr");
 			return ;
 		}
 		std::unique_ptr<Parameter> guard(T_data);
@@ -301,7 +356,7 @@ namespace Csz
             if (LocalBitField::GetInstance()->CheckBitField(index))
             {
                 int32_t begin= ntohl(*reinterpret_cast<int32_t*>(T_data->buf+ 4));
-                int32_t length= ntohl(*reinterpret_cast<int32_t*>(T_data->buf+ 8);
+                int32_t length= ntohl(*reinterpret_cast<int32_t*>(T_data->buf+ 8));
                 _SendPiece(T_data->socket,index,begin,length);
 				return ;
             }                
@@ -312,7 +367,7 @@ namespace Csz
     void SelectSwitch::_SendPiece(int T_socket,int32_t T_index,int32_t T_begin,int32_t T_length)
     {
 		//1.get have slice file name
-		auto file_name= TorrentFile::GetInstance()->GetFileName(T_index,T_begin+ T_length);
+		auto file_name= TorrentFile::GetInstance()->GetFileName(T_index,T_begin,T_length);
 		if (file_name.empty())
 		{
 			Csz::ErrMsg("Select Switch send piece file name is empty");
@@ -323,10 +378,10 @@ namespace Csz
 		for (const auto& val : file_name)
 		{
 			butil::FilePath file_path(val.first);
-			butil::File file(file_path,butil::File::FLAG_OPEN | butil::FLAG_READ);
+			butil::File file(file_path,butil::File::FLAG_OPEN | butil::File::FLAG_READ);
 			if (!file.IsValid())
 			{
-				Csz::ErrMsg("%s",butil::ErrorToString(file.error_details()).c_str());
+				Csz::ErrMsg("%s",butil::File::ErrorToString(file.error_details()).c_str());
 				file.Close();
 				break;
 			}
@@ -341,7 +396,7 @@ namespace Csz
 		Piece piece;
 		piece.SetParameter(T_index,T_begin,piece_data);
         //2.get mutex
-        auto mutex= PeerManager::GetInstance()->GetSocketMutex(T_data->socket);
+        auto mutex= PeerManager::GetInstance()->GetSocketMutex(T_socket);
         if (nullptr== mutex)
         {
             Csz::ErrMsg("Select Switch send piece failed,return mutex is nullptr");
@@ -357,7 +412,7 @@ namespace Csz
 	{
 		if (nullptr== T_data)
 		{
-			Csz::ErrMsg("Select Switch piece,parameter is nullptr")
+			Csz::ErrMsg("Select Switch piece,parameter is nullptr");
 			return ;
 		}
 		std::unique_ptr<Parameter> guard(T_data);
@@ -366,9 +421,9 @@ namespace Csz
         int32_t begin= ntohl(*reinterpret_cast<int32_t*>(T_data->buf+ 4));
         int32_t length= T_data->cur_len- 8;
         auto local_bit_field= LocalBitField::GetInstance();
-
+        auto torrent_file= TorrentFile::GetInstance();
         //fix bug end_piece,len < slice size
-        auto real_end_slice= local_bit_field->CheckEndSlice(index,begin);
+        auto real_end_slice= torrent_file->CheckEndSlice(index,begin);
         if (!real_end_slice.first && SLICESIZE!= length)
         {
             Csz::ErrMsg("Select Switch recv piece is error,slice !=%d",SLICESIZE);
@@ -381,18 +436,17 @@ namespace Csz
         }
 
         //1.write memory
-        auto memory_pool= BitMemory::GetInstance();
-        memory_pool->Write(index,begin,T_data->buf+ 8,length);
+        BitMemory::GetInstance()->Write(index,begin,T_data->buf+ 8,length);
 
         //2.lock piece
         auto need_piece= NeedPiece::GetInstance();
         auto peer_manager= PeerManager::GetInstance();
-        std::vector<uint8_t> over(TorrentFile::GetInstance()->GetPieceBit(index),0);
+        std::vector<uint8_t> over(torrent_file->GetPieceBit(index),0);
         over[begin/SLICESIZE]= 1;
         int cur_socket= T_data->socket;
         int fill= 1;
         const int size= over.size();
-        auto end_slice= local_bit_field->CheckEndSlice(index);
+        auto end_slice= torrent_file->CheckEndSlice(index);
 
         //if index is end_end,upon write is fill piece space
         //2.1 quick donwload piece
@@ -413,7 +467,7 @@ namespace Csz
                     //2.1.2 normal slice
                     else
                     {
-                        code= _LockPiece(cur_socket,index,i* SLICESIZE,T_SLICESIZE);
+                        code= _LockPiece(cur_socket,index,i* SLICESIZE,SLICESIZE);
                     }
                     //success recv slice
                     if (true== code)
@@ -422,13 +476,13 @@ namespace Csz
                         ++fill;
                     }
                     // failed socket,unoder
-                    else if (!sockets_alive.empyt())
+                    else if (!sockets_alive.empty())
                     {
                         //close failed socket
                         peer_manager->CloseSocket(cur_socket);
 
                         cur_socket= sockets_alive.back();
-                        socket_alive.bakc_pop();
+                        sockets_alive.pop_back();
                     }
                     else
                     {
@@ -439,7 +493,7 @@ namespace Csz
                         cur_socket= -1;
 
                         //notify peer mamager
-                        peer_mamager->CloseSocket(cur_socket);
+                        peer_manager->CloseSocket(cur_socket);
 
                         //get new hot socket for piece
                         int time_out= TIMEOUT1000MS;
@@ -450,12 +504,12 @@ namespace Csz
                             {
                                 Csz::ErrMsg("Select Switch deal piece time out,pop point need piece");
                                 bthread_usleep(time_out);
-                                time_cout*= 2;   
+                                time_out*= 2;   
                             }
                             else
                             {
                                 cur_socket= sockets_alive.back();
-                                sockets_alive.back_pop();
+                                sockets_alive.pop_back();
                                 break;
                             }
                         }
@@ -489,17 +543,22 @@ namespace Csz
             std::unique_lock<bthread::Mutex> mutex_guard(*mutex);
             if (send(T_socket,request.GetSendData(),request.GetDataSize(),0)!= T_length)
             {
-                Csz::ErrMsg("Select Switch lock piece failed,send size!=%d",T_length)
+                Csz::ErrMsg("Select Switch lock piece failed,send size!=%d",T_length);
                 return false;
             }
         }
         bool ret= false;
         for (int i= 0; i< 3; ++i)
         {
-            Parameter* parameter;
-            std::unique_ptr<Parameter> guard(new Parameter);
+            Parameter* parameter= new(std::nothrow) Parameter();
+            if (nullptr== parameter)
+            {
+                Csz::ErrMsg("Select Switch lock piece failed,new Parameter return nullptr");
+                continue;
+            }
+            std::unique_ptr<Parameter> guard(parameter);
             parameter->socket= T_socket;
-            int code= Csz::RecvTime_us(parameter->socket,&parameter->len,sizeof(parameter->len),TIMEOUT1000MS);
+            int code= Csz::RecvTime_us(parameter->socket,(char*)&parameter->len,sizeof(parameter->len),TIMEOUT1000MS);
             if (-1== code)
             {
                 break;
@@ -543,7 +602,7 @@ namespace Csz
             }
             else if (3== id)//catch not interested
             {
-                NeedPiece::GetInstance()->NPUnInterester(parameter->socket);
+                NeedPiece::GetInstance()->NPUnInterested(parameter->socket);
             }
             else if (4== id)//catch have
             {
@@ -645,19 +704,41 @@ namespace Csz
 	{
 		if (nullptr== T_data)
 		{
-			Csz::ErrMsg("Select Switch,parameter is nullptr")
+			Csz::ErrMsg("Select Switch async piece,parameter is nullptr");
 			return ;
 		}
 		std::unique_ptr<Parameter> guard(T_data);
 		int code = Csz::RecvTime_us(T_data->socket,T_data->buf+ T_data->cur_len,T_data->len,TIMEOUT1000MS);
 		if (-1== code)
 		{
-			Csz::ErrMSg("Select Switch async piece failed");
+			Csz::ErrMsg("Select Switch async piece failed");
 			return ;
 		}
-		FD_SET(T_data->socket,rset_save);
+		FD_SET(T_data->socket,&rset_save);
 		auto origin= guard.release();
 		DPiece(origin);
 		return ;
-	}	
+	}
+    	
+	void SelectSwitch::DCancle(Parameter* T_data)
+	{
+		if (nullptr== T_data)
+		{
+			Csz::ErrMsg("Select Switch cancle,parameter is nullptr");
+			return ;
+		}
+		std::unique_ptr<Parameter> guard(T_data);
+		return ;
+	}
+
+	void SelectSwitch::DPort(Parameter* T_data)
+	{
+		if (nullptr== T_data)
+		{
+			Csz::ErrMsg("Select Switch port,parameter is nullptr");
+			return ;
+		}
+		std::unique_ptr<Parameter> guard(T_data);
+		return ;
+	}
 }

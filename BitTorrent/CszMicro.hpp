@@ -10,7 +10,7 @@
 
 //DownSpeed Comp
 //max heap
-#define DSComp [](std::pair<int,uint32_t>& T_lhs,std::pair<int,uint32_t>& T_rhs)\
+#define DSComp [](const std::pair<int,uint32_t>& T_lhs,const std::pair<int,uint32_t>& T_rhs)\
 {\
 	return T_lhs.second< T_rhs.second;\
 }

@@ -23,7 +23,7 @@ namespace Csz
 	}
 
 	template<class Parameter,int TASKNUM>
-	inline void TaskQueue<Parameter,TASKNUM>::_Push(TaskQueue::Type* T_task)
+	inline void TaskQueue<Parameter,TASKNUM>::_Push(typename TaskQueue<Parameter,TASKNUM>::Type* T_task)
 	{
 		if (nullptr== T_task)
 			return ;
@@ -37,7 +37,11 @@ namespace Csz
 		{
 			return ;
 		}
-		task_queue.emplace_back(std::move(*T_rask));
+        Data data;
+        data.priority= 0;
+        data.func= std::move(T_task->first);
+        data.parameter= T_task->second;
+		task_queue.emplace_back(data);
 		std::push_heap(task_queue.begin(),task_queue.end(),TQComp);
 		guard.unlock();
 		pop_cond.notify_one();
@@ -45,7 +49,7 @@ namespace Csz
 	}
 
 	template<class Parameter,int TASKNUM>
-	inline bool TaskQueue<Parameter,int TASKNUM>::_Pop(TaskQueue::Type* T_task)
+	inline bool TaskQueue<Parameter,TASKNUM>::_Pop(typename TaskQueue<Parameter,TASKNUM>::Type* T_task)
 	{
 		if (nullptr== T_task)
 			return false;
@@ -70,20 +74,20 @@ namespace Csz
 	}
 
 	template<class Parameter,int TASKNUM>
-	void TaskQueue<Parameter,int TASKNUM>::Push(TaskQueue::Type* T_task)
+	void TaskQueue<Parameter,TASKNUM>::Push(typename TaskQueue<Parameter,TASKNUM>::Type* T_task)
 	{
 		_Push(T_task);
 		return ;
 	}
 
 	template<class Parameter,int TASKNUM>
-	bool TaskQueue<Parameter,int TASKNUM>::Pop(TaskQueue::Type* T_task)
+	bool TaskQueue<Parameter,TASKNUM>::Pop(typename TaskQueue<Parameter,TASKNUM>::Type* T_task)
 	{
 		return _Pop(T_task);
 	}
 
 	template<class Parameter,int TASKNUM>
-	void TaskQueue<Parameter,int TASKNUM>::Stop()
+	void TaskQueue<Parameter,TASKNUM>::Stop()
 	{
 		{
 			std::unique_lock<bthread::Mutex> guard(queue_mutex);
@@ -94,4 +98,5 @@ namespace Csz
 		return ;
 	}
 }
+
 #endif //CszTASKQUEUE_HPP

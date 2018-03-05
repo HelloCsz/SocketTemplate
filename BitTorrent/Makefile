@@ -4,8 +4,8 @@ TARGET= BitTorrent
 HDR_DIR= $(SRC)/Error $(SRC)/Web $(SRC)/Sock
 
 SOURCES= $(SRC)/BitTorrent/main.cpp\
-		 $(SRC)/BitTorrent/sha1.c
-#		 $(SRC)/BitTorrent/CszBInt.cpp\
+		 $(SRC)/BitTorrent/sha1.c\
+		 $(SRC)/BitTorrent/CszBInt.cpp\
 		 $(SRC)/BitTorrent/CszBStr.cpp\
 		 $(SRC)/BitTorrent/CszBList.cpp\
 		 $(SRC)/BitTorrent/CszBDict.cpp\
@@ -18,8 +18,11 @@ SOURCES= $(SRC)/BitTorrent/main.cpp\
 		 $(SRC)/BitTorrent/CszDownSpeed.cpp\
 		 $(SRC)/BitTorrent/CszNeedPiece.cpp\
 		 $(SRC)/BitTorrent/CszPeerManager.cpp\
+		 $(SRC)/BitTorrent/CszLocalBitField.cpp\
 		 $(SRC)/BitTorrent/CszPiece.cpp\
 		 $(SRC)/BitTorrent/CszReqCleBase.cpp\
+		 $(SRC)/BitTorrent/CszSelectSwitch.cpp\
+		 $(SRC)/BitTorrent/CszBitMemory.cpp\
 		 $(SRC)/Error/CszError.cpp\
 		 $(SRC)/Web/CszHttpRequest.cpp\
 		 $(SRC)/Web/CszHttpResponse.cpp\
@@ -28,7 +31,9 @@ SOURCES= $(SRC)/BitTorrent/main.cpp\
 		 $(SRC)/Sock/CszTcpConnect.cpp\
 		 $(SRC)/Sock/CszFcntl.cpp\
 		 $(SRC)/Sock/CszCreateSocket.cpp\
-		 $(SRC)/Sock/CszSocketHostServNull.cpp
+		 $(SRC)/Sock/CszSocketHostServNull.cpp\
+		 $(SRC)/Sock/CszRecvTime_us.cpp\
+		 $(SRC)/Sock/CszClose.cpp
 
 OBJECTS= $(addsuffix .o, $(basename $(SOURCES)))
 OBJECTS+= $(PROTOS:.proto=.pb.o)

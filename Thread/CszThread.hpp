@@ -1,17 +1,18 @@
 #ifndef CszTHREAD_HPP
 #define CszTHREAD_HPP
 
-#include <thread/thread.h> //bthread_start_background
-#include <thread/condition_variable.h> //ConditionVariable
-#include <thread/mutex.h> //Mutex
+#include <bthread/bthread.h> //bthread_start_background
+#include <bthread/condition_variable.h> //ConditionVariable
+#include <bthread/mutex.h> //Mutex
 #include <algorithm>
 #include <vector>
 #include "../CszNonCopyAble.hpp"
+
 namespace Csz
 {
 	//semi-sync and semi-async
 	template <class Parameter,int TASKNUM>
-	class TaskQueue : public NoncopyAble
+	class TaskQueue : public NonCopyAble
 	{
 		private:
 			struct Data
@@ -19,7 +20,7 @@ namespace Csz
 				Data():priority(0),parameter(nullptr){}
 				int priority;
 				Parameter* parameter;
-				std::function<void(void*)> func;
+				std::function<void(Parameter*)> func;
 			};
 		private:
 			bool stop;
@@ -55,8 +56,8 @@ namespace Csz
             void Init(int T_num);
 			void SetConcurrency(int T_num);
 			int GetConcurrency();
-			void Push(TaskQueue::Type* T_task);
-			bool Pop(TaskQueue::Type* T_task);
+			void Push(typename TaskQueue<Parameter,TASKNUM>::Type* T_task);
+			bool Pop(typename TaskQueue<Parameter,TASKNUM>::Type* T_task);
 			static void* Run(void*);
 			void Stop();
 	};

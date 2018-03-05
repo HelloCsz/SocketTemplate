@@ -47,7 +47,7 @@ namespace Csz
 		ret.reserve(4);
 		for (auto start= queue.cbegin(); start< stop; ++start)
 		{
-			ret.emplace_back(start->second);
+			ret.emplace_back(start->first);
 		}
 		return std::move(ret);
 	}
@@ -62,7 +62,7 @@ namespace Csz
 		}
 		for (auto start= queue.cbegin(); start< stop; ++start)
 		{
-			if (T_socket== start->second)
+			if (T_socket== start->first)
 				return true;
 		}
 		return false;

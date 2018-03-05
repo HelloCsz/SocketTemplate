@@ -105,14 +105,20 @@ namespace Csz
 		auto stop= data.end();
 		if (T_name== "infofilespath")
 		{
+            if (start!= stop)
+            {
+                data.back()->ReadData(T_name,T_connect);
+            }
+/*
 			auto path= start;
 			++start;
 			for (;start< stop; ++start)
 			{
-				(path->data).append("/");
-				(path->data).append(*start);
+				((*path)->data)append("/");
+				((*path)->data)append(*start);
 			}
-			path->ReadData(T_name,T_connect);
+			(*path)->ReadData(T_name,T_connect);
+*/
 		}
 		else//normal type
 		{

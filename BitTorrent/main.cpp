@@ -1,6 +1,8 @@
 #include <string>
 #include <fstream>
 #include <iostream>
+#include <butil/files/file_path.h> //butil::file_path
+#include <butil/files/file.h> //butil::file
 #include "CszBitTorrent.h"
 #include "../Thread/CszSingletonThread.hpp"
 #include "sha1.h"
@@ -8,20 +10,26 @@
 int main(int argc,char** argv)
 {
 	if (argc< 2)
-		return 0;
-	std::ifstream file(argv[1]);
-	if (!file.is_open())
-	{
-		printf("%s open faiure\n",argv[1]);
-		return 0;
-	}
-	std::string data((std::istreambuf_iterator<char>(file)),std::istreambuf_iterator<char>());
-
+		return -1;
+    butil::FilePath file_path(argv[1]);
+    butil::File file(file_path,butil::File::FLAG_OPEN | butil::File::FLAG_READ);
+    if (!file.IsValid())
+    {
+        Csz::ErrQuit("torrent file %s",butil::File::ErrorToString(file.error_details().c_str());
+        file.Close();
+        return -1;
+    }
+	std::string data(file.GetLength(),0);
+    if (file.GetLength()!= file.Read(0,&data[0],data.size()))
+    {
+        Csz::ErrQuit("read byte num!= %d",file.GetLength());
+        return -1;  
+    }
 #ifdef CszTest
 	printf("file size:%lu\n",data.size());
 #endif
+    file.Close();
 
-	file.close();
 	Csz::Tracker tracker;
 	//计算info hash val
 	{

@@ -1,4 +1,9 @@
+#include <butil/resource_pool.h> //butil::ResourcePool
+#include <butil/files/file_path.h> //butil::file_path
+#include <butil/files/file.h> //butil::file
+#include <string.h> //memcpy
 #include "CszBitTorrent.h"
+#include "sha1.h"
 
 namespace Csz
 {
@@ -57,7 +62,7 @@ namespace Csz
                         _Clear();																                        \
                         /*TODO wait*/															                        \
                         Csz::ErrQuit("Bit Memory write failed,new return null");				                        \
-                        return ;																                        \
+                        return false;															                        \
                     }																			                        \
                     (data->second).emplace_back(std::make_pair(id,reinterpret_cast<char*>(buf)));						\
                     cur_memory-= sizeof(BT);													                        \
@@ -69,7 +74,7 @@ namespace Csz
             if (block->first< T_length)															                        \
             {																					                        \
                 Csz::ErrMsg("Bit Memory write failed,left< write length");						                        \
-                return ;																		                        \
+                return false;																	                        \
             }																					                        \
             auto block_index= T_begin/ sizeof(BT);												                        \
             T_begin%= sizeof(BT);																                        \
@@ -116,6 +121,8 @@ namespace Csz
 				if (hash_data!= TorrentFile::GetInstance()->GetHash(T_index))									        \
 				{																				                        \
 					Csz::ErrMsg("Bit Memory write failed,piece hash info is error");			                        \
+                    ClearIndex(T_index);                                                                                \
+                    return false;                                                                                       \
 				}																				                        \
 				else																			                        \
 				{																				                        \
@@ -123,35 +130,36 @@ namespace Csz
 					if (_Write(T_index)== T_LEN)														                \
 					{																			                        \
 						/*TODO update bitfield,send have*/                                                              \
-						LocalBitField::GetInstance()->FillBitField(T_index);					                        \
+						LocalBitField::GetInstance()->FillBitField(T_index);    			                            \
+                        ClearIndex(T_index);                                                                            \
+                        return true;                                                                                    \
 					}																			                        \
+                    ClearIndex(T_index);                                                                                \
+                    return false;                                                                                       \
 				}																				                        \
-                ClearIndex(T_index);															                        \
             }																					
 
 
-    void BitMemory::Write(int32_t T_index,int32_t T_begin,const char* T_buf,int32_t T_length)
+    bool BitMemory::Write(int32_t T_index,int32_t T_begin,const char* T_buf,int32_t T_length)
     {
         if (T_index< 0)
         {
             Csz::ErrMsg("Bit Memory write failed,index < 0");
-            return  ;
+            return  false;
         }
         if (nullptr== T_buf || T_length<= 0)
         {
             Csz::ErrMsg("Bit Memory write failed,T_buf== nullptr or length < 0");
-            return ;
+            return false;
         }
         auto resource_pool= butil::ResourcePool<BT>::singleton();
         //1.deal end index
         if (index_end== T_index)
         { 
             MEMORYPOOL_DEAL(length_end);
-            return ;
         }
         //2.deal normal index
         MEMORYPOOL_DEAL(length_normal);
-        return ;
     }
 
 #undef  MEMORYPOOL_DEAL

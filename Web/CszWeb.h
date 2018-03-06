@@ -29,7 +29,6 @@ namespace Csz
 			//iovec数组多1,存放/r/n/r/n
 			bool BindMsg(struct iovec*,const size_t) const;
 			size_t size()const;
-			void ClearMethod();
 		public:
 #ifdef CszTest
 			void COutInfo()const;

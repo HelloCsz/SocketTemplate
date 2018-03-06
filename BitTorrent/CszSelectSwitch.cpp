@@ -1,6 +1,11 @@
+#include <butil/files/file.h> //butil::file
+#include <butil/files/file_path.h> //butil::file_path
+#include <bthread/bthread.h> //bthread_usleep
+#include <sys/select.h> //select
+#include <sys/socket.h> //getsockopt,setsockopt,recv,send
 #include "CszBitTorrent.h"
-#include <butil/files/file.h> 
-#include <butil/files/file_path.h>
+#include "../Thread/CszSingletonThread.hpp"
+#include "../Sock/CszSocket.h" //RecvTime_us
 
 namespace Csz
 {
@@ -435,8 +440,16 @@ namespace Csz
             return ;
         }
 
+        auto down_speed= DownSpeed::GetInstance()->GetInstance();
         //1.write memory
-        BitMemory::GetInstance()->Write(index,begin,T_data->buf+ 8,length);
+        if (true== BitMemory::GetInstance()->Write(index,begin,T_data->buf+ 8,length))
+        {
+            down_speed->AddTotal(T_data->socket,length);
+        }
+        else
+        {
+            return ;
+        }
 
         //2.lock piece
         auto need_piece= NeedPiece::GetInstance();
@@ -453,6 +466,7 @@ namespace Csz
         std::vector<int> sockets_alive;
         while (!local_bit_field->CheckBitField(index) && fill< size)
         { 
+            int32_t cur_write= 0;
             for (int i= 0; i< size; ++i)
             {
                 //lack slice
@@ -463,15 +477,18 @@ namespace Csz
                     if ((i== size- 1) && end_slice.first)
                     {
                         code= _LockPiece(cur_socket,index,i* SLICESIZE,end_slice.second);
+                        cur_write= end_slice.second;
                     }
                     //2.1.2 normal slice
                     else
                     {
                         code= _LockPiece(cur_socket,index,i* SLICESIZE,SLICESIZE);
+                        cur_write= SLICESIZE;
                     }
                     //success recv slice
                     if (true== code)
                     {
+                        down_speed->AddTotal(cur_socket,cur_write);
                         over[i]= 1;
                         ++fill;
                     }
@@ -491,9 +508,6 @@ namespace Csz
 
                         //init cur_socket
                         cur_socket= -1;
-
-                        //notify peer mamager
-                        peer_manager->CloseSocket(cur_socket);
 
                         //get new hot socket for piece
                         int time_out= TIMEOUT1000MS;
@@ -650,16 +664,18 @@ namespace Csz
                 int32_t index= ntohl(*reinterpret_cast<int32_t*>(parameter->buf));
                 if (T_index!= index)
                 {
+                    //TODO recv
                     Csz::ErrMsg("Select Switch lock piece recv piece,but index is mismatch");
                     continue;
                 }
                 int32_t begin= ntohl(*reinterpret_cast<int32_t*>(parameter->buf+ 4));
                 if (T_begin!= begin)
                 {
+                    //TODO recv
                     continue;   
                 }
-                BitMemory::GetInstance()->Write(index,begin,parameter->buf+ 8,parameter->len -8);
-                ret= true;
+                if (true== BitMemory::GetInstance()->Write(index,begin,parameter->buf+ 8,parameter->len -8))
+                    ret= true;
                 break;
             }
             else if (8== id)//catch cancle

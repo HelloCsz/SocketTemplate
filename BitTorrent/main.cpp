@@ -1,7 +1,10 @@
-#include "CszBitTorrent.h"
 #include <string>
 #include <fstream>
 #include <iostream>
+#include "CszBitTorrent.h"
+#include "../Thread/CszSingletonThread.hpp"
+#include "sha1.h"
+
 int main(int argc,char** argv)
 {
 	if (argc< 2)
@@ -13,9 +16,11 @@ int main(int argc,char** argv)
 		return 0;
 	}
 	std::string data((std::istreambuf_iterator<char>(file)),std::istreambuf_iterator<char>());
+
 #ifdef CszTest
 	printf("file size:%lu\n",data.size());
 #endif
+
 	file.close();
 	Csz::Tracker tracker;
 	//计算info hash val
@@ -29,69 +34,44 @@ int main(int argc,char** argv)
 		//20*8= 160bit
 		char info_buf[21]={0};
 		Sha1(data.c_str()+ info_flag+ 4,info_num,(unsigned char*)info_buf);
-		tracker.SetInfoHash(Csz::UrlEscape()(std::string(info_buf,20)));
+        std::string info_hash= Csz::UrlEscape()(std::string(info_buf,20));
+		tracker.SetInfoHash(info_hash);
+        //set reserved|info hash|peer id
+	    Csz::HandShake::GetInstance()->SetParameter(nullptr,info_hash.c_str(),nullptr);
 	}
 	Csz::BDict match;
 	match.Decode(data);
+
 #ifdef CszTest
 	printf("Dict Info:\n");
 	match.COutInfo();
 #endif
-	auto torrent_file= Csz::TorrentFile::GetInstance();
-	match.ReadData("",torrent_file);
+
+	match.ReadData("",Csz::TorrentFile::GetInstance());
+
 #ifdef CszTest
 	printf("Standard Info:\n");
-	torrent_file->COutInfo();
+	Csz::TorrentFile::GetInstance()->COutInfo();
 #endif
-	torrent_file->GetTrackInfo(&tracker);
+
+	Csz::TorrentFile::GetInstance()->GetTrackInfo(&tracker);
+
 #ifdef CszTest
 	printf("Tracker extract info:\n");
 	tracker.COutInfo();
 #endif
-	Csz::HttpRequest request;
-	request.SetHeader("Connection","Keep-alive");
-	request.SetHeader("User-Agent","Super Max");
-	request.SetHeader("Accept","text/html");
-	Csz::HttpResponse response;
-	Csz::CacheRegio cache;
-    //set get method uri parameter
-	{
-		auto id1= time(NULL);
-		auto id2= std::rand()%100000000+ 1000000000;
-		std::string id(std::to_string(id1));
-		id.append(std::to_string(id2));
-		std::string parameter("peer_id=");
-		parameter.append(Csz::UrlEscape()(id));
-		tracker.SetParameter(std::move(parameter));
-		parameter.assign("port=54321");
-		tracker.SetParameter(std::move(parameter));
-		parameter.assign("compact=1");
-		tracker.SetParameter(std::move(parameter));
-		parameter.assign("uploaded=0");
-		tracker.SetParameter(std::move(parameter));
-		parameter.assign("downloaded=0");
-		tracker.SetParameter(std::move(parameter));
-		parameter.assign("left=");
-		parameter.append(std::to_string(torrent_file->GetFileTotal()));
-		tracker.SetParameter(std::move(parameter));
-		parameter.assign("event=started");
-		tracker.SetParameter(std::move(parameter));
-		parameter.assign("numwant=50");
-		tracker.SetParameter(std::move(parameter));
-	}
+
 	tracker.Connect();
-	Csz::HandShake::GetInstance()->SetParameter(nullptr,tracker.GetInfoHash().c_str(),nullptr);
-	Csz::LocalBitField::GetInstance()->SetParameter(std::string(torrent_file->GetIndexTotal(),0));
-	Csz::LocalBitField::GetInstance()->SetEndBit(torrent_file->GetEndBit());
+	Csz::LocalBitField::GetInstance()->SetParameter(std::string(Csz::TorrentFile::GetInstance()->GetIndexTotal(),0));
+	Csz::LocalBitField::GetInstance()->SetEndBit(Csz::TorrentFile::GetInstance()->GetEndBit());
     //60s time out
-    std::vector<std::string> peer_list= tracker.GetPeerList(&request,&response,&cache,60);
-	Csz::PeerManager::GetInstance()->LoadPeerList(peer_list);
+	Csz::PeerManager::GetInstance()->LoadPeerList(tracker.GetPeerList(60));
     //select
 	{
-		while (SelectSwitch()()== false)
+		while (Csz::SelectSwitch()()== false)
 		{
-			auto peer_list= tracket.GetPeerList(&request,&response,&cache,60);
-			Csz::PeerManager::GetInstance()->LoadPeerList(peer_lis);
+			auto peer_list= tracker.GetPeerList(60);
+			Csz::PeerManager::GetInstance()->LoadPeerList(peer_list);
 		}
 	}
 	return 0;

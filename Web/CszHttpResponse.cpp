@@ -1,6 +1,6 @@
-#include "CszWeb.h"
 #include <string> //stoi
 #include <cctype> //isdigit
+#include "CszWeb.h"
 
 #ifdef CszTest
 #include <cstdio>

@@ -5,35 +5,24 @@
 
 #include "../Error/CszError.h"
 #include "../Web/CszWeb.h" //CszHttpRequest,CszHttpResponse,CszUrlEscape
-#include "../Sock/CszSocket.h" //CszTcpConnect,CszFcntl,CszSocketHostServNull
-#include "sha1.h" 
 #include "../CszNonCopyAble.hpp"
-#include "../Thread/CszSingletonThread.hpp"
-#include <unistd.h> //write in CszBStr
-#include <sys/select.h> //select
-#include <sys/uio.h> //writev
-#include <ctime> //time
-#include <cstdint> //uint64_t
-#include <cstdlib> //srand,rand
-#include <sys/select.h>
-#include <stdexcept> //invalid_argument,out_of_rangea
 #include <string>
 #include <vector>
 #include <unordered_map>
-#include <set>
 #include <functional> //std::function,binary_function
 #include <utility> //std::make_pair
 #include <memory> //shared_ptr
-#include <cstring> //bzero,memcpy
 #include <arpa/inet.h> //htonl
 //brpc
 #include <butil/memory/singleton_on_pthread_once.h> //butil::singleton
 #include <butil/resource_pool.h> //butil::ResourcePool
-#include <butil/files/file_path.h> //butil::file_path
-#include <butil/files/file.h> //butil::file
-#include <bthread/mutex.h>  //Mutex
+#include <bthread/mutex.h> //Mutex
 //micro
 #include "CszMicro.hpp"
+
+#ifdef CszTest
+#include <cstdio>
+#endif
 
 namespace Csz
 {
@@ -113,45 +102,7 @@ namespace Csz
 		int operator()(const char* T_str,int T_len) const;
 	};
 
-//tracker
-	struct TrackerInfo
-	{
-        //tcp set -1,udp set -2
-		TrackerInfo():socket_fd(-3){}
-		TrackerInfo(TrackerInfo&&);
-		std::string host;
-		std::string serv;
-		std::string uri;
-		int socket_fd;
-	};
-
-	class Tracker
-	{
-		public:
-			Tracker();
-			~Tracker();
-			std::vector<int> RetSocket() const;
-			void Connect();
-			void SetTrackInfo(TrackerInfo);
-			void SetInfoHash(std::string);
-			void SetParameter(std::string);
-			std::vector<std::string> GetPeerList(HttpRequest*,HttpResponse*,CacheRegio*const,int);
-			const std::string& GetInfoHash()const {return info_hash;}
-#ifdef CszTest
-			void COutInfo();
-#endif
-		private:
-			void _Capturer(HttpResponse*,CacheRegio*const,const int&);
-			void _Delivery(HttpRequest*,const int&,const std::string&);
-			void _UpdateReq();
-		private:
-			std::string info_hash;
-			std::string parameter_msg;
-			std::vector<TrackerInfo> info;
-			HttpRequest request;
-			HttpResponse response;
-			CacheRegio cache;
-	};
+    class Tracker;
 
 	class TorrentFile
 	{
@@ -214,6 +165,49 @@ namespace Csz
 			void COutInfo();
 #endif
 	};
+
+//tracker
+	struct TrackerInfo
+	{
+        //tcp set -1,udp set -2
+		TrackerInfo():socket_fd(-3){}
+		TrackerInfo(TrackerInfo&&);
+		std::string host;
+		std::string serv;
+		std::string uri;
+		int socket_fd;
+	};
+
+	class Tracker
+	{
+		public:
+			Tracker();
+			~Tracker();
+			std::vector<int> RetSocket() const;
+			void Connect();
+			void SetTrackInfo(TrackerInfo);
+			void SetInfoHash(std::string);
+            //unuse method
+			void SetParameter(std::string);
+			std::vector<std::string> GetPeerList(int T_timeout);
+			//const std::string& GetInfoHash()const {return info_hash;}
+#ifdef CszTest
+			void COutInfo();
+#endif
+		private:
+			void _Capturer(const int T_socket);
+			void _Delivery(const int T_socket,const std::string& T_uri);
+            //update http parameter msg
+			void _UpdateReq();
+            void _InitReq();
+		private:
+			std::string info_hash;
+			std::string parameter_msg;
+			std::vector<TrackerInfo> info;
+			HttpRequest request;
+			HttpResponse response;
+			CacheRegio cache;
+	};
     
     class PeerManager
     {
@@ -230,14 +224,7 @@ namespace Csz
 			friend void butil::GetLeakySingleton<PeerManager>::create_leaky_singleton();
         public:
             void LoadPeerList(const std::vector<std::string> &T_socket_list);
-            void AddSocket(const int T_socket)
-            {
-                if (T_socket>= 0)
-                {
-                    std::shared_ptr<bthread::Mutex> mutex(new bthread::Mutex());
-                    peer_list.emplace(std::make_pair(T_socket,mutex));
-                }
-            }
+            void AddSocket(const int T_socket);
 			std::vector<int> RetSocketList()const;
 			void CloseSocket(int T_socket);
 			void CloseSocket(std::vector<int>* T_sockets);
@@ -574,15 +561,17 @@ namespace Csz
 			//socket | download speed
 			std::vector<std::pair<int,uint32_t>> queue;
 		public:
-			void AddMember(const int T_socket)
+			void AddSocket(const int T_socket)
 			{
 				queue.emplace_back(std::make_pair(T_socket,0));
+                return ;
 			}
 			void AddTotal(const int T_socket,const uint32_t T_speed);
 			void AddTotal(std::vector<std::pair<int,uint32_t>>& T_queue);
-			//four
+			//four and TODO check interesed
 			std::vector<int> RetSocket();
 			bool CheckSocket(const int T_socket);
+            void ClearSocket(int T_socket);
 	};
 
 	//Need Piece
@@ -694,7 +683,7 @@ namespace Csz
             using TypeP= std::shared_ptr<Type>;
             std::unordered_map<int32_t,TypeP> memory_pool;
         public:
-            void Write(int32_t T_index,int32_t T_begin,const char* T_buf,int32_t T_length);
+            bool Write(int32_t T_index,int32_t T_begin,const char* T_buf,int32_t T_length);
             void Init(int32_t T_index_end,int32_t T_length_end,int32_t T_length_normal);
             void ClearIndex(int32_t T_index);
         private:

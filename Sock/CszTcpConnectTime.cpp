@@ -1,4 +1,5 @@
 #include "CszSocket.h"
+#include "../Signal/CszSignal.h"
 
 namespace Csz
 {

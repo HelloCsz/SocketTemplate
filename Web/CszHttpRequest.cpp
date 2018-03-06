@@ -1,11 +1,14 @@
+#include <sys/uio.h>
 #include "CszWeb.h"
 
 namespace Csz
 {
 	HttpRequest::HttpRequest():head_end("\r\n\r\n")
 	{
+        //first line may be at header after write
 		data.push_back("");
 	}
+
 	void HttpRequest::SetFirstLine(std::string T_request_head)
 	{
 		if (data.empty())
@@ -15,18 +18,22 @@ namespace Csz
 		data[0].assign(std::move(T_request_head.append("\r\n")));
 		//data.push_back(T_request_head.append("\r\n"));
 	}
+
 	void HttpRequest::SetFirstLine(const char* T_request_head)
 	{
 		SetFirstLine(std::string(T_request_head));
 	}
+
 	void HttpRequest::SetHeader(std::string T_name,std::string T_val)
 	{
 		data.push_back(std::move(T_name.append(": "+T_val+"\r\n")));
 	}
+
 	void HttpRequest::SetHeader(const char* T_name,const char* T_val)
 	{
 		SetHeader(std::string(T_name),std::string(T_val));
 	}
+
 	//iovec数组多1,存放/r/n/r/n
 	bool HttpRequest::BindMsg(struct iovec* T_iovec,const size_t T_iovec_len) const
 	{
@@ -49,16 +56,12 @@ namespace Csz
 		}
 		return true;
 	}
+
 	size_t HttpRequest::size()const
 	{
 		return data.size();
 	}
-	void HttpRequest::ClearMethod()
-	{
-		//data.clear();
-		//data.push_back("");
-		data[0].assign("");
-	}
+
 #ifdef CszTest
 	void HttpRequest::COutInfo()const
 	{

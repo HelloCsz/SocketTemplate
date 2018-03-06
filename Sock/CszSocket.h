@@ -15,7 +15,7 @@
 #include <unistd.h> //colse,
 #include <fcntl.h> //fcntl
 #include "../Error/CszError.h"
-#include "../Signal/CszSignal.h"
+//#include "../Signal/CszSignal.h"
 
 namespace Csz
 {

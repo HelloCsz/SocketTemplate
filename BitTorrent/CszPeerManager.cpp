@@ -1,4 +1,8 @@
+#include <strings.h> //bzero
+#include <sys/socket.h> //getsockopt,setsockopt,send,recv
+#include <sys/select.h> //select
 #include "CszBitTorrent.h"
+#include "../Sock/CszSocket.h"
 
 namespace Csz
 {
@@ -19,6 +23,16 @@ namespace Csz
         }
         return std::move(ret);
     }   
+
+    void PeerManager::AddSocket(const int T_socket)
+    {
+        if (T_socket>= 0)
+        {
+            std::shared_ptr<bthread::Mutex> mutex(new bthread::Mutex());
+            peer_list.emplace(std::make_pair(T_socket,mutex));
+            DownSpeed::GetInstance()->AddSocket(T_socket);
+        }
+    }
 
     void PeerManager::LoadPeerList(const std::vector<std::string>& T_socket_list)
     {
@@ -80,21 +94,25 @@ namespace Csz
         }
 		//5.ensure connect and send hand shake
 		_Connected(ret);
-		//6.recv hand shake
+		//6.recv hand shake and delete failed socket
 		_Verification(ret);
 		//7.send bit field
 		_SendBitField(ret);
 		//TODO 8.lock and update peer list and socket_map_id
 		NeedPiece::GetInstance()->SocketMapId(ret);
+        auto down_speed= DownSpeed::GetInstance();
         for (const auto& val : ret)
         {
+#ifdef CszTest
             if (peer_list.find(val)!= peer_list.end())
             {
                 Csz::ErrMsg("Peer Manager peer list insert already exist");
                 continue;  
             }
+#endif
             std::shared_ptr<bthread::Mutex> mutex(new bthread::Mutex);
             peer_list.emplace(val,mutex);
+            down_speed->AddSocket(val);
         }
         return ;       
     }
@@ -105,7 +123,7 @@ namespace Csz
         {
             if (val.first>= 0)
             {
-                close(val.first);
+                Csz::Close(val.first);
             }
         }
     }
@@ -186,7 +204,7 @@ namespace Csz
                     if (getsockopt(val,SOL_SOCKET,SO_ERROR,&errno_save,&errno_len)< 0)
                     {
                         Csz::ErrRet("PeerManager can't connect peer");
-                        close(val);
+                        Csz::Close(val);
                         val= -1;
                         continue ;
                     }
@@ -195,7 +213,7 @@ namespace Csz
                     {
                         //strerror non-sofathread
                         Csz::ErrMsg("PeerManager can't connect peer:%s",strerror(errno_save));
-                        close(val);
+                        Csz::Close(val);
                         val= -1;
                         continue ;
                     }
@@ -345,6 +363,7 @@ namespace Csz
 			//lock
 			peer_list.erase(result);
             NeedPiece::GetInstance()->ClearSocket(T_socket);
+            DownSpeed::GetInstance()->ClearSocket(T_socket);
 		}
 		return ;
 	}

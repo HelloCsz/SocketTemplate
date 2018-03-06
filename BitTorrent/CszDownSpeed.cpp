@@ -67,4 +67,20 @@ namespace Csz
 		}
 		return false;
 	}
+    
+    void DownSpeed::ClearSocket(int T_socket)
+    {
+        auto flag= queue.cbegin();
+        auto stop= queue.cend();
+        for (; flag< stop; ++flag)
+        {
+            if (flag->first== T_socket)
+                break;
+        }       
+        if (flag!= stop)
+        {
+            queue.erase(flag);
+        }
+        return ;
+    }
 }

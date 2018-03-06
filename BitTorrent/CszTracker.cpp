@@ -1,8 +1,23 @@
+#include <sys/uio.h> //writev
+#include <sys/types.h>
+#include <sys/socket.h> //connect
+#include <netdb.h> //freeaddrinfo
+#include <sys/select.h> //select
+#include <time.h> //time
+#include <stdlib.h> //rand,rand
 #include "CszBitTorrent.h"
+#include "../Sock/CszSocket.h" //Close
+#include "../Web/CszWeb.h" //CszUrlEscape
 
 namespace Csz
 {
-	Tracker::Tracker(){}
+	Tracker::Tracker()
+    {
+        //init http request header
+        _InitReq();
+        //init http parameter msg
+        _UpdateReq();
+    }
 
 	Tracker::~Tracker()
 	{
@@ -171,7 +186,7 @@ namespace Csz
 					if (getsockopt(val.socket_fd,SOL_SOCKET,SO_ERROR,&errno_save,&errno_len)< 0)
 					{
 						Csz::ErrRet("Tracker can't get peer list,host:%s",val.host.c_str());
-						close(val.socket_fd);
+						Csz::Close(val.socket_fd);
 						val.socket_fd= -1;
 						--quit_num;
 						//--count;
@@ -181,7 +196,7 @@ namespace Csz
 					else if (errno_save)
 					{
 						Csz::ErrMsg("Tracker can't get peer list,host:%s,%s",val.host.c_str(),strerror(errno_save));
-						close(val.socket_fd);
+						Csz::Close(val.socket_fd);
 						val.socket_fd= -1;
 						--quit_num;
 						//--count;
@@ -201,7 +216,7 @@ namespace Csz
 					printf("Capturer host:%s,serv:%s,%d\n",val.host.c_str(),val.serv.c_str(),val.socket_fd);
 #endif
 					_Capturer(val.socket_fd);
-                    ret_str.emplace_back(std::move(response->GetBody()));
+                    ret_str.emplace_back(std::move(response.GetBody()));
 					--quit_num;
 				}
 			}
@@ -211,7 +226,7 @@ namespace Csz
 		return std::move(ret_str);
 	}
 
-	inline void Tracker::_Delivery(const int T_socket,const std::string& T_uri)
+	void Tracker::_Delivery(const int T_socket,const std::string& T_uri)
 	{
 		std::string request_line;
 		request_line.reserve(128);
@@ -223,15 +238,16 @@ namespace Csz
 		request_line.append(1,'&');
 		request_line.append(parameter_msg);
 		request_line.append(" HTTP/1.1");
-		T_request->SetFirstLine(std::move(request_line));
+		request.SetFirstLine(std::move(request_line));
 #ifdef CszTest
 		printf("Delivery Info:\n");
-		T_request->COutInfo();
+		request.COutInfo();
 #endif
+
 		struct iovec data_array[16];
 		//hearder 与 body间隔\r\n\r\n size()+ 1
-		size_t msg_num= T_request->size()>= 16? 16 : T_request->size()+ 1;
-		if (!T_request->BindMsg(data_array,msg_num))
+		size_t msg_num= request.size()>= 16? 16 : request.size()+ 1;
+		if (!request.BindMsg(data_array,msg_num))
 		{
 			Csz::ErrMsg("Tracker can't Delivery");
 			return ;
@@ -243,16 +259,59 @@ namespace Csz
 		else
 			printf("Delivery msg size:%d\n",send_num);
 #endif
-		T_request->ClearMethod();
 		return ;
 	}
 
 	inline void Tracker::_Capturer(const int T_socket)
 	{
-        T_response->Clear();
-		T_response->Capturer(T_socket_fd,T_cache);
+        response.Clear();
+		response.Capturer(T_socket,&cache);
 		return ;
 	}
+    
+    inline void Tracker::_InitReq()
+    {
+	    request.SetHeader("Connection","Keep-alive");
+	    request.SetHeader("User-Agent","Super Max");
+	    request.SetHeader("Accept","text/html");
+        return ;
+    }
+    
+    void Tracker::_UpdateReq()
+    {
+        parameter_msg.clear();
+		auto id1= time(NULL);
+		auto id2= std::rand()%100000000+ 1000000000;
+		std::string id(std::to_string(id1));
+		id.append(std::to_string(id2));
+		std::string parameter("peer_id=");
+		parameter.append(Csz::UrlEscape()(id));
+		SetParameter(std::move(parameter));
+
+		parameter.assign("port=54321");
+		SetParameter(std::move(parameter));
+
+		parameter.assign("compact=1");
+		SetParameter(std::move(parameter));
+
+		parameter.assign("uploaded=0");
+		SetParameter(std::move(parameter));
+
+		parameter.assign("downloaded=0");
+		SetParameter(std::move(parameter));
+
+        //TODO update local file
+		parameter.assign("left=");
+		parameter.append(std::to_string(TorrentFile::GetInstance()->GetFileTotal()));
+		SetParameter(std::move(parameter));
+
+		parameter.assign("event=started");
+		SetParameter(std::move(parameter));
+
+		parameter.assign("numwant=50");
+		SetParameter(std::move(parameter));
+        return ;
+    }
 
 #ifdef CszTest
 	void Tracker::COutInfo()

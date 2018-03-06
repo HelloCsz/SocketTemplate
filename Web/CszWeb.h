@@ -1,27 +1,13 @@
 #ifndef CszWEB_H
 #define CszWEB_H
-#include "../Sock/CszSocket.h" //TcpConnect,SocketNtoPHost
-#include "../Signal/CszSignal.h" //Signal
 #include "../CszNonCopyAble.hpp"
-
+#include "../Error/CszError.h"
 #include <sys/types.h> //msghdr
-#include <sys/socket.h> //getsockname
-#include <sys/uio.h> //writev
-#include <netinet/in.h> //sockaddr_storage
-#include <unistd.h> //read,getpid,close,write
-#include <cstring> //strerror
-#include <cstdio> //fopen,fileno,fclose,snprintf
-#include <cstdlib> //getenv
-#include <cctype> //isalnum
-#include <ctime> //time
 #include <string> //stoi,stoul
 #include <vector>
 #include <unordered_map> //unordered_map
 //#include <sstream> //istringstream
-#include <memory> //shared_ptr
 
-
-#define CACHESIZE 1024* 1
 #define CszTest
 namespace Csz
 {
@@ -57,10 +43,10 @@ namespace Csz
 	class HttpResponse
 	{
 		public:
-			void Capturer(const int&,CacheRegio*const);
+			bool Capturer(const int T_socket,CacheRegio* T_cache);
 			void Clear();
 			int GetStatus()const;
-			const std::string SearchHeader(const std::string&);
+			const std::string SearchHeader(const std::string* T_header_name);
             std::string GetBody()const{return body;}
 #ifdef CszTest
 			void COutInfo()const;
@@ -70,9 +56,9 @@ namespace Csz
 			std::string body;
 			std::unordered_map<std::string,std::string> header_data;
 		private:
-			void CatchFirstLine(std::string&&);
-			void CatchHeader(std::string&&);
-			void SaveBody(const int&,CacheRegio*const);
+			void _CatchStatusLine(std::string&&);
+			void _CatchHeader(std::string&&);
+			void _SaveBody(const int T_socket,CacheRegio* T_cache);
 	};
 
 	//目的:并非多线程共享一个内存
@@ -83,12 +69,12 @@ namespace Csz
 			char* read_ptr;
 			char* read_buf;
 		private:
-			int AddCache(int);
+			int AddCache(int T_socket);
 		public:
             CacheRegio();
 			~CacheRegio();
-			std::string ReadLine(int);
-			std::string ReadBuf(const int&,int);
+			std::string ReadLine(int T_socket);
+			std::string ReadBuf(const int T_socket,int T_save_num);
 			//empty
 			void Clear();
 	};

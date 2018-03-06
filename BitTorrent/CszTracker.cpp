@@ -14,6 +14,7 @@ namespace Csz
 #ifdef CszTest
 		printf("destructor Tracker\n");
 #endif
+		return ;
 	}
 
 	std::vector<int> Tracker::RetSocket()const
@@ -38,11 +39,13 @@ namespace Csz
 	void Tracker::SetTrackInfo(TrackerInfo T_data)
 	{
 		info.push_back(std::move(T_data));
+		return ;
 	}
 
 	void Tracker::SetInfoHash(std::string T_data)
 	{
 		info_hash.assign(std::move(T_data));
+		return ;
 	}
 
 	void Tracker::Connect()
@@ -103,15 +106,17 @@ namespace Csz
 				//val.socket_fd= -1;
 			}
 		}
+		return ;
 	}
 
 	void Tracker::SetParameter(std::string T_data)
 	{
 		parameter_msg.append(1,'&');
 		parameter_msg.append(std::move(T_data));
+		return ;
 	}
 
-	std::vector<std::string> Tracker::GetPeerList(HttpRequest* T_request,HttpResponse* T_response,CacheRegio* const T_cache,int T_sec)
+	std::vector<std::string> Tracker::GetPeerList(int T_sec)
 	{
         std::vector<std::string> ret_str;
 		fd_set wset,rset,rset_save,wset_save;
@@ -183,8 +188,7 @@ namespace Csz
 						continue;
 					}
 					//normal socket
-					Delivery(T_request,val.socket_fd,val.uri);
-					FD_CLR(val.socket_fd,&wset_save);
+					_Delivery(val.socket_fd,val.uri);
 #ifdef CszTest
 					printf("Delivery host:%s,serv:%s,%d\n",val.host.c_str(),val.serv.c_str(),val.socket_fd);
 #endif
@@ -196,9 +200,8 @@ namespace Csz
 #ifdef CszTest
 					printf("Capturer host:%s,serv:%s,%d\n",val.host.c_str(),val.serv.c_str(),val.socket_fd);
 #endif
-					Capturer(T_response,T_cache,val.socket_fd);
-                    ret_str.emplace_back(std::move(T_response->GetBody()));
-					FD_CLR(val.socket_fd,&rset_save);
+					_Capturer(val.socket_fd);
+                    ret_str.emplace_back(std::move(response->GetBody()));
 					--quit_num;
 				}
 			}
@@ -208,7 +211,7 @@ namespace Csz
 		return std::move(ret_str);
 	}
 
-	inline void Tracker::Delivery(HttpRequest* T_request,const int& T_socket_fd,const std::string& T_uri)
+	inline void Tracker::_Delivery(const int T_socket,const std::string& T_uri)
 	{
 		std::string request_line;
 		request_line.reserve(128);
@@ -233,7 +236,7 @@ namespace Csz
 			Csz::ErrMsg("Tracker can't Delivery");
 			return ;
 		}
-		int send_num= writev(T_socket_fd,data_array,msg_num);
+		int send_num= writev(T_socket,data_array,msg_num);
 #ifdef CszTest
 		if (send_num< 0)
 			printf("Tracker Delivery error:%s",strerror(errno));
@@ -241,12 +244,14 @@ namespace Csz
 			printf("Delivery msg size:%d\n",send_num);
 #endif
 		T_request->ClearMethod();
+		return ;
 	}
 
-	inline void Tracker::Capturer(HttpResponse* T_response,CacheRegio* const T_cache,const int& T_socket_fd)
+	inline void Tracker::_Capturer(const int T_socket)
 	{
         T_response->Clear();
 		T_response->Capturer(T_socket_fd,T_cache);
+		return ;
 	}
 
 #ifdef CszTest
@@ -257,6 +262,7 @@ namespace Csz
 		{
 			printf("host:%s,serv:%s,uri:%s\n",val.host.c_str(),val.serv.c_str(),val.uri.c_str());
 		}
+		return ;
 	}
 #endif
 }

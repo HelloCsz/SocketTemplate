@@ -1,33 +1,43 @@
 #include "CszWeb.h"
+#include <string> //stoi
+#include <cctype> //isdigit
+
+#ifdef CszTest
+#include <cstdio>
+#endif 
 
 namespace Csz
 {
-	void HttpResponse::Capturer(const int& T_socket_fd,CacheRegio* const T_cache)
+	bool HttpResponse::Capturer(const int T_socket,CacheRegio* T_cache)
 	{
 		if (nullptr== T_cache)
 		{
-			Csz::ErrMsg("HttpResponseHead can't Catpurer,CacheRegio is empty");
-			return ;
+			Csz::ErrMsg("Http Response can't Catpurer,CacheRegio is empty");
+			return false;
 		}
         //1.read status head
-		std::string line= T_cache->ReadLine(T_socket_fd);
+		std::string line= T_cache->ReadLine(T_socket);
 		if (line.empty())
-			return;
-		CatchFirstLine(std::move(line));
-        //2.check status
-        if (GetStatus()== 200)
-        {
-               
-        }
-		while (!(line= T_cache->ReadLine(T_socket_fd)).empty())
 		{
-			if (line.size()<= 2 && '\r'==line[0])
+			Csz::ErrMsg("Http Response failed,status is empty ");
+			return false;
+		}
+		_CatchStatusLine(std::move(line));
+        //2.check status
+        if (GetStatus()!= 200)
+        {
+			Csz::ErrMsg("Http Response failed,status != 200");
+			return false;
+        }
+		while (!(line= T_cache->ReadLine(T_socket)).empty())
+		{
+			if (4== line.size() && "\r\n\r\n"==line)
 			{
 				//catch body
-				SaveBody(T_socket_fd,T_cache);
+				_SaveBody(T_socket,T_cache);
 				break;
 			}
-			CatchHeader(std::move(line));
+			_CatchHeader(std::move(line));
 		}
 #ifdef CszTest
 		printf("save header data info:\n");
@@ -36,8 +46,10 @@ namespace Csz
 			printf("%s: %s\n",val.first.c_str(),val.second.c_str());
 		}
 #endif
+		return true;
 	}
-	inline void HttpResponse::CatchFirstLine(std::string&& T_line)
+
+	inline void HttpResponse::_CatchStatusLine(std::string&& T_line)
 	{
 		status_line=std::move(T_line);
 #ifdef CszTest
@@ -46,7 +58,7 @@ namespace Csz
         return ;
 	}
 
-	inline void HttpResponse::CatchHeader(std::string&& T_data)
+	inline void HttpResponse::_CatchHeader(std::string&& T_data)
 	{
 		/*
 		//性能优化点
@@ -73,7 +85,7 @@ namespace Csz
         return ;
 	}
 
-	void HttpResponse::SaveBody(const int& T_socket_fd,CacheRegio* const T_cache) 
+	void HttpResponse::_SaveBody(const int T_socket,CacheRegio* T_cache) 
 	{
 		//TODO 大小写敏感
 		auto result= header_data.find("Content-Type");
@@ -93,7 +105,7 @@ namespace Csz
 			Csz::ErrMsg("SaveBody can't find Content-Length");
 			return ;
 		}
-		body.assign(std::move(T_cache->ReadBuf(T_socket_fd,num)));
+		body.assign(std::move(T_cache->ReadBuf(T_socket,num)));
         return ;
 	}
 
@@ -130,9 +142,9 @@ namespace Csz
 	//不能返回引用,因为在找不到情况下需要返回一个空数据,但空数据是临时变量
 	//返回值需要const,因为引用可以修改到内部real数据,且key value不能修改,若
 	//修改则破坏了容器的内部结构
-	const std::string HttpResponse::SearchHeader(const std::string& T_header_name)
+	const std::string HttpResponse::SearchHeader(const std::string* T_header_name)
 	{
-		auto result= header_data.find(T_header_name);
+		auto result= header_data.find(*T_header_name);
 		if (header_data.end()== result)
 			return "";
 		return result->second;

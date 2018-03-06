@@ -1,4 +1,8 @@
+#include "../Sock/CszSocket.h"
 #include "CszWeb.h"
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <sys/uio.h> //writev
 #include <iostream>
 #define IOVECSIZE 32
 

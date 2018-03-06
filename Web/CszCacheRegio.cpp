@@ -1,5 +1,15 @@
 #include "CszWeb.h"
 #include <sstream> //ostringstream
+#include <cstdlib> //getenv
+#include <unistd.h> //read
+#include <string> //stoul
+#include <cstring> //strerror
+#define CACHESIZE (1024* 1)
+
+#ifdef CszTest
+#include <cstdio>
+#endif
+
 namespace Csz
 {
 	CacheRegio::CacheRegio():read_cnt(0)
@@ -61,14 +71,14 @@ namespace Csz
 	}
 
 	//TODO 设置超时
-	inline int CacheRegio::AddCache(int T_socket_fd)
+	inline int CacheRegio::AddCache(int T_socket)
 	{
 		while (read_cnt<= 0)
 		{
 #ifdef CszTest
 			printf("no data available\n");
 #endif
-			if ((read_cnt= read(T_socket_fd,read_buf,CACHESIZE))< 0)
+			if ((read_cnt= read(T_socket,read_buf,CACHESIZE))< 0)
 			{
 				if (EINTR== errno)
 					continue;
@@ -91,13 +101,13 @@ namespace Csz
 		return read_cnt;
 	}
 
-	std::string CacheRegio::ReadLine(int T_socket_fd)
+	std::string CacheRegio::ReadLine(int T_socket)
 	{
 		std::string line;
 		line.reserve(32);
 		for (int i= 0; i< CACHESIZE; ++i)
 		{
-			if ((read_cnt= AddCache(T_socket_fd))<= 0)
+			if ((read_cnt= AddCache(T_socket))<= 0)
 			{
 				if (0== read_cnt)
 				{
@@ -123,7 +133,7 @@ namespace Csz
 	}
 
 	//TODO 设置超时
-	std::string CacheRegio::ReadBuf(const int& T_socket_fd,int T_save_num)
+	std::string CacheRegio::ReadBuf(const int T_socket,int T_save_num)
 	{   
         std::string ret_str;
 		int curr_num;
@@ -134,8 +144,10 @@ namespace Csz
 			T_save_num-= curr_num;
 			read_cnt-= curr_num;
 			if (read_cnt<= 0)
-				AddCache(T_socket_fd);
+				AddCache(T_socket);
 		}
 		return std::move(ret_str);
 	}
 }
+
+#undef CACHESIZE

@@ -141,12 +141,16 @@ namespace Csz
 			void COutInfo();
 #endif
 		private:
-			void Capturer(HttpResponse*,CacheRegio*const,const int&);
-			void Delivery(HttpRequest*,const int&,const std::string&);
+			void _Capturer(HttpResponse*,CacheRegio*const,const int&);
+			void _Delivery(HttpRequest*,const int&,const std::string&);
+			void _UpdateReq();
 		private:
-			std::vector<TrackerInfo> info;
 			std::string info_hash;
 			std::string parameter_msg;
+			std::vector<TrackerInfo> info;
+			HttpRequest request;
+			HttpResponse response;
+			CacheRegio cache;
 	};
 
 	class TorrentFile

@@ -88,7 +88,11 @@ int main(int argc,char** argv)
 	Csz::PeerManager::GetInstance()->LoadPeerList(peer_list);
     //select
 	{
-
+		while (SelectSwitch()()== false)
+		{
+			auto peer_list= tracket.GetPeerList(&request,&response,&cache,60);
+			Csz::PeerManager::GetInstance()->LoadPeerList(peer_lis);
+		}
 	}
 	return 0;
 }

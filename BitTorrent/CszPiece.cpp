@@ -49,4 +49,18 @@ namespace Csz
 		prefix_and_slice[3]= *(flag+ 3);
 		return ;
 	}
+    
+    void Piece::COutInfo()
+    {
+        std::string out_info;
+        out_info.reserve(64);
+        char* p= &prefix_and_slice[0];
+        out_info.append("Piece info:len=");
+        out_info.append(std::to_string(ntohl(*reinterpret_cast<int32_t*>(p))));
+        out_info.append(";id="+ std::to_string(int(*(p+4))));
+        out_info.append(";index="+std::to_string(ntohl(*reinterpret_cast<int32_t*>(p+ 5))));
+        out_info.append(";begin="+std::to_string(ntohl(*reinterpret_cast<int32_t*>(p+ 9))));
+        out_info.append(";msg length="+std::to_string(prefix_and_slice.size()- 13));
+        Csz::LI("%s",out_info.c_str());
+    }
 }

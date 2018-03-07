@@ -202,9 +202,10 @@ namespace Csz
 
 	void BitField::COutInfo()
 	{
-		char* data= prefix_and_bit_field.c_str();
-		Csz::LI("Bit Field info:len=%u,id=%d",ntohl(*reinterpret_cast<uint32_t*>(data)),reinterpret_cast<int>(*(data+ 4)));
-		std::vector<std::bitset> bit_field;
+        //bug!!
+		char* data= &prefix_and_bit_field[0];
+		Csz::LI("Bit Field info:len=%u,id=%d",ntohl(*reinterpret_cast<uint32_t*>(data)),int(*(data+ 4)));
+		std::vector<std::bitset<8>> bit_field;
 		for (int i= 5,len= prefix_and_bit_field.size();i< len; ++i)
 		{
 			bit_field.emplace_back(prefix_and_bit_field[i]);

@@ -119,6 +119,9 @@ namespace Csz
     
     PeerManager::~PeerManager()
     {
+#ifdef CszTest
+        Csz::LI("destructor Peer Manager");
+#endif
         for (auto& val : peer_list)
         {
             if (val.first>= 0)
@@ -411,10 +414,10 @@ namespace Csz
 	{
 		std::string out_info;
 		out_info.reserve(64);
-		out_info.append("Peer Manager info:")
+		out_info.append("Peer Manager info:");
 		for (auto &val : peer_list)
 		{
-			out_info.append("->"+std::to_string(val));
+			out_info.append("->"+std::to_string(val.first));
 		}
 		Csz::LI("%s",out_info.c_str());
 		return ;

@@ -77,5 +77,4 @@ namespace Csz
 			//write(2,data.c_str(),data.size());
 		}
 	}
-#endif
 }

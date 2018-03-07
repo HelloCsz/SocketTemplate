@@ -293,6 +293,7 @@ namespace Csz
 		{
 			out_info.append("[host:"+val.host+"serv:"+val.serv+"uri:"+ val.uri+"]");
 		}
+        Csz::LI("%s",out_info.c_str());
 		return ;
 	}
 }

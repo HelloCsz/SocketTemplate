@@ -9,6 +9,9 @@ namespace Csz
 {
     BitMemory::~BitMemory()
     {
+#ifdef CszTest
+        Csz::LI("destructor Bit Memory");
+#endif
         _Clear();
     }
 

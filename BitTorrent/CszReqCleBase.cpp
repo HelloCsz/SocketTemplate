@@ -12,4 +12,18 @@ namespace Csz
 		*reinterpret_cast<int32_t*>(data+ 13)= length;
 		return ;
 	}
+    
+    void ReqCleBase::COutInfo()
+    {
+        std::string out_info;
+        out_info.reserve(64);
+        char* p= data;
+        out_info.append("ReqCleBase info:len=");
+        out_info.append(std::to_string(ntohl(*reinterpret_cast<int32_t*>(p))));
+        out_info.append(";id="+ std::to_string(int(*(p+4))));
+        out_info.append(";index="+std::to_string(ntohl(*reinterpret_cast<int32_t*>(p+ 5))));
+        out_info.append(";begin="+std::to_string(ntohl(*reinterpret_cast<int32_t*>(p+ 9))));
+        out_info.append(";length="+std::to_string(ntohl(*reinterpret_cast<int32_t*>(p+ 13))));
+        Csz::LI("%s",out_info.c_str());
+    }
 }

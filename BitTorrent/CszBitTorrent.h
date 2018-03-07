@@ -199,7 +199,12 @@ namespace Csz
     {
 		private:
             //PeerManager(const std::vector<std::string> &T_socket_list);
-			PeerManager()= default;
+			PeerManager()
+            {
+#ifdef CszTest
+                Csz::LI("construct Peer Manager");
+#endif
+            }
             ~PeerManager();
 		public:
 			static PeerManager* GetInstance()
@@ -239,7 +244,12 @@ namespace Csz
     {
 		private:
 			HandShake();
-			~HandShake()= default;
+			~HandShake()
+            {
+#ifdef CszTest
+                Csz::LI("destructor Hand Shake");
+#endif
+            }
 		public:
 			static HandShake* GetInstance()
 			{
@@ -257,6 +267,7 @@ namespace Csz
 			bool Varification(const char* T_str)const;
 			//micro
             int GetDataSize()const {return 68;}
+            void COutInfo();
     };
 
     //2.keep alive
@@ -280,11 +291,20 @@ namespace Csz
 		public:
 			Choke()
 			{
+#ifdef CszTest
+                Csz::LI("constructor Choke");
+#endif
 				bzero(choke,sizeof(choke));
 				*reinterpret_cast<int32_t*>(choke)= htonl(1);
 				//set id
 				choke[4]= 0;
 			}
+            ~Choke()
+            {
+#ifdef CszTest
+                Csz::LI("destructor Choke");
+#endif
+            }
 			const char* GetSendData()const {return choke;}
 			const char* operator()(){return GetSendData();}
 			//micro
@@ -299,11 +319,20 @@ namespace Csz
 		public:
 			UnChoke()
 			{
+#ifdef CszTest
+                Csz::LI("constructor UnChoke");
+#endif
 				bzero(unchoke,sizeof(unchoke));
 				*reinterpret_cast<int32_t*>(unchoke)= htonl(1);
 				//set id 
 				unchoke[4]= 1;
 			}
+            ~UnChoke()
+            {
+#ifdef CszTest
+                Csz::LI("destructor UnChoke");
+#endif
+            }
 			const char* GetSendData()const {return unchoke;}
 			const char* operator()(){return GetSendData();}
 			//micro
@@ -318,11 +347,20 @@ namespace Csz
 		public:
 			Interested()
 			{
+#ifdef CszTest
+                Csz::LI("constructor Interested");
+#endif
 				bzero(interested,sizeof(interested));
 				*reinterpret_cast<int32_t*>(interested)= htonl(1);
 				//set id
 				interested[4]= 2;
 			}
+            ~Interested()
+            {
+#ifdef CszTest
+                Csz::LI("destructor Interested");
+#endif
+            }
 			const char* GetSendData()const {return interested;}
 			const char* operator()(){return GetSendData();}
 			//micro
@@ -337,11 +375,20 @@ namespace Csz
 		public:
 			UnInterested()
 			{
+#ifdef CszTest
+                Csz::LI("constructor UnInterested");
+#endif
 				bzero(uninterested,sizeof(uninterested));
 				*reinterpret_cast<int32_t*>(uninterested)= htonl(1);
 				//set id
 				uninterested[4]= 3;
 			}
+            ~UnInterested()
+            {
+#ifdef CszTest
+                Csz::LI("destructor UnInterested");
+#endif
+            }
 			const char* GetSendData()const {return uninterested;}
 			const char* operator()(){return GetSendData();}
 			//micro
@@ -356,11 +403,20 @@ namespace Csz
 		public:
 			Have()
 			{
+#ifdef CszTest
+                Csz::LI("constructor Have");
+#endif
 				bzero(have,sizeof(have));
 				*reinterpret_cast<int32_t*>(have)= htonl(5);
 				//set id
 				have[4]= 4;
 			}
+            ~Have()
+            {
+#ifdef CszTest
+                Csz::LI("destructor Have");
+#endif
+            }
 			void SetParameter(int32_t T_index)
 			{
 				//TODO network byte
@@ -382,12 +438,21 @@ namespace Csz
 		public:
 			BitField()
 			{
+#ifdef CszTest
+                Csz::LI("constructor Bit Field");
+#endif
 				//init prefix
 				//thorw exception std::length_error
 				prefix_and_bit_field.resize(5,0);
 				//set id
 				prefix_and_bit_field[4]= 5;
 			}
+            ~BitField()
+            {
+#ifdef CszTest
+                Csz::LI("destructor Bit Field");
+#endif
+            }
 			void SetParameter(std::string T_bit_field);
 			void FillBitField(int32_t T_index);
 			bool CheckPiece(int32_t& T_index);
@@ -397,7 +462,7 @@ namespace Csz
 			bool GameOver(const char T_end_bit)const;
 			std::vector<int32_t> LackNeedPiece(const char* T_bit_field,const int T_len);
 			std::vector<int32_t> LackNeedPiece(const std::string);
-			void COutInfo()const;
+			void COutInfo();
 		private:
 			void _SetParameter(std::string T_bit_field);
 			void _SetPrefixLength();
@@ -412,13 +477,23 @@ namespace Csz
 		public:
 			ReqCleBase(char T_id)
 			{
+#ifdef CszTest
+                Csz::LI("constructor ReqCleBase");
+#endif
 				bzero(data,sizeof(data));
 				//set id
 				data[4]= T_id;
 			}
+            ~ReqCleBase()
+            {
+#ifdef CszTest
+                Csz::LI("destructor ReqCleBase");
+#endif
+            }
 			void SetParameter(int32_t T_index,int32_t T_begin,int32_t T_length);
 			const char* GetSendData()const {return data;}
 			const char* operator()(){return GetSendData();}
+            void COutInfo();
 	};
  
 	//9.1 Request id= 6
@@ -429,7 +504,18 @@ namespace Csz
 			ReqCleBase request;
 		public:
 			//set id
-			Request():request(6){}
+			Request():request(6)
+            {
+#ifdef CszTest
+                Csz::LI("constructor Request");
+#endif
+            }
+            ~Request()
+            {
+#ifdef CszTest
+                Csz::LI("destructor Request");
+#endif
+            }
 			void SetParameter(int32_t T_index,int32_t T_begin,int32_t T_length){request.SetParameter(T_index,T_begin,T_length);}
 			const char* GetSendData()const {return request.GetSendData();}
 			const char* operator()(){return GetSendData();}
@@ -446,15 +532,25 @@ namespace Csz
 		public:
 			Piece()
 			{
+#ifdef CszTest
+                Csz::LI("constructor Piece");
+#endif
 				//init prefix
 				prefix_and_slice.resize(13,0);
 				//set id
 				prefix_and_slice[4]= 7;
 			}
+            ~Piece()
+            {
+#ifdef CszTest
+                Csz::LI("destructor Piece");
+#endif
+            }
 			void SetParameter(int32_t T_index,int32_t T_begin,PieceSliceType T_slice);
 			const char* GetSendData()const {return prefix_and_slice.c_str();}
 			const char* operator()(){return GetSendData();}
 			int GetDataSize(){return prefix_and_slice.size();}
+            void COutInfo();
 		private:
 			void _SetPrefixLength();
 	};	
@@ -467,7 +563,18 @@ namespace Csz
 			ReqCleBase cancle;
 		public:
 			//set id
-			Cancle():cancle(8){}
+			Cancle():cancle(8)
+            {
+#ifdef CszTest
+                Csz::LI("constructor Cancle");
+#endif
+            }
+            ~Cancle()
+            {
+#ifdef CszTest
+                Csz::LI("destructor Cancle");
+#endif
+            }
 			void SetParameter(int32_t T_index,int32_t T_begin,int32_t T_length){cancle.SetParameter(T_index,T_begin,T_length);}
 			const char* GetSendData()const {return cancle.GetSendData();}
 			const char* operator()(){return GetSendData();}
@@ -483,10 +590,19 @@ namespace Csz
 		public:
 			Port()
 			{
+#ifdef CszTest
+                Csz::LI("constructor Port");
+#endif
 				bzero(port,sizeof(port));
 				//set id
 				port[4]= 9;
 			}
+            ~Port()
+            {
+#ifdef CszTest
+                Csz::LI("destructor Port");
+#endif
+            }
 			void SetParameter(int32_t T_port)
 			{
 				*reinterpret_cast<int32_t*>(port+ 5)= htonl(T_port);
@@ -504,8 +620,18 @@ namespace Csz
 	{
 		//TODO valid bit length
 		private:
-			LocalBitField()= default;
-			~LocalBitField()= default;
+			LocalBitField()
+            {
+#ifdef CszTest
+                Csz::LI("constructor Local Bit Field");
+#endif
+            }
+			~LocalBitField()
+            {
+#ifdef CszTest
+                Csz::LI("destructor Local Bit Field");
+#endif
+            }
 		public:
 			static LocalBitField* GetInstance()
 			{
@@ -535,8 +661,18 @@ namespace Csz
 	class DownSpeed
 	{
 		private:
-			DownSpeed()= default;
-			~DownSpeed()= default;
+			DownSpeed()
+            {
+#ifdef CszTest
+                Csz::LI("constructor Down Speed");
+#endif
+            }
+			~DownSpeed()
+            {
+#ifdef CszTest
+                Csz::LI("destructor Down Speed");
+#endif
+            }
 		public:
 			static DownSpeed* GetInstance()
 			{
@@ -568,8 +704,18 @@ namespace Csz
 	class NeedPiece
 	{
 		private:
-			NeedPiece():cur_id(0){};
-			~NeedPiece()= default;
+			NeedPiece():cur_id(0)
+            {
+#ifdef CszTest
+                Csz::LI("constructor Need Piece");
+#endif
+            }
+			~NeedPiece()
+            {
+#ifdef CszTest
+                Csz::LI("destructor Need Piece");
+#endif       
+            }
 		public:
 			static NeedPiece* GetInstance()
 			{
@@ -655,7 +801,12 @@ namespace Csz
     class BitMemory
     {
         private:
-            BitMemory()=default;
+            BitMemory()
+            {
+#ifdef CszTest
+                Csz::LI("constructor Bit Memory");
+#endif
+            }
             ~BitMemory();
         public:
             static BitMemory* GetInstance()

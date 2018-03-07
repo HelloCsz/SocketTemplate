@@ -6,6 +6,9 @@ namespace Csz
 {
 	HandShake::HandShake()
 	{
+#ifdef CszTest
+        Csz::LI("constructor Hand Shake");
+#endif
 		bzero(data,sizeof (data));
 		//set pstrlen
 		data[0]= 19;
@@ -39,4 +42,17 @@ namespace Csz
 			return true;
 		return false;
 	}
+    
+    void HandShake::COutInfo()
+    {
+        std::string out_info;
+        out_info.reserve(64);
+        char* p= data;
+        out_info.append("HandShake info:");
+        out_info.append("pstrlen="+std::to_string(int(*p)));
+        out_info.append(",pstr="+ std::string(p+ 1,19));
+        out_info.append(",info_hash="+ std::string(p+ 28,20));
+        out_info.append(",peer_id="+ std::string(p+ 48,20));
+        Csz::LI("%s",out_info.c_str());
+    }
 }

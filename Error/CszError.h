@@ -14,6 +14,7 @@ namespace Csz
 	void ErrRet(const char*,...);
 	void ErrMsg(const char*,...);
 	void ErrQuit(const char*,...);
+    void LI(const char*,...);
 }
 
 #endif

@@ -429,7 +429,7 @@ namespace Csz
 		}
 		if (!infos.pieces.empty())
 		{
-			out_info.append("[pieces size:"+ std::to_string(infos.pieces.size()+"]");
+			out_info.append("[pieces size:"+ std::to_string(infos.pieces.size())+"]");
 		}
 		if (infos.single)
 		{

@@ -44,7 +44,7 @@ namespace Csz
 	void LocalBitField::COutInfo()
 	{
 		std::bitset<8> bit_set(end_bit);
-		Csz::LI("Local Bit Field info:end bit %s",end_bit.to_string().c_str());
+		Csz::LI("Local Bit Field info:end bit %s",bit_set.to_string().c_str());
 		bit_field.COutInfo();
 		return ;
 	}

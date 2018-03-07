@@ -4,12 +4,15 @@ namespace Csz
 {
 	BDict::BDict()
 	{
-
+#ifdef CszTest
+		Csz::LI("constrctor BDict");
+#endif
 	}
+
 	BDict::~BDict()
 	{
 #ifdef CszTest
-		printf("destructor BDict\n");
+		Csz::LI("destructor BDict");
 #endif
 		for (auto& val : data)
 		{
@@ -17,10 +20,11 @@ namespace Csz
 			val.second= nullptr;
 		}
 	}
+
 	void BDict::Decode(std::string& T_content)
 	{
 #ifdef CszTest
-			printf("choice d\n");
+			Csz::LI("choice d");
 #endif
 		if (T_content.empty() || T_content[0]!= 'd')
 		{
@@ -103,6 +107,7 @@ namespace Csz
 		}
 		return ;
 	}
+
 	/*
 	BDataType* BDict::Search(std::string& T_name) const
 	{
@@ -112,6 +117,7 @@ namespace Csz
 		return result->second;
 	}
 	*/
+
 	void BDict::ReadData(const std::string& T_name,TorrentFile* T_torrent)
 	{
 		if (data.empty())
@@ -122,15 +128,14 @@ namespace Csz
 			(val.second)->ReadData(temp.append(val.first),T_torrent);
 		}
 	}
-#ifdef CszTest
+
 	void BDict::COutInfo()
 	{
 		for (const auto& val : data)
 		{
-			printf("%s->",val.first.c_str());
+			Csz::LI("Diec:key:%s->",val.first.c_str());
 			(val.second)->COutInfo();
-			printf("\n");
+			//Csz::ErrMsg("\n");
 		}
 	}
-#endif
 }

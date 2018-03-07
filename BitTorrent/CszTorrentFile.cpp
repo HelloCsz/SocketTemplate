@@ -4,6 +4,9 @@ namespace Csz
 {
 	TorrentFile::TorrentFile():creation_date(0)
 	{
+#ifdef CszTest
+		Csz::LI("construct Torrent File");
+#endif
 		name_data["announce"]=std::function<void(void*)>([this](void*T_data)
 				{
 					announce_list.push_back(std::move(*((std::string*)T_data)));
@@ -84,7 +87,7 @@ namespace Csz
 	TorrentFile::~TorrentFile()
 	{
 #ifdef CszTest
-		printf("destructor TorrentFile\n");
+		Csz::LI("destructor Torrent File");
 #endif
 	}
 
@@ -398,55 +401,51 @@ namespace Csz
 #ifdef CszTest
 	void TorrentFile::COutInfo()
 	{
-		/*
-		if (!announce.empty())
-		{
-			printf("announce:%s\n",announce.c_str());
-		}
-		*/
+		std::string out_info;
+		out_info.reserve(256);
 		if (!announce_list.empty())
 		{
-			printf("announce or announce_list:\n");
+			out_info.append("announce or announce_list:");
 			for (const auto& val : announce_list)
 			{
-				printf("%s\n",val.c_str());
+				out_info.append("->"+val);
 			}
 		}
 		if (!comment.empty())
 		{
-			printf("comment:%s\n",comment.c_str());
+			out_info.append("[comment:"+comment+"]");
 		}
 		if (creation_date)
 		{
-			printf("creation date:%lu\n",creation_date);
+			out_info.append("[creation date:"+std::to_string(creation_date)+"]");
 		}
 		if (!create_by.empty())
 		{
-			printf("create by:%s\n",create_by.c_str());
+			out_info.append("[create by:"+create_by+ "]");
 		}
 		if (infos.piece_length)
 		{
-			printf("piece length:%lu\n",infos.piece_length);
+			out_info.append("[piece length:"+ std::to_string(infos.piece_length)+"]");
 		}
 		if (!infos.pieces.empty())
 		{
-			printf("pieces size:%lu\n",infos.pieces.size());
+			out_info.append("[pieces size:"+ std::to_string(infos.pieces.size()+"]");
 		}
 		if (infos.single)
 		{
-			printf("single mode:\n");
+			out_info.append("[single mode:");
 		}
 		else
 		{
-			printf("multi mode:\n");
+			out_info.append("[multi mode:");
 		}
 		if (!infos.name.empty())
 		{
-			printf("name:%s\n",infos.name.c_str());
+			out_info.append("[name:"+infos.name+"]");
 		}
 		if (infos.length)
 		{
-			printf("length:%lu\n",infos.length);
+			out_info.append("[length:"+std::to_string(infos.length)+"]");
 		}
 		if (!infos.files.empty())
 		{
@@ -454,11 +453,11 @@ namespace Csz
 			{
 				if (!val.file_path.empty())
 				{
-					printf("file path:%s\n",val.file_path.c_str());
+					out_info.append("[file path:"+val.file_path+"]");
 				}
 				if (val.length)
 				{
-					printf("length:%lu\n",val.length);
+					out_info.append("[length:"+ std::to_string(val.length)+"]");
 				}
 			}
 		}

@@ -13,6 +13,9 @@ namespace Csz
 {
 	Tracker::Tracker()
     {
+#ifdef CszTest
+		Csz::LI("construct Tracker");
+#endif
         //init http request header
         _InitReq();
         //init http parameter msg
@@ -27,7 +30,7 @@ namespace Csz
 				close(val.socket_fd);
 		}
 #ifdef CszTest
-		printf("destructor Tracker\n");
+		Csz::LI("destructor Tracker");
 #endif
 		return ;
 	}
@@ -43,11 +46,6 @@ namespace Csz
 				ret.push_back(val.socket_fd);
 			}
 		}
-#ifdef CszTest
-		printf("Tracker have socket:\n");
-		for (const auto& val : ret)
-			printf("socket=%d\n",val);
-#endif
 		return std::move(ret);
 	}
 
@@ -97,9 +95,6 @@ namespace Csz
 				//恢复socket之前属性
 				Fcntl(socket_fd,F_SETFL,flag);
 				val.socket_fd= socket_fd;
-#ifdef CszTest
-				printf("Tcp connected %s\n",res->ai_canonname);
-#endif
 				freeaddrinfo(res);
 			}
 			else if (-2== val.socket_fd)
@@ -110,9 +105,6 @@ namespace Csz
 				socket_fd= CreateSocket(res->ai_family,res->ai_socktype,res->ai_protocol);
 				connect(socket_fd,res->ai_addr,res->ai_addrlen);
 				val.socket_fd= socket_fd;
-#ifdef CszTest
-				printf("Udp connected %s\n",res->ai_canonname);
-#endif
 				freeaddrinfo(res);
 			}
 			else
@@ -151,16 +143,10 @@ namespace Csz
 				++quit_num;
 			}
 		}
-#ifdef CszTest
-		printf("Tracker GetPeerList quit num:%d,fd_max:%d\n",quit_num,fd_max);
-#endif
 		wset_save= rset_save= wset= rset;
 		//int count= 0;
 		while (quit_num> 0)
 		{
-#ifdef CszTest
-			printf("now quit num:%d\n",quit_num);
-#endif
 			//因为使用到一块共享内存作为接收缓冲(用来每次读取一行),可能发生interesting happend
 			//从程序接收缓冲从读取到共享内存中,而这些数据包含着下次的数据,当再次调用select时,检查
 			//的是程序接收缓冲区而不是共享内存区
@@ -204,17 +190,11 @@ namespace Csz
 					}
 					//normal socket
 					_Delivery(val.socket_fd,val.uri);
-#ifdef CszTest
-					printf("Delivery host:%s,serv:%s,%d\n",val.host.c_str(),val.serv.c_str(),val.socket_fd);
-#endif
 					//--count;
 				}
 				if (FD_ISSET(val.socket_fd,&rset))
 				{
 					FD_CLR(val.socket_fd,&rset_save);
-#ifdef CszTest
-					printf("Capturer host:%s,serv:%s,%d\n",val.host.c_str(),val.serv.c_str(),val.socket_fd);
-#endif
 					_Capturer(val.socket_fd);
                     ret_str.emplace_back(std::move(response.GetBody()));
 					--quit_num;
@@ -239,10 +219,6 @@ namespace Csz
 		request_line.append(parameter_msg);
 		request_line.append(" HTTP/1.1");
 		request.SetFirstLine(std::move(request_line));
-#ifdef CszTest
-		printf("Delivery Info:\n");
-		request.COutInfo();
-#endif
 
 		struct iovec data_array[16];
 		//hearder 与 body间隔\r\n\r\n size()+ 1
@@ -253,12 +229,6 @@ namespace Csz
 			return ;
 		}
 		int send_num= writev(T_socket,data_array,msg_num);
-#ifdef CszTest
-		if (send_num< 0)
-			printf("Tracker Delivery error:%s",strerror(errno));
-		else
-			printf("Delivery msg size:%d\n",send_num);
-#endif
 		return ;
 	}
 
@@ -313,15 +283,16 @@ namespace Csz
         return ;
     }
 
-#ifdef CszTest
 	void Tracker::COutInfo()
 	{
-		printf("info hash:%s\n",info_hash.c_str());
+		std::string out_info;
+		out_info.reserve(64);
+		out_info.append("Tracker info:");
+		out_info.append("info hash:"+info_hash);
 		for (const auto& val : info)
 		{
-			printf("host:%s,serv:%s,uri:%s\n",val.host.c_str(),val.serv.c_str(),val.uri.c_str());
+			out_info.append("[host:"+val.host+"serv:"+val.serv+"uri:"+ val.uri+"]");
 		}
 		return ;
 	}
-#endif
 }

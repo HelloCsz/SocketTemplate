@@ -1,9 +1,6 @@
 #include "CszBitTorrent.h"
 #include <algorithm> //nth_element
 
-//micro
-#include "CszMicro.hpp"
-
 namespace Csz
 {
 	void DownSpeed::AddTotal(const int T_socket,const uint32_t T_speed)
@@ -83,4 +80,17 @@ namespace Csz
         }
         return ;
     }
+
+	void DownSpeed::COutInfo()
+	{
+		std::string info_data;
+		info_data.reserve(256);
+		std::sort_heap(queue.begin(),queue.end(),DSComp);
+		for (const auto& val : queue)
+		{
+			info_data.append(std::to_string(val.first)+":"+std::to_string(val.second)+";");
+		}
+		Csz::LI("Down Speed sort:%s",info_data.c_str());
+		return ;
+	}
 }

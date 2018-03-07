@@ -2,17 +2,24 @@
 
 namespace Csz
 {
-	BInt::BInt() : data(0){}
+	BInt::BInt() : data(0)
+	{
+#ifdef CszTest
+		Csz::LI("constructor BInt");
+#endif
+	}
+
 	BInt::~BInt()
 	{
 #ifdef CszTest
-		printf("destructor BInt\n");
+		Csz::LI("destructor BInt");
 #endif
 	}
+
 	void BInt::Decode(std::string& T_content)
 	{
 #ifdef CszTest
-		printf("choice int\n");
+		Csz::LI("choice int");
 #endif
 		if (T_content.empty() || T_content[0]!= 'i')
 		{
@@ -27,9 +34,6 @@ namespace Csz
 		}
 		try
 		{	
-#ifdef CszTest
-			printf("data= %s\n",T_content.substr(1,stop- 1).c_str());
-#endif
 			//b编码int类型首字符'i'没有删除
 			//substr第一个参数position,第二个参数是数量,stop是index
 			data= std::stoul(T_content.substr(1,stop- 1));
@@ -54,17 +58,19 @@ namespace Csz
 		T_content.erase(0,stop+ 1);
 		return ;
 	}
+
 	void BInt::ReadData(const std::string& T_name,TorrentFile* T_torrent)
 	{
 		auto result= (*T_torrent).name_data.find(T_name);
 		if ((*T_torrent).name_data.end()== result)
 			return ;
 		(result->second)((void*)&data);
+		return ;
 	}
-#ifdef CszTest
+
 	void BInt::COutInfo()
 	{
-		printf("%lu\n",data);
+		Csz::LI("Int:%lu",data);
+		return ;
 	}
-#endif 
 }

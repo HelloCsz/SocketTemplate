@@ -1,3 +1,9 @@
+#include <syslog.h> //openlog
+#include <sys/resource.h> //getrlimit
+#include <cstdlib> //exit
+#include <unistd.h> //fork setsid
+#include <csignal> //sigaction
+#include <fcntl.h> //open
 #include "CszDaemon.h"
 
 //extern int deamon_proc; //defined in CszError.cpp

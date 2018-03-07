@@ -3,18 +3,23 @@ namespace Csz
 {
 	BStr::BStr()
 	{
+#ifdef CszTest
+		Csz::LI("construct BStr");
+#endif
 		data.reserve(32);
 	}
+
 	BStr::~BStr()
 	{
 #ifdef CszTest
-		printf("destructor BStr\n");
+		Csz::LI("destructor BStr");
 #endif
 	}
+
 	void BStr::Decode(std::string& T_content)
 	{
 #ifdef CszTest
-		printf("choice string\n");
+		Csz::LI("choice string");
 #endif
 		if (T_content.empty())
 		{
@@ -30,9 +35,6 @@ namespace Csz
 		size_t num;
 		try
 		{
-#ifdef CszTest
-			printf("num= %s\n",T_content.substr(0,mid).c_str());
-#endif
 			num= std::stoul(T_content.substr(0,mid));
 			if ((num+mid+1)> T_content.size())
 				Csz::ErrQuit("%lu greater than string size %lu",num+mid+1,T_content.size());
@@ -53,13 +55,10 @@ namespace Csz
 			return ;
 		}
 		data= T_content.substr(mid+ 1,num);
-#ifdef CszTest
-		if (data.size()< 256)
-			printf("string=%s\n",data.c_str());
-#endif
 		T_content.erase(0,num+mid+ 1);
 		return ;
 	}
+
 	void BStr::ReadData(const std::string& T_name,TorrentFile* T_torrent)
 	{
 		auto result= (*T_torrent).name_data.find(T_name);
@@ -67,14 +66,14 @@ namespace Csz
 			return ;
 		(result->second)((void*)&data);
 	}
-#ifdef CszTest
+
 	void BStr::COutInfo()
 	{
 		if (data.size()< 128)
-			printf("%s\n",data.c_str());
+			Csz::LI("Str:%s\n",data.c_str());
 		else
 		{
-			printf("data greater than 256,size= %lu\n",data.size());
+			Csz::LI("Str data greater than 256,size= %lu\n",data.size());
 			//write(2,data.c_str(),data.size());
 		}
 	}

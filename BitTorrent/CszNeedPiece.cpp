@@ -1,10 +1,6 @@
 #include <algorithm> //make_heap,push_heap,pop_heap
 #include "CszBitTorrent.h"
 
-
-//micro
-#include "CszMicro.hpp"
-
 namespace Csz
 {
 	void NeedPiece::PushNeed(const int32_t T_index,int T_socket)
@@ -248,6 +244,42 @@ namespace Csz
 		if (_SetSocketStatus(T_socket,UNINTERESTED))
 		{
 			_ClearSocketStatus(T_socket,INTERESTED);
+		}
+		return ;
+	}
+
+	void NeedPiece::COutInfo()
+	{
+		for (auto& val : queue)
+		{
+			if (val.second!= nullptr)
+			{
+				std::string out_info;
+				out_info.reserve(64);
+				out_info.append("Need Piece info:index=");
+				out_info.append(std::to_string(val.first));
+				for (auto& fd : *val.second)
+				{
+					out_info.append(",socket="+std::to_string(fd));
+					if (socket_queue[fd]& CHOKE)
+					{
+						out_info.append("->CHOKE");
+					}
+					else
+					{
+						out_info.append("->UNCHOKE");
+					}
+					if (socket_queue[fd] & INTERESTED)
+					{
+						out_info.append("->INTERESTED");
+					}
+					else
+					{
+						out_info.append("->UNINTERESTED");
+					}
+				}
+				Csz::LI("%s",out_info.c_str());
+			}
 		}
 		return ;
 	}

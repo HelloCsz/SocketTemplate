@@ -1,3 +1,4 @@
+#include <bitset>
 #include "CszBitTorrent.h"
 
 namespace Csz
@@ -39,4 +40,12 @@ namespace Csz
         PeerManager::GetInstance()->SendHave(T_index);
         return ;
     }
+
+	void LocalBitField::COutInfo()
+	{
+		std::bitset<8> bit_set(end_bit);
+		Csz::LI("Local Bit Field info:end bit %s",end_bit.to_string().c_str());
+		bit_field.COutInfo();
+		return ;
+	}
 }

@@ -15,19 +15,16 @@ int main(int argc,char** argv)
     butil::File file(file_path,butil::File::FLAG_OPEN | butil::File::FLAG_READ);
     if (!file.IsValid())
     {
-        Csz::ErrQuit("torrent file %s",butil::File::ErrorToString(file.error_details().c_str());
+        Csz::ErrQuit("torrent file %s",butil::File::ErrorToString(file.error_details()).c_str());
         file.Close();
         return -1;
     }
-	std::string data(file.GetLength(),0);
+	std::string data(file.GetLength()+ 1,0);
     if (file.GetLength()!= file.Read(0,&data[0],data.size()))
     {
         Csz::ErrQuit("read byte num!= %d",file.GetLength());
         return -1;  
     }
-#ifdef CszTest
-	printf("file size:%lu\n",data.size());
-#endif
     file.Close();
 
 	Csz::Tracker tracker;
@@ -37,6 +34,7 @@ int main(int argc,char** argv)
 		if (data.npos== info_flag)
 		{
 			Csz::ErrQuit("torrent file no info data\n");
+			return -1;
 		}
 		auto info_num= Csz::GetDictLength()(data.c_str()+ info_flag+ 4,data.size()- info_flag- 4);
 		//20*8= 160bit
@@ -50,24 +48,9 @@ int main(int argc,char** argv)
 	Csz::BDict match;
 	match.Decode(data);
 
-#ifdef CszTest
-	printf("Dict Info:\n");
-	match.COutInfo();
-#endif
-
 	match.ReadData("",Csz::TorrentFile::GetInstance());
 
-#ifdef CszTest
-	printf("Standard Info:\n");
-	Csz::TorrentFile::GetInstance()->COutInfo();
-#endif
-
 	Csz::TorrentFile::GetInstance()->GetTrackInfo(&tracker);
-
-#ifdef CszTest
-	printf("Tracker extract info:\n");
-	tracker.COutInfo();
-#endif
 
 	tracker.Connect();
 	Csz::LocalBitField::GetInstance()->SetParameter(std::string(Csz::TorrentFile::GetInstance()->GetIndexTotal(),0));

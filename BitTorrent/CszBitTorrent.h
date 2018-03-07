@@ -1,7 +1,7 @@
 #ifndef CszBITTORRENT_H
 #define CszBITTORRENT_H
 ////////////////////////
-#define CszTest
+//#define CszTest
 
 #include "../Error/CszError.h"
 #include "../Web/CszWeb.h" //CszHttpRequest,CszHttpResponse,CszUrlEscape
@@ -17,7 +17,7 @@
 #include <butil/memory/singleton_on_pthread_once.h> //butil::singleton
 #include <butil/resource_pool.h> //butil::ResourcePool
 #include <bthread/mutex.h> //Mutex
-//micro
+
 #include "CszMicro.hpp"
 
 #ifdef CszTest
@@ -33,9 +33,7 @@ namespace Csz
 			virtual ~BDataType(){};
 			virtual void Decode(std::string&)= 0;
 			virtual void ReadData(const std::string&,TorrentFile*)=0;
-#ifdef CszTest
 			virtual void COutInfo()= 0;
-#endif
 	};
 
 	class BInt : public BDataType
@@ -45,9 +43,7 @@ namespace Csz
 			~BInt();
 			void Decode(std::string&);
 			void ReadData(const std::string&,TorrentFile*);
-#ifdef CszTest
 			void COutInfo();
-#endif
 		private:
 			std::uint64_t data;
 	};
@@ -59,9 +55,7 @@ namespace Csz
 			~BStr();
 			void Decode(std::string&);
 			void ReadData(const std::string&,TorrentFile*);
-#ifdef CszTest
 			void COutInfo();
-#endif
 		//in CszBDict::Decode
 		//private:
 			std::string data;
@@ -74,9 +68,7 @@ namespace Csz
 			~BList();
 			void Decode(std::string&);
 			void ReadData(const std::string&,TorrentFile*);
-#ifdef CszTest
 			void COutInfo();
-#endif
 		private:
 			std::vector<BDataType*> data;
 	};
@@ -89,9 +81,7 @@ namespace Csz
 			void Decode(std::string&);
 			void ReadData(const std::string&,TorrentFile*);
 			//BDataType* Search(std::string&) const;
-#ifdef CszTest
 			void COutInfo();
-#endif
 		private:
 			std::unordered_map<std::string,BDataType*> data;
 	};
@@ -161,9 +151,7 @@ namespace Csz
             int32_t GetPieceBit(int32_t T_index) const;
             std::pair<bool,int32_t> CheckEndSlice(int32_t T_index) const;
             std::pair<bool,int32_t> CheckEndSlice(int32_t T_index,int32_t T_begin) const;
-#ifdef CszTest
 			void COutInfo();
-#endif
 	};
 
 //tracker
@@ -191,9 +179,7 @@ namespace Csz
 			void SetParameter(std::string);
 			std::vector<std::string> GetPeerList(int T_timeout);
 			//const std::string& GetInfoHash()const {return info_hash;}
-#ifdef CszTest
 			void COutInfo();
-#endif
 		private:
 			void _Capturer(const int T_socket);
 			void _Delivery(const int T_socket,const std::string& T_uri);
@@ -230,6 +216,7 @@ namespace Csz
 			void CloseSocket(std::vector<int>* T_sockets);
             void SendHave(int32_t T_index);
             bthread::Mutex* GetSocketMutex(int T_socket);
+			void COutInfo();
         private:
             void _LoadPeerList(const std::string& T_socket_list);
 			void _Connected(std::vector<int>& T_ret);
@@ -410,6 +397,7 @@ namespace Csz
 			bool GameOver(const char T_end_bit)const;
 			std::vector<int32_t> LackNeedPiece(const char* T_bit_field,const int T_len);
 			std::vector<int32_t> LackNeedPiece(const std::string);
+			void COutInfo()const;
 		private:
 			void _SetParameter(std::string T_bit_field);
 			void _SetPrefixLength();
@@ -540,6 +528,7 @@ namespace Csz
             void SetParameter(std::string T_bit_field){bit_field.SetParameter(T_bit_field);return ;}
             const char* GetSendData()const {return bit_field.GetSendData();}
             int32_t GetDataSize()const {return bit_field.GetDataSize();}
+			void COutInfo();
 	};
 
 	//DownSpeed
@@ -572,6 +561,7 @@ namespace Csz
 			std::vector<int> RetSocket();
 			bool CheckSocket(const int T_socket);
             void ClearSocket(int T_socket);
+			void COutInfo();
 	};
 
 	//Need Piece
@@ -616,6 +606,7 @@ namespace Csz
 			void NPInterested(int T_socket);
 			void NPUnInterested(int T_socket);
             void ClearSocket(int T_socket);
+			void COutInfo();
 		private:
 			bool _SetSocketStatus(int T_socket,char T_status);
 			bool _ClearSocketStatus(int T_socket,char T_status);
@@ -686,9 +677,11 @@ namespace Csz
             bool Write(int32_t T_index,int32_t T_begin,const char* T_buf,int32_t T_length);
             void Init(int32_t T_index_end,int32_t T_length_end,int32_t T_length_normal);
             void ClearIndex(int32_t T_index);
+			void COutInfo();
         private:
             void _Clear();
             int32_t _Write(int32_t T_index);
     };
 }
-#endif
+
+#endif //CszBITTORRENT_H

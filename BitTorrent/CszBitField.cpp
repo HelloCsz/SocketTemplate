@@ -1,3 +1,4 @@
+#include <bitset>
 #include "CszBitTorrent.h"
 
 namespace Csz
@@ -197,5 +198,24 @@ namespace Csz
 			}
 		}
 		return true;
+	}
+
+	void BitField::COutInfo()
+	{
+		char* data= prefix_and_bit_field.c_str();
+		Csz::LI("Bit Field info:len=%u,id=%d",ntohl(*reinterpret_cast<uint32_t*>(data)),reinterpret_cast<int>(*(data+ 4)));
+		std::vector<std::bitset> bit_field;
+		for (int i= 5,len= prefix_and_bit_field.size();i< len; ++i)
+		{
+			bit_field.emplace_back(prefix_and_bit_field[i]);
+		}
+		std::string bit_info;
+		bit_info.reserve(bit_field.size()* 8);
+		for (auto& val : bit_field)
+		{
+			bit_info.append(std::move(val.to_string()));
+		}
+		Csz::LI("%s",bit_info.c_str());
+		return ;
 	}
 }

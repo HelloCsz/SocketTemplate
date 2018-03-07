@@ -407,4 +407,16 @@ namespace Csz
         return flag->second.get();
     } 
    
+	void PeerManager::COutInfo()
+	{
+		std::string out_info;
+		out_info.reserve(64);
+		out_info.append("Peer Manager info:")
+		for (auto &val : peer_list)
+		{
+			out_info.append("->"+std::to_string(val));
+		}
+		Csz::LI("%s",out_info.c_str());
+		return ;
+	}
 }

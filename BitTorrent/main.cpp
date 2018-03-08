@@ -55,6 +55,7 @@ int main(int argc,char** argv)
 	tracker.Connect();
 	Csz::LocalBitField::GetInstance()->SetParameter(std::string(Csz::TorrentFile::GetInstance()->GetIndexTotal(),0));
 	Csz::LocalBitField::GetInstance()->SetEndBit(Csz::TorrentFile::GetInstance()->GetEndBit());
+    Csz::BitMemory::GetInstance()->Init(Csz::TorrentFile::GetInstance()->GetIndexEnd(),Csz::TorrentFile::GetInstance()->GetIndexEndLength(),Csz::TorrentFile::GetInstance()->GetIndexNormalLength());
     //60s time out
 	Csz::PeerManager::GetInstance()->LoadPeerList(tracker.GetPeerList(60));
     //select

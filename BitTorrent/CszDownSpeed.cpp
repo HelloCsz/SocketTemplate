@@ -33,6 +33,9 @@ namespace Csz
 	//have peer send interested
 	std::vector<int> DownSpeed::RetSocket()
 	{
+#ifdef CszTest
+        COutInfo();
+#endif
 		auto stop= queue.cend();
 		if (queue.size()> 4)
 		{

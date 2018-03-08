@@ -54,6 +54,9 @@ namespace Csz
 
 	std::pair<int32_t,std::vector<int>> NeedPiece::PopNeed()
 	{
+#ifdef CszTest
+        COutInfo();
+#endif
 		std::pair<int32_t,std::vector<int>> ret;
 		if (queue.empty())
 		{
@@ -111,6 +114,9 @@ namespace Csz
 
     std::vector<int> NeedPiece::PopPointNeed(int32_t T_index)
     {
+#ifdef CszTest
+        COutInfo();
+#endif
         std::vector<int> ret;
         if (T_index< 0)
         {

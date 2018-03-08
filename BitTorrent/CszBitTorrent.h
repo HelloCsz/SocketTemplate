@@ -149,6 +149,9 @@ namespace Csz
 			std::vector<FILEINFO> GetFileName(int32_t T_index) const;
             int32_t GetPieceLength(int32_t T_index) const;
             int32_t GetPieceBit(int32_t T_index) const;
+            int32_t GetIndexEnd()const;
+            int32_t GetIndexEndLength()const;
+            int32_t GetIndexNormalLength()const;
             std::pair<bool,int32_t> CheckEndSlice(int32_t T_index) const;
             std::pair<bool,int32_t> CheckEndSlice(int32_t T_index,int32_t T_begin) const;
 			void COutInfo();
@@ -221,7 +224,7 @@ namespace Csz
 			void CloseSocket(std::vector<int>* T_sockets);
             void SendHave(int32_t T_index);
             bthread::Mutex* GetSocketMutex(int T_socket);
-			void COutInfo();
+			void COutInfo()const;
         private:
             void _LoadPeerList(const std::string& T_socket_list);
 			void _Connected(std::vector<int>& T_ret);
@@ -427,6 +430,17 @@ namespace Csz
 			const char* operator()(){return GetSendData();}
 			//micro
 			int GetDataSize()const {return 9;}
+            void COutInfo()
+            {
+                std::string out_info;
+                out_info.reserve(32);
+                char* p= have;
+                out_info.append("Have info:len=");
+                out_info.append(std::to_string(ntohl(*reinterpret_cast<int32_t*>(p))));
+                out_info.append(";id="+ std::to_string(int(*(p+4))));
+                out_info.append(";index="+std::to_string(ntohl(*reinterpret_cast<int32_t*>(p+ 5))));
+                Csz::LI("%s",out_info.c_str());
+            }   
 	};
 
 	//8.bitfield id= 5
@@ -462,7 +476,7 @@ namespace Csz
 			bool GameOver(const char T_end_bit)const;
 			std::vector<int32_t> LackNeedPiece(const char* T_bit_field,const int T_len);
 			std::vector<int32_t> LackNeedPiece(const std::string);
-			void COutInfo();
+			void COutInfo() const;
 		private:
 			void _SetParameter(std::string T_bit_field);
 			void _SetPrefixLength();
@@ -652,9 +666,15 @@ namespace Csz
             bool CheckBitField(int32_t T_index);
             void FillBitField(int32_t T_index);
             void SetParameter(std::string T_bit_field){bit_field.SetParameter(T_bit_field);return ;}
-            const char* GetSendData()const {return bit_field.GetSendData();}
+            const char* GetSendData()const
+            {
+#ifdef CszTest
+                COutInfo();
+#endif
+                return bit_field.GetSendData();
+            }
             int32_t GetDataSize()const {return bit_field.GetDataSize();}
-			void COutInfo();
+			void COutInfo() const;
 	};
 
 	//DownSpeed

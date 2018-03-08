@@ -43,7 +43,7 @@ namespace Csz
 		}
 		rset= rset_save;
 		timeval time_out;
-		time_out.tv_sec= 60;
+		time_out.tv_sec= 500;
 		time_out.tv_usec= 0;
 		int code;
 		//2.select

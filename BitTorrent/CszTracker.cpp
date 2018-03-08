@@ -203,6 +203,13 @@ namespace Csz
 			rset= rset_save;
 			wset= wset_save;
 		}
+#ifdef CszTest
+        COutInfo();
+        for (const auto& val : ret_str)
+        {
+            Csz::LI("%s",val.c_str());
+        }
+#endif
 		return std::move(ret_str);
 	}
 

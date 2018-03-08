@@ -137,6 +137,10 @@ namespace Csz
 				data.socket_fd= -2;
 			T_tracker->SetTrackInfo(std::move(data));
 		}
+#ifdef CszTest
+        COutInfo();
+#endif
+        return ;
 	}
 
 	std::string TorrentFile::GetHash(int32_t T_index) const
@@ -170,7 +174,7 @@ namespace Csz
 	{
 		if (infos.pieces.empty())
 		{
-			Csz::ErrMsg("TorrentFile can't return index total,pieces is empty");
+			Csz::ErrQuit("TorrentFile can't return index total,pieces is empty");
 			return 0;
 		}
 		uint32_t ret=  infos.pieces.size()/ 20;
@@ -396,6 +400,33 @@ namespace Csz
             }
         }
         return ret;
+    }
+
+    int32_t TorrentFile::GetIndexEnd() const
+    {
+        return infos.pieces.size()/ 20 - 1;
+    }
+
+    int32_t TorrentFile::GetIndexEndLength() const
+    {
+        uint64_t total= 0;
+        if (infos.single)
+        {
+            total+= infos.length;
+        }
+        else
+        {
+            for (const auto& val : infos.files)
+            {
+                total+= val.length;
+            }
+        }
+        return total- GetIndexEnd()* infos.piece_length;
+    }
+
+    int32_t TorrentFile::GetIndexNormalLength() const
+    {
+        return infos.piece_length;
     }
 
 #ifdef CszTest

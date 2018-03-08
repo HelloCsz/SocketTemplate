@@ -47,6 +47,9 @@ namespace Csz
         length_end= T_length_end;
 		length_normal= T_length_normal;
         return ;
+#ifdef CszTest
+        COutInfo();
+#endif
     }
 
 

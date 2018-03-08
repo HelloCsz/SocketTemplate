@@ -14,6 +14,9 @@ namespace Csz
 */
     std::vector<int> PeerManager::RetSocketList() const
     {
+#ifdef CszTest
+        COutInfo();
+#endif
         std::vector<int> ret;
         ret.reserve(peer_list.size());
         for (auto& val : peer_list)
@@ -410,7 +413,7 @@ namespace Csz
         return flag->second.get();
     } 
    
-	void PeerManager::COutInfo()
+	void PeerManager::COutInfo() const
 	{
 		std::string out_info;
 		out_info.reserve(64);

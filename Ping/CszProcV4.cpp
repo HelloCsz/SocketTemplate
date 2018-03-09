@@ -15,7 +15,7 @@ namespace Csz
 		ip_4=(struct ip*)T_buf;
 		//ip 首部字段是以四个字节为单位
 #ifdef CszTest
-		printf("ProcV4:\n");
+		Csz::LI("ProcV4:\n");
 		Csz::EchoIp4(ip_4);
 #endif
 		ip_head_len= ip_4->ip_hl<< 2;
@@ -39,13 +39,13 @@ namespace Csz
 			tv_send= (struct timeval*)icmp_4->icmp_data;
 			TvSub(T_tv_recv,tv_send);
 			rtt= T_tv_recv->tv_sec* 1000.0+ T_tv_recv->tv_usec/ 1000.0;
-			printf("%d bytes from %s: seq=%u,Pid=%u,ttl=%d,rtt=%.3f ms\n",
+			Csz::LI("%d bytes from %s: seq=%u,Pid=%u,ttl=%d,rtt=%.3f ms\n",
 					icmp_len,Csz::SocketNtoPHost(Pr->sa_recv,Pr->sa_len),
 					icmp_4->icmp_seq,icmp_4->icmp_id,ip_4->ip_ttl,rtt);
 		}
 		else if (Verbose)
 		{
-			printf("%d bytes from %s: type= %d,code=%d\n",
+			Csz::LI("%d bytes from %s: type= %d,code=%d\n",
 					icmp_len,Csz::SocketNtoPHost(Pr->sa_recv,Pr->sa_len),
 					icmp_4->icmp_type,icmp_4->icmp_code);
 		}

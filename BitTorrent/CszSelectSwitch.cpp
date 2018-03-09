@@ -145,14 +145,16 @@ namespace Csz
                                 data->cur_len= len- data->len;
 								if (5== id)
 								{
-									Task task(std::make_pair(&AsyncDBitField,data));
-									thread_pool->Push(&task);
+									//Task task(std::make_pair(&AsyncDBitField,data));
+									//thread_pool->Push(&task);
+									AsyncDBitField(data);
                                     continue;
 								}
 								else if (7== id)
 								{
-									Task task(std::make_pair(&AsyncDPiece,data));
-									thread_pool->Push(&task);
+									//Task task(std::make_pair(&AsyncDPiece,data));
+									//thread_pool->Push(&task);
+									AsyncDPiece(data);
                                     continue;
 								}
 							}
@@ -166,26 +168,30 @@ namespace Csz
                         task.second= data;
                         if (4== id)
                         {
-                            task.first= &DHave;
-                            thread_pool->Push(&task);
+                            //task.first= &DHave;
+                            //thread_pool->Push(&task);
+							DHave(data);
                             continue;
                         }
                         else if (5== id)
                         {
-                            task.first= &DBitField;
-                            thread_pool->Push(&task);
+                            //task.first= &DBitField;
+                            //thread_pool->Push(&task);
+							DBitField(data);
                             continue;
                         }
                         else if (6== id)
                         {
-                            task.first= &DRequest;
-                            thread_pool->Push(&task);
+                            //task.first= &DRequest;
+                            //thread_pool->Push(&task);
+							DRequest(data);
                             continue;
                         }
                         else if (7== id)
                         {
-                            task.first= &DPiece;
-                            thread_pool->Push(&task);
+                            //task.first= &DPiece;
+                            //thread_pool->Push(&task);
+							DPiece(data);
                             continue;
                         }
                         else if (8== id)

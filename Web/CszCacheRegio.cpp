@@ -28,14 +28,14 @@ namespace Csz
 				try
 				{
 #ifdef CszTest
-					printf("CacheRegio get env %s\n",cache_size);
+					Csz::LI("CacheRegio get env %s",cache_size);
 #endif
 					len= std::stoul(cache_size);
 				}
 				catch (...)
 				{
 #ifdef CszTest
-					printf("CacheRegio can't env change integer\n");
+					Csz::LI("CacheRegio can't env change integer");
 #endif
 					len= CACHESIZE;
 				}
@@ -49,9 +49,6 @@ namespace Csz
 			Csz::ErrQuit(T_e.what());
 			//throw;
 		}
-#ifdef CszTest
-		printf("read_ptr:%p,size:%d,read_cnt:%d\n",read_ptr,CACHESIZE,read_cnt);
-#endif
 		/*
 		//return nullptr;
 		read_buf= new(std::nothrow) char[CACHESIZE]{0};
@@ -62,7 +59,7 @@ namespace Csz
 	CacheRegio::~CacheRegio()
 	{
 #ifdef CszTest
-		read_buf== nullptr? printf("destruct read_buf is nullptr\n") : printf("destruct read_buf have space\n");
+		read_buf== nullptr? Csz::LI("destruct read_buf is nullptr") : Csz::LI("destruct read_buf have space");
 #endif
 		if (read_buf!= nullptr)
 		{
@@ -76,9 +73,6 @@ namespace Csz
 	{
 		while (read_cnt<= 0)
 		{
-#ifdef CszTest
-			printf("no data available\n");
-#endif
 			if ((read_cnt= read(T_socket,read_buf,CACHESIZE))< 0)
 			{
 				if (EINTR== errno)
@@ -96,9 +90,6 @@ namespace Csz
 				break;
 			}
 		}
-#ifdef CszTest
-	//	printf("have data available:%d\n",read_cnt);
-#endif
 		return read_cnt;
 	}
 

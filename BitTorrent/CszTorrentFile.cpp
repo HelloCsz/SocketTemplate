@@ -464,11 +464,11 @@ namespace Csz
 		}
 		if (infos.single)
 		{
-			out_info.append("[single mode:");
+			out_info.append("[single mode]");
 		}
 		else
 		{
-			out_info.append("[multi mode:");
+			out_info.append("[multi mode]");
 		}
 		if (!infos.name.empty())
 		{
@@ -492,6 +492,8 @@ namespace Csz
 				}
 			}
 		}
+		if (!out_info.empty())
+			Csz::LI("%s",out_info.c_str());
 	}
 #endif
 }

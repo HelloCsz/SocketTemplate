@@ -31,6 +31,7 @@ namespace Csz
 		{
 			memcpy(data+ 48,T_peer_id,20);
 		}
+		COutInfo();
 		return true;
 	}
 
@@ -53,6 +54,7 @@ namespace Csz
         out_info.append(",pstr="+ std::string(p+ 1,19));
         out_info.append(",info_hash="+ std::string(p+ 28,20));
         out_info.append(",peer_id="+ std::string(p+ 48,20));
-        Csz::LI("%s",out_info.c_str());
+		if (!out_info.empty())
+			Csz::LI("%s",out_info.c_str());
     }
 }

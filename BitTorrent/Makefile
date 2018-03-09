@@ -47,7 +47,7 @@ LIB_DIR= $(BRPC_SRC_DIR)/output/lib
 HDR_INCLUDE= $(addprefix -I, $(HDR_DIR))
 LIB_LINK= $(addprefix -L, $(LIB_DIR))
 
-CXXFLAGS= -std=c++11 -W -O2
+CXXFLAGS= -g -std=c++11 -W -O2
 STATICLINK_FLAGS= -lgflags -lprotobuf -lbrpc
 DYNAMICLINK_FLAGS= -pthread -lssl 
 

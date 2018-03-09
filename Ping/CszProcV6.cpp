@@ -33,16 +33,16 @@ namespace Csz
 					break;
 				}
 			}
-			printf("%ld bytes from %s: seq=%u,hlim= ",T_buf_len,Csz::SocketNtoPHost(Pr->sa_recv,Pr->sa_len),icmp_v6->icmp6_seq);
+			Csz::LI("%ld bytes from %s: seq=%u,hlim= ",T_buf_len,Csz::SocketNtoPHost(Pr->sa_recv,Pr->sa_len),icmp_v6->icmp6_seq);
 			if (-1== hlim)
-				printf("???");
+				Csz::LI("???");
 			else
-				printf("%d",hlim);
-			printf(",rtt=%.3f ms\n",rtt);
+				Csz::LI("%d",hlim);
+			Csz::LI(",rtt=%.3f ms\n",rtt);
 		}
 		else if (Verbose)
 		{
-			printf("%ld bytes from %s: type= %d,code= %d\n",T_buf_len,Csz::SocketNtoPHost(Pr->sa_recv,Pr->sa_len),icmp_v6->icmp6_type,icmp_v6->icmp6_code);
+			Csz::LI("%ld bytes from %s: type= %d,code= %d\n",T_buf_len,Csz::SocketNtoPHost(Pr->sa_recv,Pr->sa_len),icmp_v6->icmp6_type,icmp_v6->icmp6_code);
 		}
 #endif
 	}

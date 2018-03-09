@@ -35,7 +35,7 @@ namespace Csz
 			if (recv_num< 0)
 			{
 #ifdef CszTest
-				printf("INTR\n");
+				Csz::LI("INTR\n");
 #endif
 				if (EINTR== errno)
 				{

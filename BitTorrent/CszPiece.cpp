@@ -61,6 +61,7 @@ namespace Csz
         out_info.append(";index="+std::to_string(ntohl(*reinterpret_cast<int32_t*>(p+ 5))));
         out_info.append(";begin="+std::to_string(ntohl(*reinterpret_cast<int32_t*>(p+ 9))));
         out_info.append(";msg length="+std::to_string(prefix_and_slice.size()- 13));
-        Csz::LI("%s",out_info.c_str());
+		if (!out_info.empty())
+			Csz::LI("%s",out_info.c_str());
     }
 }

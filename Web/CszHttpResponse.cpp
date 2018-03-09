@@ -39,22 +39,12 @@ namespace Csz
 			}
 			_CatchHeader(std::move(line));
 		}
-#ifdef CszTest
-		printf("save header data info:\n");
-		for (const auto& val : header_data)
-		{
-			printf("%s: %s\n",val.first.c_str(),val.second.c_str());
-		}
-#endif
 		return true;
 	}
 
 	inline void HttpResponse::_CatchStatusLine(std::string&& T_line)
 	{
 		status_line=std::move(T_line);
-#ifdef CszTest
-		printf("status line:\n%s\n",status_line.c_str());
-#endif
         return ;
 	}
 
@@ -79,9 +69,6 @@ namespace Csz
 		{
 			Csz::ErrMsg("Catpurer duplicate message:%s",T_data.c_str());
 		}
-#ifdef CszTest
-		printf("%s\n",T_data.c_str());
-#endif
         return ;
 	}
 
@@ -153,10 +140,10 @@ namespace Csz
 #ifdef CszTest
 	void HttpResponse::COutInfo()const
 	{
-		printf("status line:%s\n",status_line.c_str());
+		Csz::LI("status line:%s\n",status_line.c_str());
 		for (const auto& val : header_data)
 		{
-			printf("%s:%s\n",val.first.c_str(),val.second.c_str());
+			Csz::LI("%s:%s\n",val.first.c_str(),val.second.c_str());
 		}
 	}
 #endif

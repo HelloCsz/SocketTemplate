@@ -216,7 +216,8 @@ namespace Csz
 		{
 			bit_info.append(std::move(val.to_string()));
 		}
-		Csz::LI("%s",bit_info.c_str());
+		if (!bit_info.empty())
+			Csz::LI("%s",bit_info.c_str());
 		return ;
 	}
 }

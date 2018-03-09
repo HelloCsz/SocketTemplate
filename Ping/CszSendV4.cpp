@@ -21,7 +21,7 @@ namespace Csz
 		icmp_4->icmp_cksum= 0;
 		icmp_4->icmp_cksum= InCksum((uint16_t*)icmp_4,icmp_total);
 #ifdef CszTest
-		printf("SendV4:\n");
+		Csz::LI("SendV4:\n");
 		Csz::EchoIcmp4(icmp_4);
 #endif
 		sendto(Socket_fd,Send_buf,icmp_total,0,Pr->sa_send,Pr->sa_len);

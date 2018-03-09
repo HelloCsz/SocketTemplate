@@ -422,7 +422,8 @@ namespace Csz
 		{
 			out_info.append("->"+std::to_string(val.first));
 		}
-		Csz::LI("%s",out_info.c_str());
+		if (!out_info.empty())
+			Csz::LI("%s",out_info.c_str());
 		return ;
 	}
 }

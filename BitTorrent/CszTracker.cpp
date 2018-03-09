@@ -58,6 +58,7 @@ namespace Csz
 	void Tracker::SetInfoHash(std::string T_data)
 	{
 		info_hash.assign(std::move(T_data));
+		std::cout<<"in tracker hash info:"<<info_hash<<"\n";
 		return ;
 	}
 
@@ -84,8 +85,7 @@ namespace Csz
 					//如果不是in progress则退出程序并返回错误
 					if (errno!= EINPROGRESS)
 					{
-						Csz::ErrMsg("Tracker can't connect,nonblocking connect error");
-						Csz::ErrMsg("host:%s,serv:%s\n",val.host.c_str(),val.serv.c_str());
+						Csz::ErrMsg("Tracker can't connect,nonblocking connect error host:%s,serv:%s",val.host.c_str(),val.serv.c_str());
 						close(socket_fd);
 						//释放空间再结束当前任务
 						freeaddrinfo(res);
@@ -189,7 +189,7 @@ namespace Csz
 						continue;
 					}
 					//normal socket
-					_Delivery(val.socket_fd,val.uri);
+					_Delivery(val.socket_fd,val.host,val.serv,val.uri);
 					//--count;
 				}
 				if (FD_ISSET(val.socket_fd,&rset))
@@ -207,14 +207,16 @@ namespace Csz
         COutInfo();
         for (const auto& val : ret_str)
         {
-            Csz::LI("%s",val.c_str());
+            //Csz::LI("%s",val.c_str());
+			std::cout<<val<<"\n";
         }
 #endif
 		return std::move(ret_str);
 	}
 
-	void Tracker::_Delivery(const int T_socket,const std::string& T_uri)
+	void Tracker::_Delivery(const int T_socket,const std::string& T_host,const std::string& T_serv,const std::string& T_uri)
 	{
+		request.SetHeader("Host",T_host+":"+T_serv);
 		std::string request_line;
 		request_line.reserve(128);
 		request_line.append("GET ");
@@ -236,6 +238,9 @@ namespace Csz
 			return ;
 		}
 		int send_num= writev(T_socket,data_array,msg_num);
+#ifdef CszTest
+		request.COutInfo();
+#endif
 		return ;
 	}
 
@@ -243,6 +248,9 @@ namespace Csz
 	{
         response.Clear();
 		response.Capturer(T_socket,&cache);
+#ifdef CszTest
+		response.COutInfo();
+#endif
 		return ;
 	}
     
@@ -300,7 +308,8 @@ namespace Csz
 		{
 			out_info.append("[host:"+val.host+"serv:"+val.serv+"uri:"+ val.uri+"]");
 		}
-        Csz::LI("%s",out_info.c_str());
+		if (!out_info.empty())
+			Csz::LI("%s",out_info.c_str());
 		return ;
 	}
 }

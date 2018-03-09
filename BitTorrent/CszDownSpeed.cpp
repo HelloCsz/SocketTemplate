@@ -93,7 +93,8 @@ namespace Csz
 		{
 			info_data.append(std::to_string(val.first)+":"+std::to_string(val.second)+";");
 		}
-		Csz::LI("Down Speed sort:%s",info_data.c_str());
+		if (!info_data.empty())
+			Csz::LI("Down Speed sort:%s",info_data.c_str());
 		return ;
 	}
 }

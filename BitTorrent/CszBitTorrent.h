@@ -1,7 +1,7 @@
 #ifndef CszBITTORRENT_H
 #define CszBITTORRENT_H
 ////////////////////////
-//#define CszTest
+#define CszTest
 
 #include "../Error/CszError.h"
 #include "../Web/CszWeb.h" //CszHttpRequest,CszHttpResponse,CszUrlEscape
@@ -185,7 +185,7 @@ namespace Csz
 			void COutInfo();
 		private:
 			void _Capturer(const int T_socket);
-			void _Delivery(const int T_socket,const std::string& T_uri);
+			void _Delivery(const int T_socket,const std::string& T_host,const std::string& T_serv,const std::string& T_uri);
             //update http parameter msg
 			void _UpdateReq();
             void _InitReq();
@@ -439,7 +439,8 @@ namespace Csz
                 out_info.append(std::to_string(ntohl(*reinterpret_cast<int32_t*>(p))));
                 out_info.append(";id="+ std::to_string(int(*(p+4))));
                 out_info.append(";index="+std::to_string(ntohl(*reinterpret_cast<int32_t*>(p+ 5))));
-                Csz::LI("%s",out_info.c_str());
+				if (!out_info.empty())
+					Csz::LI("%s",out_info.c_str());
             }   
 	};
 

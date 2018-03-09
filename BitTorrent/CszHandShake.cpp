@@ -38,9 +38,16 @@ namespace Csz
 	bool HandShake::Varification(const char* T_str) const
 	{
 		if (T_str== nullptr || *T_str== 0)
+        {
+#ifdef CszTest
+            Csz::LI("Hand Shake varification failed,str is nullpt or point empty");
+#endif
 			return false;
-		if (strncmp(T_str,data,20) && strncmp(T_str+28,data+ 28, 20))
-			return true;
+        }
+		if (0== memcmp(T_str,data,20) && 0== memcmp(T_str+28,data+ 28, 20))
+		{	
+            return true;
+        }
 		return false;
 	}
     
@@ -49,10 +56,10 @@ namespace Csz
         std::string out_info;
         out_info.reserve(64);
         char* p= data;
-        out_info.append("HandShake info:");
+        out_info.append("HandShake INFO:");
         out_info.append("pstrlen="+std::to_string(int(*p)));
         out_info.append(",pstr="+ std::string(p+ 1,19));
-        out_info.append(",info_hash="+ std::string(p+ 28,20));
+        out_info.append(",info_hash="+ Csz::UrlEscape()(std::string(p+ 28,20)));
         out_info.append(",peer_id="+ std::string(p+ 48,20));
 		if (!out_info.empty())
 			Csz::LI("%s",out_info.c_str());

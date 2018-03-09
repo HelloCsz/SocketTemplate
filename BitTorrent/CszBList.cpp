@@ -5,14 +5,14 @@ namespace Csz
 	BList::BList()
 	{
 #ifdef CszTest
-		Csz::LI("construct BList");
+//		Csz::LI("construct BList");
 #endif
 	}
 
 	BList::~BList()
 	{
 #ifdef CszTest
-		Csz::LI("destructor BList");
+//		Csz::LI("destructor BList");
 #endif
 		for (auto& val : data)
 		{
@@ -24,7 +24,7 @@ namespace Csz
 	void BList::Decode(std::string& T_content)
 	{
 #ifdef CszTest
-		Csz::LI("choice l");
+//		Csz::LI("choice l");
 #endif
 		if (T_content.empty() || 'l'!= T_content[0])
 		{

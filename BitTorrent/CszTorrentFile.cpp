@@ -434,6 +434,7 @@ namespace Csz
 	{
 		std::string out_info;
 		out_info.reserve(256);
+        out_info.append("Torrent File INFO:");
 		if (!announce_list.empty())
 		{
 			out_info.append("announce or announce_list:");

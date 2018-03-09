@@ -47,9 +47,7 @@ namespace Csz
 			int GetStatus()const;
 			const std::string SearchHeader(const std::string* T_header_name);
             std::string GetBody()const{return body;}
-#ifdef CszTest
 			void COutInfo()const;
-#endif
 		private:
 			std::string status_line;
 			std::string body;

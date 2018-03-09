@@ -26,7 +26,13 @@ int main(int argc,char** argv)
         return -1;  
     }
     file.Close();
-
+    Csz::HandShake::GetInstance();
+    Csz::TorrentFile::GetInstance();
+    Csz::PeerManager::GetInstance();
+    Csz::LocalBitField::GetInstance();
+    Csz::NeedPiece::GetInstance();
+    Csz::DownSpeed::GetInstance();
+    Csz::BitMemory::GetInstance();
 	Csz::Tracker tracker;
 	//计算info hash val
 	{
@@ -41,8 +47,6 @@ int main(int argc,char** argv)
 		char info_buf[21]={0};
 		Sha1(data.c_str()+ info_flag+ 4,info_num,(unsigned char*)info_buf);
         std::string info_hash= Csz::UrlEscape()(std::string(info_buf,20));
-		std::cout<<"hash info:"<<info_hash<<";size="<<info_hash.size()<<"\n";
-		Csz::LI("in mian info hash:%s",info_hash.c_str());
 		tracker.SetInfoHash(info_hash);
         //set reserved|info hash|peer id
 	    Csz::HandShake::GetInstance()->SetParameter(nullptr,info_buf,nullptr);
@@ -63,7 +67,7 @@ int main(int argc,char** argv)
 	Csz::PeerManager::GetInstance()->LoadPeerList(tracker.GetPeerList(60));
     //select
 	{
-		for (int i= 0; i< 3; i++)
+		for (int i= 0; i< 1; i++)
 		if (Csz::SelectSwitch()()== false)
 		{
 			auto peer_list= tracker.GetPeerList(60);

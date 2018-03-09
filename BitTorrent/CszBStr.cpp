@@ -4,7 +4,7 @@ namespace Csz
 	BStr::BStr()
 	{
 #ifdef CszTest
-		Csz::LI("construct BStr");
+//		Csz::LI("construct BStr");
 #endif
 		data.reserve(32);
 	}
@@ -12,14 +12,14 @@ namespace Csz
 	BStr::~BStr()
 	{
 #ifdef CszTest
-		Csz::LI("destructor BStr");
+//		Csz::LI("destructor BStr");
 #endif
 	}
 
 	void BStr::Decode(std::string& T_content)
 	{
 #ifdef CszTest
-		Csz::LI("choice string");
+//		Csz::LI("choice string");
 #endif
 		if (T_content.empty())
 		{

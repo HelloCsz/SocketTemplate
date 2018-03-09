@@ -36,18 +36,17 @@ namespace Csz
     
     void LocalBitField::FillBitField(int32_t T_index)
     {
+        bit_field.FillBitField(T_index);
+        PeerManager::GetInstance()->SendHave(T_index);
 #ifdef CszTest
         COutInfo();
 #endif
-        bit_field.FillBitField(T_index);
-        PeerManager::GetInstance()->SendHave(T_index);
         return ;
     }
 
 	void LocalBitField::COutInfo() const
 	{
-		std::bitset<8> bit_set(end_bit);
-		Csz::LI("Local Bit Field info:end bit %s",bit_set.to_string().c_str());
+        Csz::LI("Local Bit Field INFO:");
 		bit_field.COutInfo();
 		return ;
 	}

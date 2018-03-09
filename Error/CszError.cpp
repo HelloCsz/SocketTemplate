@@ -7,7 +7,7 @@ namespace Csz
 {
 	#define STRBUFMAX 4096
 	//set nonzero by DaemonInit()
-	int daemon_proc= 1;
+	int daemon_proc= 0;
 	//static限制ErrDoit函数的作用范围
 	static void ErrDoit(int,int,const char*,va_list); 
 	//fatal error related to system call
@@ -92,7 +92,7 @@ namespace Csz
 		//覆盖'\0'
 		strcat(str_buf,"\n");
 		if (daemon_proc)
-			syslog(T_level | LOG_LOCAL6,str_buf,'\0'); //消息发送进程类型facility,默认LOG_USER,'\0'取决与实现(这个版本提示格式错误)
+			syslog(T_level | LOG_LOCAL3,str_buf,'\0'); //消息发送进程类型facility,默认LOG_USER,'\0'取决与实现(这个版本提示格式错误)
 		else
 		{
 			//先刷新标准输出流

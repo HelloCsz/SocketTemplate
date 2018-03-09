@@ -58,7 +58,6 @@ namespace Csz
 	void Tracker::SetInfoHash(std::string T_data)
 	{
 		info_hash.assign(std::move(T_data));
-		std::cout<<"in tracker hash info:"<<info_hash<<"\n";
 		return ;
 	}
 
@@ -197,6 +196,8 @@ namespace Csz
 					FD_CLR(val.socket_fd,&rset_save);
 					_Capturer(val.socket_fd);
                     ret_str.emplace_back(std::move(response.GetBody()));
+                    //auto body= response.GetBody();
+                    //ret_str.emplace_back(std::move(body));
 					--quit_num;
 				}
 			}
@@ -207,8 +208,8 @@ namespace Csz
         COutInfo();
         for (const auto& val : ret_str)
         {
-            //Csz::LI("%s",val.c_str());
-			std::cout<<val<<"\n";
+            Csz::LI("%s",val.c_str());
+			//std::cout<<val<<"\n";
         }
 #endif
 		return std::move(ret_str);
@@ -216,7 +217,7 @@ namespace Csz
 
 	void Tracker::_Delivery(const int T_socket,const std::string& T_host,const std::string& T_serv,const std::string& T_uri)
 	{
-		request.SetHeader("Host",T_host+":"+T_serv);
+		//request.SetHeader("Host",T_host+":"+T_serv);
 		std::string request_line;
 		request_line.reserve(128);
 		request_line.append("GET ");
@@ -224,7 +225,6 @@ namespace Csz
 		request_line.append(1,'?');
 		request_line.append("info_hash=");
 		request_line.append(info_hash);
-		request_line.append(1,'&');
 		request_line.append(parameter_msg);
 		request_line.append(" HTTP/1.1");
 		request.SetFirstLine(std::move(request_line));

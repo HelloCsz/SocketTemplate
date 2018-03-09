@@ -31,7 +31,7 @@ namespace Csz
         }
 		while (!(line= T_cache->ReadLine(T_socket)).empty())
 		{
-			if (4== line.size() && "\r\n\r\n"==line)
+			if (1== line.size() && "\r"==line)
 			{
 				//catch body
 				_SaveBody(T_socket,T_cache);
@@ -137,14 +137,12 @@ namespace Csz
 		return result->second;
 	}
 
-#ifdef CszTest
 	void HttpResponse::COutInfo()const
 	{
-		Csz::LI("status line:%s\n",status_line.c_str());
+		Csz::LI("http Response status line:%s",status_line.c_str());
 		for (const auto& val : header_data)
 		{
-			Csz::LI("%s:%s\n",val.first.c_str(),val.second.c_str());
+			Csz::LI("%s:%s",val.first.c_str(),val.second.c_str());
 		}
 	}
-#endif
 }

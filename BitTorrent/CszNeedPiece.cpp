@@ -52,6 +52,7 @@ namespace Csz
 		return ;
 	}
 
+    //TODO peer_UNCHOKE && peer_INTERESTED || peer_UNINTERESTED(!!)
 	std::pair<int32_t,std::vector<int>> NeedPiece::PopNeed()
 	{
 #ifdef CszTest
@@ -92,7 +93,7 @@ namespace Csz
 					else
 					{
 						//unchoke status
-						if (step_2->second & UNCHOKE)
+						if (!(step_2->second).peer_choke)
 						{
 							ret.second.emplace_back(val);
 						}
@@ -115,7 +116,10 @@ namespace Csz
     std::vector<int> NeedPiece::PopPointNeed(int32_t T_index)
     {
 #ifdef CszTest
-        COutInfo();
+        std::string out_info;
+        out_info.reserve(64);
+        out_info.append("Need Piece pop point need index=");
+        out_into.append(std::to_string(T_index));
 #endif
         std::vector<int> ret;
         if (T_index< 0)
@@ -135,19 +139,36 @@ namespace Csz
             if (val.first== T_index)
             {
                 //2.cur socket vector
-                for (auto& fd : *(val.second))
+                if (val.second!= nullptr)
                 {
-                    auto step1= socket_cur.find(fd);
-                    if (step1!= socket_cur.end())
+                    for (auto& fd : *(val.second))
                     {
-                        //3.socket queue
-                        auto step2= socket_queue.find(step1->second);
-                        if (step2!= socket_queue.end())
+                        auto step1= socket_cur.find(fd);
+                        if (step1!= socket_cur.end())
                         {
-                            //4.check status
-                            if (step2->second & UNCHOKE)
+                            //3.socket queue
+                            auto step2= socket_queue.find(step1->second);
+                            if (step2!= socket_queue.end())
                             {
-                                ret.emplace_back(fd);
+#ifdef CszTest
+                                out_info.append("socket=");
+                                out_info.append(std::to_string(step1.first));
+                                out_info.append(",status ");
+                                if ((step2->second).peer_choke)
+                                    out_info.append("peer CHOKE");
+                                if ((step2->second).peer_interested)
+                                    out_info.append("peer INTERESTED");
+                                else
+                                    out_info.append("peer UNINTERESTED");
+#endif
+                                //4.check status
+                                if (!(step2->second).peer_choke)
+                                {
+#ifdef CszTest
+                                    out_info.append("peer UNCHOKE");
+#endif
+                                    ret.emplace_back(fd);
+                                }
                             }
                         }
                     }
@@ -184,75 +205,47 @@ namespace Csz
         }
     }
 
-	inline bool NeedPiece::_SetSocketStatus(int T_socket,char T_status)
-	{
-		auto step_1= socket_cur.find(T_socket);
-		if (step_1== socket_cur.end())
-		{
-			return false;
-		}
-		auto step_2= socket_queue.find(step_1->second);
-		if (step_2== socket_queue.end())
-		{
-			Csz::ErrMsg("Need Piece set socket status ,not found socket map id num");
-			return false;
-		}
-		step_2->second|= T_status;
-		return true;
-	}
-
-	inline bool NeedPiece::_ClearSocketStatus(int T_socket,char T_status)
-	{
-		auto step_1= socket_cur.find(T_socket);
-		if (step_1== socket_cur.end())
-		{
-			return false;
-		}
-		auto step_2= socket_queue.find(step_1->second);
-		if (step_2== socket_queue.end())
-		{
-			Csz::ErrMsg("Need Piece clear socket status ,not found socket map id num");
-			return false;
-		}
-		step_2->second&= (~T_status);
-		return true;
-	}
-
 	void NeedPiece::NPChoke(int T_socket)
 	{
-		if (_SetSocketStatus(T_socket,CHOKE))
-		{
-			_ClearSocketStatus(T_socket,UNCHOKE);
-		}
+        auto p= RetSocketStatus(T_socket);
+        if (nullptr!= p)
+        {
+            (*p).
+        }
 		return ;
 	}
 
 	void NeedPiece::NPUnChoke(int T_socket)
 	{
-		if (_SetSocketStatus(T_socket,UNCHOKE))
-		{
-			_ClearSocketStatus(T_socket,CHOKE);
-		}
 		return ;
 	}
 
 	void NeedPiece::NPInterested(int T_socket)
 	{
-		if (_SetSocketStatus(T_socket,INTERESTED))
-		{
-			_ClearSocketStatus(T_socket,UNINTERESTED);
-		}
 		return ;
 	}
 
 	void NeedPiece::NPUnInterested(int T_socket)
 	{
-		if (_SetSocketStatus(T_socket,UNINTERESTED))
-		{
-			_ClearSocketStatus(T_socket,INTERESTED);
-		}
 		return ;
 	}
+    
+    inline int* NeedPiece::RetSocketStatus(int T_socket)
+    {
+        //1.find socket
+        auto step1= socket_cur.find(T_socket);
+        if (step1!= socket_cur.end())
+        {
+            //2.find id
+            auto step2= socket_queue.find(step1->second);
+            if (step2!= socket_queue.end())
+            {
+                //3.return status
+                return &(step2->second);
+            }
+        }
+        return nullptr;
+    }
 
 	void NeedPiece::COutInfo()
 	{
@@ -262,27 +255,35 @@ namespace Csz
 			{
 				std::string out_info;
 				out_info.reserve(64);
-				out_info.append("Need Piece info:index=");
+				out_info.append("Need Piece INFO:index=");
 				out_info.append(std::to_string(val.first));
 				for (auto& fd : *val.second)
 				{
 					out_info.append(",socket="+std::to_string(fd));
-					if (socket_queue[fd]& CHOKE)
-					{
-						out_info.append("->CHOKE");
-					}
-					else
-					{
-						out_info.append("->UNCHOKE");
-					}
-					if (socket_queue[fd] & INTERESTED)
-					{
-						out_info.append("->INTERESTED");
-					}
-					else
-					{
-						out_info.append("->UNINTERESTED");
-					}
+                    auto step1= socket_cur.find(fd);
+                    if (step1!= socket_cur.end())
+                    {
+                        auto step2= socket_queue.find(step1->second);
+                        if (step2!= socket_queue.end())
+                        {
+                            if (step2->second.peer_choke)
+                            {
+                                out_info.append(",status peer CHOKE");
+                            }
+                            else
+                            {
+                                out_info.append(",status peer UNCHOKE");
+                            }
+                            if (step2->second.peer_interested)
+                            {
+                                out_info.append(",status peer INTERESTED");
+                            }
+                            else
+                            {
+                                out_info.append(",status peer UNINTERESTED");
+                            }
+                        }
+                    }
 				}
 				Csz::LI("%s",out_info.c_str());
 			}

@@ -2,7 +2,7 @@
 #define CszMICRO_HPP
 //NeedPiece Comp
 //min heap
-#define NPComp [](const std::pair<int32_t,std::shared_ptr<std::vector<int>>>& T_lhs,\
+#define NPComp [](const & T_lhs,\
 				  const std::pair<int32_t,std::shared_ptr<std::vector<int>>>& T_rhs)\
 {\
 	return (T_lhs.second)->size()> (T_rhs.second)->size();\
@@ -10,17 +10,18 @@
 
 //DownSpeed Comp
 //max heap
-#define DSComp [](const std::pair<int,uint32_t>& T_lhs,const std::pair<int,uint32_t>& T_rhs)\
+#define DSComp [](const DataType& T_lhs,const DataType& T_rhs)\
 {\
-	return T_lhs.second< T_rhs.second;\
+    if (T_lhs.status.peer_interested> T_rhs.status.peer_interested)\
+    {\
+        return true;\
+    }\
+    else\
+    {\
+        return T_lhs.total> T_rhs.total;\
+    }\
 }
 
-//NeedPiece
-//choke unchoke interested uninterested
-#define CHOKE			0x01
-#define UNCHOKE			0x02
-#define INTERESTED		0x04
-#define UNINTERESTED	0x08
 
 //
 //Slice Size

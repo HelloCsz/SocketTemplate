@@ -57,6 +57,7 @@ namespace Csz
         auto flag= T_socket_list.find("peers");
         if (std::string::npos== flag)
         {
+            Csz::ErrMsg("Peer Manager load peer list failed,not found 'peers'");
             return ;
         }
         flag+= 5;
@@ -76,6 +77,9 @@ namespace Csz
             addr.sin_addr.s_addr= *(reinterpret_cast<int32_t*>(const_cast<char*>(start)));
             addr.sin_port= *(reinterpret_cast<int16_t*>(const_cast<char*>(start+ 4)));
             start= start+ 6;
+#ifdef CszTest
+            Csz::LI("ip:%s->port:%d",inet_ntoa(addr.sin_addr),ntohs(addr.sin_port));
+#endif
             //tcp  connect,only support ipv4
             int socket= Csz::CreateSocket(AF_INET,SOCK_STREAM,IPPROTO_TCP);
             //3.set nonblock
@@ -97,10 +101,19 @@ namespace Csz
         }
 		//5.ensure connect and send hand shake
 		_Connected(ret);
+#ifdef CszTest
+        Csz::LI("Peer Manager load peer list connected size=%d",ret.size());
+#endif
 		//6.recv hand shake and delete failed socket
 		_Verification(ret);
+#ifdef CszTest
+        Csz::LI("Peer Manager load peer list verification size=%d",ret.size());
+#endif
 		//7.send bit field
 		_SendBitField(ret);
+#ifdef CszTest
+        Csz::LI("Peer Manager load peer list send bit field size=%d",ret.size());
+#endif
 		//TODO 8.lock and update peer list and socket_map_id
 		NeedPiece::GetInstance()->SocketMapId(ret);
         auto down_speed= DownSpeed::GetInstance();
@@ -137,7 +150,10 @@ namespace Csz
     void PeerManager::_Connected(std::vector<int>& T_ret)
     {
 		if (T_ret.empty())
-			return ;
+		{
+            Csz::ErrMsg("Peer Manager connected failed,parameter socket is empty");
+            return ;
+        }
         //1.init select
         fd_set wset,rset;
         fd_set wset_save,rset_save;
@@ -248,7 +264,10 @@ namespace Csz
 	void PeerManager::_Verification(std::vector<int>& T_ret)
 	{
 		if (T_ret.empty())
-			return ;
+		{
+            Csz::ErrMsg("Peer Manager verification failed,parameter socket is empty");
+            return ;
+        }
 		auto hand_shake= HandShake::GetInstance();
         //1.init select
         fd_set rset,rset_save;
@@ -322,10 +341,16 @@ namespace Csz
 					char buf[69]={0};
 					if (68!=recv(val,buf,68,MSG_WAITALL))
 					{
+#ifdef CszTest
+                        Csz::LI("Peer Manager verification failed,recv num!= 68");
+#endif
 						val= -1;
 					}
 					else if (!(hand_shake->Varification(buf)))
 					{
+#ifdef CszTest
+                        Csz::LI("Peer Manager verification failed,info error%s",UrlEscape()(std::string(buf+28,20)).c_str());
+#endif                                   
 						val= -1;
 					}
                 }
@@ -351,7 +376,10 @@ namespace Csz
 	void PeerManager::_SendBitField(std::vector<int>& T_ret)
 	{
 		if (T_ret.empty())
-			return ;
+	    {
+            Csz::ErrMsg("Peer Manager send bit field failed parameter socket is empty");
+        	return ;
+        }
 		auto local_bit_field= LocalBitField::GetInstance();
 		for (const auto& val : T_ret)
 		{
@@ -417,7 +445,7 @@ namespace Csz
 	{
 		std::string out_info;
 		out_info.reserve(64);
-		out_info.append("Peer Manager info:");
+		out_info.append("Peer Manager INFO:");
 		for (auto &val : peer_list)
 		{
 			out_info.append("->"+std::to_string(val.first));

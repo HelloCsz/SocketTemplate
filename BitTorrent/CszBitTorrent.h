@@ -22,6 +22,7 @@
 
 #ifdef CszTest
 #include <cstdio>
+#include <bitset>
 #endif
 
 namespace Csz
@@ -231,7 +232,14 @@ namespace Csz
             void _Verification(std::vector<int>& T_ret);
 			void _SendBitField(std::vector<int>& T_ret);
         private:
-            std::unordered_map<int,std::shared_ptr<bthread::Mutex>> peer_list;
+            DataType
+            {
+                int id;
+                bthread::Mutex mutex;
+            };
+            //only socket map id
+            std::unordered_map<int,std::shared_ptr<DataType>> peer_list;
+            int32_t cur_id;
     };
 
     //bt message type
@@ -659,7 +667,15 @@ namespace Csz
             BitField bit_field;
             //int32_t piece_length;
 		public:
-			void SetEndBit(const char T_ch){end_bit= T_ch;}
+			void SetEndBit(const char T_ch)
+            {
+                end_bit= T_ch;
+#ifdef CszTest
+                std::bitset<8> bit_set(end_bit);
+                Csz::LI("Local Bit Field end_bit=%s",bit_set.to_string().c_str());
+#endif
+                return ;
+            }
 			bool GameOver()const{return bit_field.GameOver(end_bit);}
 			void RecvHave(int T_socket,int32_t T_index);
 			void RecvBitField(int T_socket,const char* T_bit_field,const int T_eln);
@@ -677,6 +693,17 @@ namespace Csz
             int32_t GetDataSize()const {return bit_field.GetDataSize();}
 			void COutInfo() const;
 	};
+
+    //Peer Status
+    struct PeerStatus
+    {
+        PeerStatus():am_choke(1),am_interested(0),peer_choke(1),peer_interested(0){}
+        unsigned char am_choke:1;
+        unsigned char am_interested:1;
+        unsigned char peer_choke:1;
+        unsigned char peer_interested:1;
+        unsigned char unused:4;
+    };
 
 	//DownSpeed
 	class DownSpeed
@@ -704,12 +731,21 @@ namespace Csz
 		private:
 			//10s update
 			//priority queue
-			//socket | download speed
-			std::vector<std::pair<int,uint32_t>> queue;
+			//socket | status |download speed
+			struct DataType
+            {
+                DataType()= delete;
+                DataType(int T_socket):socket(T_socket),total(0){}
+                PeerStatus status; 
+                int socket;
+                uint32_t total;
+            };
+			std::list<DateType> queue;
 		public:
 			void AddSocket(const int T_socket)
 			{
-				queue.emplace_back(std::make_pair(T_socket,0));
+                DataType data(T_socket);
+				queue.push_back(std::move(data));
                 return ;
 			}
 			void AddTotal(const int T_socket,const uint32_t T_speed);
@@ -725,7 +761,7 @@ namespace Csz
 	class NeedPiece
 	{
 		private:
-			NeedPiece():cur_id(0)
+			NeedPiece()
             {
 #ifdef CszTest
                 Csz::LI("constructor Need Piece");
@@ -754,13 +790,15 @@ namespace Csz
 			//piece map N socket
 			//min priority
 			//index->sockets
-			std::vector<std::pair<int32_t,std::shared_ptr<std::vector<int>>>> queue;
+			struct DataType
+            {
+                int32_t index;
+                std::vector<std::pair<int,int>> queue;
+            };
+			std::vector<std::shared_ptr<DataType>> index_queue;
 			//socket may be reuse
 			//id->choke/unchoke and interested/uninterested 
-			std::unordered_map<int,uint8_t> socket_queue;
-			//socket->id
-			std::unordered_map<int,int> socket_cur;
-			int cur_id;
+			std::unordered_map<int,PeerStatus> socket_queue;
 		public:
 			void PushNeed(const std::vector<int32_t>* T_index,const int T_socket);
 			void PushNeed(const int32_t T_index,int T_socket);
@@ -774,9 +812,9 @@ namespace Csz
 			void NPUnInterested(int T_socket);
             void ClearSocket(int T_socket);
 			void COutInfo();
-		private:
-			bool _SetSocketStatus(int T_socket,char T_status);
-			bool _ClearSocketStatus(int T_socket,char T_status);
+        private:
+            //TODO danger!!!
+            int* RetSocketStatus(int T_socket);
 	};
 
 	//select & switch message type

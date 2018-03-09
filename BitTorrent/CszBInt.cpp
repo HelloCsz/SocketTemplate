@@ -5,21 +5,21 @@ namespace Csz
 	BInt::BInt() : data(0)
 	{
 #ifdef CszTest
-		Csz::LI("constructor BInt");
+//		Csz::LI("constructor BInt");
 #endif
 	}
 
 	BInt::~BInt()
 	{
 #ifdef CszTest
-		Csz::LI("destructor BInt");
+//		Csz::LI("destructor BInt");
 #endif
 	}
 
 	void BInt::Decode(std::string& T_content)
 	{
 #ifdef CszTest
-		Csz::LI("choice int");
+//		Csz::LI("choice int");
 #endif
 		if (T_content.empty() || T_content[0]!= 'i')
 		{

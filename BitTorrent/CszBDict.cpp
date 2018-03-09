@@ -5,14 +5,14 @@ namespace Csz
 	BDict::BDict()
 	{
 #ifdef CszTest
-		Csz::LI("constrctor BDict");
+//		Csz::LI("constrctor BDict");
 #endif
 	}
 
 	BDict::~BDict()
 	{
 #ifdef CszTest
-		Csz::LI("destructor BDict");
+//		Csz::LI("destructor BDict");
 #endif
 		for (auto& val : data)
 		{
@@ -24,7 +24,7 @@ namespace Csz
 	void BDict::Decode(std::string& T_content)
 	{
 #ifdef CszTest
-			Csz::LI("choice d");
+//			Csz::LI("choice d");
 #endif
 		if (T_content.empty() || T_content[0]!= 'd')
 		{

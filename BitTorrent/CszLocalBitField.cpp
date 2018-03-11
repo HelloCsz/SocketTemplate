@@ -15,7 +15,16 @@ namespace Csz
 	{
 		if (!bit_field.CheckPiece(T_index))
 		{
-			NeedPiece::GetInstance()->PushNeed(T_index,T_socket);
+			auto id= PeerManager::GetInstance()->GetSocketId(T_socket);
+			if (id< 0)
+			{
+#ifdef CszTest
+				Csz::LI("Local Bit Field recv have failed,not found socket id");
+#endif
+				return ;
+			}
+			PeerManager::GetInstance()->AmInterested(T_socket);
+			NeedPiece::GetInstance()->PushNeed(T_index,T_socket,id);
 		}
 		return ;
 	}
@@ -30,7 +39,16 @@ namespace Csz
 		auto indexs= bit_field.LackNeedPiece(T_bit_field,T_len);
 		if (indexs.empty())
 			return ;
-		NeedPiece::GetInstance()->PushNeed(&indexs,T_socket);
+		auto id= PeerManager::GetInstance()->GetSocketId(T_socket);
+		if (id< 0)
+		{
+#ifdef CszTest
+			Csz::LI("Local Bit Field recv bit field failed,not found socket id");
+#endif
+			return ;
+		}
+		PeerManager::GetInstance()->AmInterested(T_socket);
+		NeedPiece::GetInstance()->PushNeed(&indexs,T_socket,id);
 		return ;
 	}
     

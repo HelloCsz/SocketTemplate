@@ -1,6 +1,7 @@
 #include <strings.h> //bzero
 #include <sys/socket.h> //getsockopt,setsockopt,send,recv
 #include <sys/select.h> //select
+#include <butil/time.h> //gettimeofday_us
 #include "CszBitTorrent.h"
 #include "../Sock/CszSocket.h"
 
@@ -12,6 +13,8 @@ namespace Csz
         LoadPeerList(T_socket_list);   
     }
 */
+	
+	//bug->data repetition
     std::vector<int> PeerManager::RetSocketList() const
     {
 #ifdef CszTest
@@ -24,6 +27,10 @@ namespace Csz
             if (val.first>= 0)
                 ret.emplace_back(val.first);
         }
+#ifdef CszTest
+		if (ret.empty())
+			Csz::LI("Peer Manager ret socket list failed,result is empty");
+#endif
         return std::move(ret);
     }   
 
@@ -31,17 +38,28 @@ namespace Csz
     {
         if (T_socket>= 0)
         {
-            std::shared_ptr<bthread::Mutex> mutex(new bthread::Mutex());
-            peer_list.emplace(std::make_pair(T_socket,mutex));
+			//TODO lock id
+            std::shared_ptr<PeerManager::DataType> data= std::make_shared<PeerManager::DataType>();
+			data->id= cur_id++;
+			//unlock id
             DownSpeed::GetInstance()->AddSocket(T_socket);
+			NeedPiece::GetInstance()->SocketMapId(data->id);
+            peer_list.emplace(std::make_pair(T_socket,data));
         }
+#ifdef CszTest
+		else
+		{
+			Csz::LI("Peer Manager add socket failed,socket< 0");
+		}
+#endif
+		return ;
     }
 
     void PeerManager::LoadPeerList(const std::vector<std::string>& T_socket_list)
     {
         if (T_socket_list.empty())
         { 
-            Csz::ErrMsg("Peer list is empty");
+            Csz::ErrMsg("Peer Manager load peer list failed,Peer list is empty");
             return ;  
         }
         for (const auto& val : T_socket_list)
@@ -78,6 +96,7 @@ namespace Csz
             addr.sin_port= *(reinterpret_cast<int16_t*>(const_cast<char*>(start+ 4)));
             start= start+ 6;
 #ifdef CszTest
+			//all thread,in only one thread run
             Csz::LI("ip:%s->port:%d",inet_ntoa(addr.sin_addr),ntohs(addr.sin_port));
 #endif
             //tcp  connect,only support ipv4
@@ -91,7 +110,7 @@ namespace Csz
                 {
                     Csz::ErrMsg("PeerManager can't connect peer,nonblocking connection error");
                     Csz::ErrMsg("addr=%d,port=%d",ntohl(addr.sin_addr.s_addr),ntohs(addr.sin_port));
-                    close(socket);
+					Csz::Close(socket);
                     continue;
                 }
             }
@@ -104,18 +123,20 @@ namespace Csz
 #ifdef CszTest
         Csz::LI("Peer Manager load peer list connected size=%d",ret.size());
 #endif
-		//6.recv hand shake and delete failed socket
-		_Verification(ret);
-#ifdef CszTest
-        Csz::LI("Peer Manager load peer list verification size=%d",ret.size());
-#endif
-		//7.send bit field
+		//6.send bit field
 		_SendBitField(ret);
 #ifdef CszTest
         Csz::LI("Peer Manager load peer list send bit field size=%d",ret.size());
 #endif
+		//7.recv hand shake and delete failed socket
+		_Verification(ret);
+#ifdef CszTest
+        Csz::LI("Peer Manager load peer list verification size=%d",ret.size());
+#endif
 		//TODO 8.lock and update peer list and socket_map_id
-		NeedPiece::GetInstance()->SocketMapId(ret);
+		std::vector<int> socket_id;
+		socket_id.reserve(ret.size());
+		auto need_piece= NeedPiece::GetInstance();
         auto down_speed= DownSpeed::GetInstance();
         for (const auto& val : ret)
         {
@@ -126,9 +147,13 @@ namespace Csz
                 continue;  
             }
 #endif
-            std::shared_ptr<bthread::Mutex> mutex(new bthread::Mutex);
-            peer_list.emplace(val,mutex);
+			//TODO lock id
+            std::shared_ptr<PeerManager::DataType> data= std::make_shared<PeerManager::DataType>();
+			data->id= cur_id++;
+			//unlock id
             down_speed->AddSocket(val);
+			need_piece->SocketMapId(data->id);
+            peer_list.emplace(std::make_pair(val,data));
         }
         return ;       
     }
@@ -192,6 +217,7 @@ namespace Csz
 				{
 					if (FD_ISSET(val,&rset_save) || FD_ISSET(val,&wset_save))
 					{
+						Csz::Close(val);
 						val= -1;
 					}
 				}
@@ -309,6 +335,7 @@ namespace Csz
 				{
 					if (FD_ISSET(val,&rset_save))
 					{
+						Csz::Close(val);
 						val= -1;
 					}
 				}
@@ -343,14 +370,16 @@ namespace Csz
 					{
 #ifdef CszTest
                         Csz::LI("Peer Manager verification failed,recv num!= 68");
-#endif
+#endif	
+						Csz::Close(val);
 						val= -1;
 					}
 					else if (!(hand_shake->Varification(buf)))
 					{
 #ifdef CszTest
                         Csz::LI("Peer Manager verification failed,info error%s",UrlEscape()(std::string(buf+28,20)).c_str());
-#endif                                   
+#endif                          
+						Csz::Close(val);			
 						val= -1;
 					}
                 }
@@ -391,14 +420,22 @@ namespace Csz
 	void PeerManager::CloseSocket(int T_socket)
 	{
 		auto result= peer_list.find(T_socket);
+		//lock
 		if (result!= peer_list.end())
 		{
-			Csz::Close(T_socket);
-			//lock
+			Csz::Close(result->first);
+			//socket
+            DownSpeed::GetInstance()->ClearSocket(result->first);
+			//id
+            NeedPiece::GetInstance()->ClearSocket(result->second->id);
 			peer_list.erase(result);
-            NeedPiece::GetInstance()->ClearSocket(T_socket);
-            DownSpeed::GetInstance()->ClearSocket(T_socket);
 		}
+#ifdef CszTest
+		else
+		{
+			Csz::LI("Peer Manager close socket failed,not found socket");
+		}
+#endif
 		return ;
 	}
 
@@ -415,9 +452,9 @@ namespace Csz
         int code;
         for (auto start= peer_list.cbegin(),stop= peer_list.cend(); start!= stop; ++start)
         {
-            std::unique_lock<bthread::Mutex> guard(*(start->second));
+            std::unique_lock<bthread::Mutex> guard(start->second->mutex);
             code= send(start->first,have.GetSendData(),have.GetDataSize(),0);
-            if (-1== code || code!= have.GetDataSize())
+            if (-1== code || code != have.GetDataSize())
             {
                 del_sockets.emplace_back(start);
             }      
@@ -438,9 +475,167 @@ namespace Csz
         {
             return nullptr;
         }
-        return flag->second.get();
+        return &(flag->second->mutex);
     } 
-   
+ 
+	int PeerManager::GetSocketId(int T_socket) 
+	{
+		if (peer_list.find(T_socket)!= peer_list.end())
+		{
+			return peer_list[T_socket]->id;
+		}
+		return -1;
+	}
+
+	void PeerManager::AmChoke(int T_socket)
+	{
+		auto flag= peer_list.find(T_socket);
+		if (flag== peer_list.end())
+		{
+			return ;
+		}
+		if ((flag->second->status).am_choke)
+		{
+			return ;
+		}
+		(flag->second->status).am_choke= 1;
+		NeedPiece::GetInstance()->AmChoke(flag->second->id);
+		DownSpeed::GetInstance()->AmChoke(T_socket);
+		Choke choke;
+		std::unique_lock<bthread::Mutex> guard(flag->second->mutex);
+		send(T_socket,choke.GetSendData(),choke.GetDataSize(),0);
+		return ;
+	}
+
+	void PeerManager::AmUnChoke(int T_socket)
+	{
+		auto flag= peer_list.find(T_socket);
+		if (flag== peer_list.end())
+		{
+			return ;
+		}
+		if (!(flag->second->status).am_choke)
+		{
+			return ;
+		}
+		(flag->second->status).am_choke= 0;
+		NeedPiece::GetInstance()->AmUnChoke(flag->second->id);
+		DownSpeed::GetInstance()->AmUnChoke(T_socket);
+		UnChoke unchoke;
+		std::unique_lock<bthread::Mutex> guard(flag->second->mutex);
+		send(T_socket,unchoke.GetSendData(),unchoke.GetDataSize(),0);
+		return ;
+	}
+
+	void PeerManager::AmInterested(int T_socket)
+	{
+		auto flag= peer_list.find(T_socket);
+		if (flag== peer_list.end())
+		{
+			return ;
+		}
+		if ((flag->second->status).am_interested)
+		{
+			return ;
+		}
+		(flag->second->status).am_interested= 1;
+		NeedPiece::GetInstance()->AmInterested(flag->second->id);
+		DownSpeed::GetInstance()->AmInterested(T_socket);
+		Interested interested;
+		std::unique_lock<bthread::Mutex> guard(flag->second->mutex);
+		send(T_socket,interested.GetSendData(),interested.GetDataSize(),0);
+		return ;
+	}
+
+	void PeerManager::AmUnInterested(int T_socket)
+	{
+		auto flag= peer_list.find(T_socket);
+		if (flag== peer_list.end())
+		{
+			return ;
+		}
+		if (!(flag->second->status).am_interested)
+		{
+			return ;
+		}
+		(flag->second->status).am_interested= 0;
+		NeedPiece::GetInstance()->AmUnInterested(flag->second->id);
+		DownSpeed::GetInstance()->AmUnInterested(T_socket);
+		UnInterested uninterested;
+		std::unique_lock<bthread::Mutex> guard(flag->second->mutex);
+		send(T_socket,uninterested.GetSendData(),uninterested.GetDataSize(),0);
+	}
+
+	void PeerManager::PrChoke(int T_socket)
+	{
+		auto flag= peer_list.find(T_socket);
+		if (flag== peer_list.end())
+		{
+			return ;
+		}
+		(flag->second->status).peer_choke= 1;
+		NeedPiece::GetInstance()->PrChoke(flag->second->id);
+		DownSpeed::GetInstance()->PrChoke(T_socket);
+		return ;
+	}
+
+	void PeerManager::PrUnChoke(int T_socket)
+	{
+		auto flag= peer_list.find(T_socket);
+		if (flag== peer_list.end())
+		{
+			return ;
+		}
+		(flag->second->status).peer_choke= 0;
+		NeedPiece::GetInstance()->PrUnChoke(flag->second->id);
+		DownSpeed::GetInstance()->PrUnChoke(T_socket);
+		return ;
+	}
+
+	void PeerManager::PrInterested(int T_socket)
+	{
+		auto flag= peer_list.find(T_socket);
+		if (flag== peer_list.end())
+		{
+			return ;
+		}
+		(flag->second->status).peer_interested= 1;
+		NeedPiece::GetInstance()->PrInterested(flag->second->id);
+		DownSpeed::GetInstance()->PrInterested(T_socket);
+		return ;
+	}
+
+	void PeerManager::PrUnInterested(int T_socket)
+	{
+		auto flag= peer_list.find(T_socket);
+		if (flag== peer_list.end())
+		{
+			return ;
+		}
+		(flag->second->status).peer_interested= 0;
+		NeedPiece::GetInstance()->PrUnInterested(flag->second->id);
+		DownSpeed::GetInstance()->PrUnInterested(T_socket);
+	}
+	
+	void PeerManager::Optimistic()
+	{
+		//TODO lock
+		int optimistic= butil::gettimeofday_us() % (peer_list.size()- 4);
+		for (auto& val : peer_list)
+		{
+			if (((val.second)->status).am_choke)
+			{
+				--optimistic;
+				if (optimistic<= 0)
+				{
+					AmUnChoke(val.first);
+					break;
+				}
+			}
+		}
+		return ;
+	}
+
 	void PeerManager::COutInfo() const
 	{
 		std::string out_info;
@@ -448,7 +643,7 @@ namespace Csz
 		out_info.append("Peer Manager INFO:");
 		for (auto &val : peer_list)
 		{
-			out_info.append("->"+std::to_string(val.first));
+			out_info.append("["+std::to_string(val.first)+":"+ std::to_string((val.second)->id)+"]");
 		}
 		if (!out_info.empty())
 			Csz::LI("%s",out_info.c_str());

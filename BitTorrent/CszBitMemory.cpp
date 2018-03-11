@@ -35,12 +35,12 @@ namespace Csz
     {
         if (T_index_end< 0)
         {
-            Csz::ErrQuit("Bit Memory init failed index end < 0");
+            Csz::ErrQuit("[Bit Memory init]->failed,index end < 0");
             return ;
         }
         if (T_length_end< 0)
         {
-            Csz::ErrQuit("Bit Memory init failed leng end < 0");
+            Csz::ErrQuit("[Bit Memory init]->failed,leng end < 0");
             return ;
         }
         index_end= T_index_end;
@@ -67,7 +67,7 @@ namespace Csz
                     {																			                        \
                         _Clear();																                        \
                         /*TODO wait*/															                        \
-                        Csz::ErrQuit("Bit Memory write failed,new return null");				                        \
+                        Csz::ErrQuit("[Bit Memory write]->failed,new return null");				                        \
                         return false;															                        \
                     }																			                        \
                     (data->second).emplace_back(std::make_pair(id,reinterpret_cast<char*>(buf)));						\
@@ -79,7 +79,7 @@ namespace Csz
             auto block= memory_pool[T_index];													                        \
             if (block->first< T_length)															                        \
             {																					                        \
-                Csz::ErrMsg("Bit Memory write failed,left< write length");						                        \
+                Csz::ErrMsg("[Bit Memory write]->failed,left< write length");						                    \
                 return false;																	                        \
             }																					                        \
             auto block_index= T_begin/ sizeof(BT);												                        \
@@ -126,7 +126,7 @@ namespace Csz
 				/*error hash val*/																                        \
 				if (hash_data!= TorrentFile::GetInstance()->GetHash(T_index))									        \
 				{																				                        \
-					Csz::ErrMsg("Bit Memory write failed,piece hash info is error");			                        \
+					Csz::ErrMsg("[Bit Memory write]->failed,piece hash info is error");			                        \
                     ClearIndex(T_index);                                                                                \
                     return false;                                                                                       \
 				}																				                        \
@@ -135,9 +135,9 @@ namespace Csz
 					/*write file*/                                                                                      \
 					if (_Write(T_index)== T_LEN)														                \
 					{																			                        \
-						/*TODO update bitfield,send have*/                                                              \
-						LocalBitField::GetInstance()->FillBitField(T_index);    			                            \
                         ClearIndex(T_index);                                                                            \
+						LocalBitField::GetInstance()->FillBitField(T_index);											\
+						NeedPiece::GetInstance()->ClearIndex(T_index);													\
                         return true;                                                                                    \
 					}																			                        \
                     ClearIndex(T_index);                                                                                \
@@ -150,12 +150,12 @@ namespace Csz
     {
         if (T_index< 0)
         {
-            Csz::ErrMsg("Bit Memory write failed,index < 0");
+            Csz::ErrMsg("[Bit Memory write]->failed,index < 0");
             return  false;
         }
         if (nullptr== T_buf || T_length<= 0)
         {
-            Csz::ErrMsg("Bit Memory write failed,T_buf== nullptr or length < 0");
+            Csz::ErrMsg("[Bit Memory write]->failed,T_buf== nullptr or length < 0");
             return false;
         }
         auto resource_pool= butil::ResourcePool<BT>::singleton();
@@ -191,13 +191,13 @@ namespace Csz
 		const auto& read_buf= memory_pool[T_index]->second;
 		if (read_buf.empty())
 		{
-			Csz::ErrMsg("Bit Memory write failed,read buf is empty");
+			Csz::ErrMsg("[Bit Memory write]->failed,read buf is empty");
 			return -1;
 		}
 		auto file_name= TorrentFile::GetInstance()->GetFileName(T_index);
 		if (file_name.empty())
 		{
-			Csz::ErrMsg("Bit Memory write in local file failed,return file is empty");
+			Csz::ErrMsg("[Bit Memory write]->in local file failed,return file is empty");
 			return -1;
 		}
 		auto start= read_buf.cbegin();
@@ -209,7 +209,7 @@ namespace Csz
 		{
 			if (start>= stop)
 			{
-				Csz::ErrMsg("Bit Memory write failed,read buf goto end,but have need write local file");
+				Csz::ErrMsg("[Bit Memory write]->failed,read buf goto end,but have need write local file");
 				return -1;
 			}
 			int32_t code;
@@ -217,7 +217,7 @@ namespace Csz
 			butil::File file(file_path,butil::File::FLAG_OPEN_ALWAYS | butil::File::FLAG_WRITE);
 			if (!file.IsValid())
 			{
-				Csz::ErrMsg("Bit Memory write failed,%s",butil::File::ErrorToString(file.error_details()).c_str());
+				Csz::ErrMsg("[Bit Memory write]->failed,%s",butil::File::ErrorToString(file.error_details()).c_str());
 				return -1;
 			}
 			if (left_read>= val.second.second)
@@ -232,7 +232,7 @@ namespace Csz
 				++start;
 				if (start>= stop)
 				{
-					Csz::ErrMsg("Bit Memory write failed,read buf goto end,but have need write local file");
+					Csz::ErrMsg("[Bit Memory write]->failed,read buf goto end,but have need write local file");
 					return -1;
 				}
 				code= code+ file.Write(val.second.first+ left_read,start->second,val.second.second- left_read);
@@ -241,7 +241,7 @@ namespace Csz
 			}
 			if (code!= val.second.second)
 			{
-				Csz::ErrMsg("Bit Memory write failed,write byte != file need num,file name %s",val.first.c_str());
+				Csz::ErrMsg("[Bit Memory write]->failed,write byte != file need num,file name %s",val.first.c_str());
 				return -1;
 			}
 			write_byte+= code;

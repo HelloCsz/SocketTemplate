@@ -1,25 +1,29 @@
 #ifndef CszMICRO_HPP
 #define CszMICRO_HPP
 //NeedPiece Comp
-//min heap
-#define NPComp [](const & T_lhs,\
-				  const std::pair<int32_t,std::shared_ptr<std::vector<int>>>& T_rhs)\
+//vector min heap or list sort
+#define NPComp [](const std::shared_ptr<DataType>& T_lhs\
+				  ,const std::shared_ptr<DataType>& T_rhs)\
 {\
-	return (T_lhs.second)->size()> (T_rhs.second)->size();\
+	return (T_lhs->queue).size()< (T_rhs->queue).size();\
 }
 
 //DownSpeed Comp
-//max heap
+//max heap or list sort
 #define DSComp [](const DataType& T_lhs,const DataType& T_rhs)\
 {\
     if (T_lhs.status.peer_interested> T_rhs.status.peer_interested)\
     {\
         return true;\
     }\
-    else\
+    else if (T_lhs.status.peer_interested== T_rhs.status.peer_interested)\
     {\
         return T_lhs.total> T_rhs.total;\
     }\
+	else\
+	{\
+		return false;\
+	}\
 }
 
 

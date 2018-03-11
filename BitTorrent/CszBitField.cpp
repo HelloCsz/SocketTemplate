@@ -1,12 +1,15 @@
 #include <bitset>
 #include "CszBitTorrent.h"
 
+const uint8_t bit_hex[8]={0x80,0x40,0x20,0x10,0x08,0x04,0x02,0x01};
+
 namespace Csz
 {
-	void BitField::SetParameter(std::string T_bit_field)
+	void BitField::SetParameter(std::string T_bit_field,int32_t T_total)
 	{
 		_Clear();
 		_SetParameter(std::move(T_bit_field));
+		total= total;
 		return ;
 	}
 
@@ -44,6 +47,7 @@ namespace Csz
 
 	inline void BitField::_Clear()
 	{
+		//index -> npos
 		prefix_and_bit_field.erase(5);
 		return ;
 	}
@@ -62,32 +66,43 @@ namespace Csz
 		}
 		//every bit express one field
 		auto index= T_index/ 8+ 5;
+
 		auto& val= prefix_and_bit_field[index];
-		switch (T_index% 8)
+
+		T_index %= 8;
+
+		//1.check exist bit
+		if (val & bit_hex[T_index])
+		{
+			return ;
+		}
+		//2.lack bit,set fill bit
+		++cur_sum;
+		switch (T_index)
 		{
 			case 0:
-				val|= 0x01;
+				val|= bit_hex[0];
 				break;
 			case 1:
-				val|= 0x02;
+				val|= bit_hex[1];
 				break;
 			case 2:
-				val|= 0x04;
+				val|= bit_hex[2];
 				break;
 			case 3:
-				val|= 0x08;
+				val|= bit_hex[3];
 				break;
 			case 4:
-				val|= 0x10;
+				val|= bit_hex[4];
 				break;
 			case 5:
-				val|= 0x20;
+				val|= bit_hex[5];
 				break;
 			case 6:
-				val|= 0x40;
+				val|= bit_hex[6];
 				break;
 			case 7:
-				val|= 0x80;
+				val|= bit_hex[7];
 				break;
 		}
 		return ;
@@ -114,28 +129,28 @@ namespace Csz
 		switch (T_index% 8)
 		{
 			case 0:
-				ret= val& 0x01;
+				ret= val& bit_hex[0];
 				break;
 			case 1:
-				ret= val& 0x02;
+				ret= val& bit_hex[1];
 				break;
 			case 2:
-				ret= val& 0x04;
+				ret= val& bit_hex[2];
 				break;
 			case 3:
-				ret= val& 0x08;
+				ret= val& bit_hex[3];
 				break;
 			case 4:
-				ret= val& 0x10;
+				ret= val& bit_hex[4];
 				break;
 			case 5:
-				ret= val& 0x20;
+				ret= val& bit_hex[5];
 				break;
 			case 6:
-				ret= val& 0x40;
+				ret= val& bit_hex[6];
 				break;
 			case 7:
-				ret= val& 0x80;
+				ret= val& bit_hex[7];
 				break;
 		}
 		return ret;
@@ -158,31 +173,32 @@ namespace Csz
 		int32_t index= 0;
 		while (cur_len< T_len)
 		{
-			uint8_t bit= 0x01;
 			for (int i= 0; i< 8; ++i,++index)
 			{
 				//1.have piece
-				if(T_bit_field[cur_len]& bit)
+				if(T_bit_field[cur_len] & bit_hex[i])
 				{
 					//2.check local bit
-					if (prefix_and_bit_field[cur_len] & bit)
+					if (prefix_and_bit_field[cur_len] & bit_hex[i])
 					{
 						//2.1 loca have piece
-						bit<<= 1;
 						continue ;
 					}
 					//2.2local lack piece
 					ret.emplace_back(index);
 				}
-				bit<<= 1;
 			}
 			++cur_len;
 		}
 		return std::move(ret);
 	}
 
-	bool BitField::GameOver(const char T_end_bit)const
+	bool BitField::GameOver()const
 	{
+		if (total== cur_sum)
+			return true;
+		return false;
+/*
 		if (prefix_and_bit_field.size()<= 5)
 		{
 			return false;
@@ -198,6 +214,29 @@ namespace Csz
 			}
 		}
 		return true;
+*/
+	}
+
+	void BitField::ProgressBar(const char T_end_bit)
+	{
+        //bug!!
+		char* data= const_cast<char*>(&prefix_and_bit_field[0]);
+		std::vector<std::bitset<8>> bit_field;
+		for (int i= 5,len= prefix_and_bit_field.size();i< len; ++i)
+		{
+			bit_field.emplace_back(prefix_and_bit_field[i]);
+		}
+		std::string bit_info;
+		bit_info.reserve(bit_field.size()* 8);
+		for (auto& val : bit_field)
+		{
+			bit_info.append(std::move(val.to_string()));
+		}
+		if (!bit_info.empty())
+		{
+			Csz::LI("%s,%d -> %d = %d",bit_info.c_str(),cur_sum,total,cur_sum/ total);
+		}
+		return ;
 	}
 
 	void BitField::COutInfo() const

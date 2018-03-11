@@ -7,7 +7,7 @@ namespace Csz
 	{
 		if (queue.empty())
 		{
-			Csz::ErrMsg("Down Speed can't add total,queue is empty");
+			Csz::ErrMsg("[Down Speed]->add total failed,queue is empty");
 			return ;
 		}
 		for (auto& val : queue)
@@ -36,9 +36,8 @@ namespace Csz
 #ifdef CszTest
         COutInfo();
 #endif
-        queue.sort(DSComp);
 		std::vector<int> ret;
-		ret.reserve(4);
+		ret.reserve(5);
         int count= 0;
         for (const auto& val : queue)
         {
@@ -48,7 +47,7 @@ namespace Csz
                 ret.emplace_back(val.socket);
                 ++count;
             }
-            if (4== count)
+            if (5== count)
                 break;
         }
 		return std::move(ret);
@@ -71,7 +70,7 @@ namespace Csz
     {
         auto flag= queue.cbegin();
         auto stop= queue.cend();
-        for (; flag< stop; ++flag)
+        for (; flag!= stop; ++flag)
         {
             if (flag->socket== T_socket)
                 break;
@@ -83,11 +82,139 @@ namespace Csz
         return ;
     }
 
+	//hash table find status
+	void DownSpeed::AmChoke(int T_socket)
+	{
+		for (auto& val : queue)
+		{
+			if (val.socket== T_socket)
+			{
+				val.status.am_choke= 1;
+				break;
+			}
+		}
+		return ;
+	}
+
+	void DownSpeed::AmUnChoke(int T_socket)
+	{
+		for (auto& val : queue)
+		{
+			if (val.socket== T_socket)
+			{
+				val.status.am_choke= 0;
+				break;
+			}
+		}
+		return ;
+	}
+
+	void DownSpeed::AmInterested(int T_socket)
+	{
+		for (auto& val : queue)
+		{
+			if (val.socket== T_socket)
+			{
+				val.status.am_interested= 1;
+				break;
+			}
+		}
+		return ;
+	}
+
+	void DownSpeed::AmUnInterested(int T_socket)
+	{
+		for (auto& val : queue)
+		{
+			if (val.socket== T_socket)
+			{
+				val.status.am_interested= 0;
+				break;
+			}
+		}
+		return ;
+	}
+
+	void DownSpeed::PrChoke(int T_socket)
+	{
+		for (auto& val : queue)
+		{
+			if (val.socket== T_socket)
+			{
+				val.status.peer_choke= 1;
+				break;
+			}
+		}
+		return ;
+	}
+
+	void DownSpeed::PrUnChoke(int T_socket)
+	{
+		for (auto& val : queue)
+		{
+			if (val.socket== T_socket)
+			{
+				val.status.peer_choke= 0;
+				break;
+			}
+		}
+		return ;
+	}
+
+	void DownSpeed::PrInterested(int T_socket)
+	{
+		for (auto& val : queue)
+		{
+			if (val.socket== T_socket)
+			{
+				val.status.peer_interested= 1;
+				break;
+			}
+		}
+		return ;
+	}
+
+	void DownSpeed::PrUnInterested(int T_socket)
+	{
+		for (auto& val : queue)
+		{
+			if (val.socket== T_socket)
+			{
+				val.status.peer_interested= 0;
+				break;
+			}
+		}
+		return ;
+	}
+
+	void DownSpeed::CalculateSpeed()
+	{
+		queue.sort(DSComp);
+		//send
+		auto peer_manager= PeerManager::GetInstance();
+		int unchoke_count= 4;
+		//TODO die lock(may be),PeerManager call DownSpeed,alter socket status
+		for (auto & val : queue)
+		{
+			if (val.status.peer_interested && unchoke_count> 0)
+			{
+				--unchoke_count;
+				peer_manager->AmUnChoke(val.socket);
+			}
+			else
+			{
+				peer_manager->AmChoke(val.socket);
+			}
+		}
+		return ;
+	}
+
 	void DownSpeed::COutInfo()
 	{
 		std::string info_data;
 		info_data.reserve(256);
-		std::sort_heap(queue.begin(),queue.end(),DSComp);
+		queue.sort(DSComp);
+		//std::sort_heap(queue.begin(),queue.end(),DSComp);
 		for (const auto& val : queue)
 		{
 			info_data.append(std::to_string(val.socket)+":"+std::to_string(val.total)+",status ");

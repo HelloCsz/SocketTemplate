@@ -9,6 +9,7 @@
 #include <string>
 #include <vector>
 #include <unordered_map>
+#include <list>
 #include <functional> //std::function,binary_function
 #include <utility> //std::make_pair
 #include <memory> //shared_ptr
@@ -140,7 +141,8 @@ namespace Csz
 			void GetTrackInfo(Tracker*);
 			std::uint64_t GetFileTotal() const;
 			std::uint32_t GetIndexTotal() const;
-			char GetEndBit() const;
+			std::uint32_t GetIndexBitTotal() const;
+			//char GetEndBit() const;
 			std::string GetHash(int32_t T_index) const;
 			//begin|length
 			using WRITEINFO= std::pair<int32_t,int32_t>;
@@ -199,11 +201,22 @@ namespace Csz
 			CacheRegio cache;
 	};
     
+    //Peer Status
+    struct PeerStatus
+    {
+        PeerStatus():am_choke(1),am_interested(0),peer_choke(1),peer_interested(0),unused(0){}
+        unsigned char am_choke:1;
+        unsigned char am_interested:1;
+        unsigned char peer_choke:1;
+        unsigned char peer_interested:1;
+        unsigned char unused:4;
+    };
+
     class PeerManager
     {
 		private:
             //PeerManager(const std::vector<std::string> &T_socket_list);
-			PeerManager()
+			PeerManager():cur_id(0)
             {
 #ifdef CszTest
                 Csz::LI("construct Peer Manager");
@@ -225,6 +238,16 @@ namespace Csz
 			void CloseSocket(std::vector<int>* T_sockets);
             void SendHave(int32_t T_index);
             bthread::Mutex* GetSocketMutex(int T_socket);
+			int GetSocketId(int T_socket);
+			void AmChoke(int T_socket);
+			void AmUnChoke(int T_socket);
+			void AmInterested(int T_socket);
+			void AmUnInterested(int T_socket);
+			void PrChoke(int T_socket);
+			void PrUnChoke(int T_socket);
+			void PrInterested(int T_socket);
+			void PrUnInterested(int T_socket);
+			void Optimistic();
 			void COutInfo()const;
         private:
             void _LoadPeerList(const std::string& T_socket_list);
@@ -232,13 +255,14 @@ namespace Csz
             void _Verification(std::vector<int>& T_ret);
 			void _SendBitField(std::vector<int>& T_ret);
         private:
-            DataType
+            struct DataType
             {
+				PeerStatus status;
                 int id;
                 bthread::Mutex mutex;
             };
-            //only socket map id
-            std::unordered_map<int,std::shared_ptr<DataType>> peer_list;
+            //socket have singleton id
+            std::unordered_map<int,std::shared_ptr<PeerManager::DataType>> peer_list;
             int32_t cur_id;
     };
 
@@ -458,6 +482,8 @@ namespace Csz
 		private:
 			//valid bit length <= prefix_and_bit_field.size()* 8
 			std::string prefix_and_bit_field;
+			int32_t total;
+			int32_t cur_sum;
 		public:
 			BitField()
 			{
@@ -469,6 +495,8 @@ namespace Csz
 				prefix_and_bit_field.resize(5,0);
 				//set id
 				prefix_and_bit_field[4]= 5;
+				total= 0;
+				cur_sum= 0;
 			}
             ~BitField()
             {
@@ -476,15 +504,17 @@ namespace Csz
                 Csz::LI("destructor Bit Field");
 #endif
             }
-			void SetParameter(std::string T_bit_field);
+			//total bit len
+			void SetParameter(std::string T_bit_field,int32_t T_total);
 			void FillBitField(int32_t T_index);
 			bool CheckPiece(int32_t& T_index);
 			const char* GetSendData()const{return prefix_and_bit_field.c_str();}
 			const char* operator()(){return GetSendData();}
 			int GetDataSize()const {return prefix_and_bit_field.size();}
-			bool GameOver(const char T_end_bit)const;
+			bool GameOver()const;
 			std::vector<int32_t> LackNeedPiece(const char* T_bit_field,const int T_len);
 			std::vector<int32_t> LackNeedPiece(const std::string);
+			void ProgressBar();
 			void COutInfo() const;
 		private:
 			void _SetParameter(std::string T_bit_field);
@@ -663,26 +693,17 @@ namespace Csz
 		private:
 			friend void butil::GetLeakySingleton<LocalBitField>::create_leaky_singleton();
 		private:
-			char end_bit;
             BitField bit_field;
             //int32_t piece_length;
 		public:
-			void SetEndBit(const char T_ch)
-            {
-                end_bit= T_ch;
-#ifdef CszTest
-                std::bitset<8> bit_set(end_bit);
-                Csz::LI("Local Bit Field end_bit=%s",bit_set.to_string().c_str());
-#endif
-                return ;
-            }
-			bool GameOver()const{return bit_field.GameOver(end_bit);}
+			bool GameOver()const{return bit_field.GameOver();}
 			void RecvHave(int T_socket,int32_t T_index);
 			void RecvBitField(int T_socket,const char* T_bit_field,const int T_eln);
             //int32_t GetPieceLength()const {return piece_length;}
             bool CheckBitField(int32_t T_index);
             void FillBitField(int32_t T_index);
-            void SetParameter(std::string T_bit_field){bit_field.SetParameter(T_bit_field);return ;}
+            void SetParameter(std::string T_bit_field,int32_t T_total){bit_field.SetParameter(T_bit_field,T_total);return ;}
+			void ProgressBar(){bit_field.ProgressBar();return ;}
             const char* GetSendData()const
             {
 #ifdef CszTest
@@ -693,17 +714,6 @@ namespace Csz
             int32_t GetDataSize()const {return bit_field.GetDataSize();}
 			void COutInfo() const;
 	};
-
-    //Peer Status
-    struct PeerStatus
-    {
-        PeerStatus():am_choke(1),am_interested(0),peer_choke(1),peer_interested(0){}
-        unsigned char am_choke:1;
-        unsigned char am_interested:1;
-        unsigned char peer_choke:1;
-        unsigned char peer_interested:1;
-        unsigned char unused:4;
-    };
 
 	//DownSpeed
 	class DownSpeed
@@ -740,7 +750,8 @@ namespace Csz
                 int socket;
                 uint32_t total;
             };
-			std::list<DateType> queue;
+			//TODO hash table save status
+			std::list<DownSpeed::DataType> queue;
 		public:
 			void AddSocket(const int T_socket)
 			{
@@ -753,7 +764,16 @@ namespace Csz
 			//four and TODO check interesed
 			std::vector<int> RetSocket();
 			bool CheckSocket(const int T_socket);
-            void ClearSocket(int T_socket);
+            void ClearSocket(int T_socket);    
+			void AmChoke(int T_socket);
+			void AmUnChoke(int T_socket);
+			void AmInterested(int T_socket);
+			void AmUnInterested(int T_socket);
+			void PrChoke(int T_socket);
+			void PrUnChoke(int T_socket);
+			void PrInterested(int T_socket);
+			void PrUnInterested(int T_socket);
+			void CalculateSpeed();
 			void COutInfo();
 	};
 
@@ -761,7 +781,7 @@ namespace Csz
 	class NeedPiece
 	{
 		private:
-			NeedPiece()
+			NeedPiece():stop_runner(false)
             {
 #ifdef CszTest
                 Csz::LI("constructor Need Piece");
@@ -788,33 +808,56 @@ namespace Csz
 			*/
 		private:
 			//piece map N socket
-			//min priority
-			//index->sockets
+			//min priority or list sort
+			//index->sockets|id
 			struct DataType
             {
+				DataType():index(-1),lock(false){}
                 int32_t index;
+				bool lock;
                 std::vector<std::pair<int,int>> queue;
             };
-			std::vector<std::shared_ptr<DataType>> index_queue;
+			//socket|id
+			std::list<std::shared_ptr<NeedPiece::DataType>> index_queue;
 			//socket may be reuse
-			//id->choke/unchoke and interested/uninterested 
-			std::unordered_map<int,PeerStatus> socket_queue;
+			//id->choke/unchoke and interested/uninterested
+			//lazy not delete when socker closed 
+			std::unordered_map<int,PeerStatus> id_queue;
+			//producer and curtomer
+			bool stop_runer;
+			bthread::ConditionVariable pop_cond;
+			bthread::Mutex pop_mutex;
 		public:
-			void PushNeed(const std::vector<int32_t>* T_index,const int T_socket);
-			void PushNeed(const int32_t T_index,int T_socket);
+			void PushNeed(const std::vector<int32_t>* T_index,const int T_socket,int T_id);
+			void PushNeed(const int32_t T_index,int T_socket,int T_id);
 			std::pair<int32_t,std::vector<int>> PopNeed();
             std::vector<int> PopPointNeed(int32_t T_index);
 			bool Empty()const;
-			void SocketMapId(std::vector<int>& T_ret);
-			void NPChoke(int T_socket);
-			void NPUnChoke(int T_socket);
-			void NPInterested(int T_socket);
-			void NPUnInterested(int T_socket);
-            void ClearSocket(int T_socket);
+			//vector is id
+			void SocketMapId(int T_id);
+			void AmChoke(int T_id);
+			void AmUnChoke(int T_id);
+			void AmInterested(int T_id);
+			void AmUnInterested(int T_id);
+			void PrChoke(int T_id);
+			void PrUnChoke(int T_id);
+			void PrInterested(int T_id);
+			void PrUnInterested(int T_id);
+            void ClearSocket(int T_id);
+			void ClearIndex(const int T_index);
+			void UnLockIndex(int T_index);
+			void Runner();
+			void SR()
+			{
+				stop_runner= true;
+				pop_cond.notify_one();
+				return ;
+			}
+			bool RunnerStatus(){return stop_runner};
 			void COutInfo();
         private:
             //TODO danger!!!
-            int* RetSocketStatus(int T_socket);
+            PeerStatus* RetSocketStatus(int T_id);
 	};
 
 	//select & switch message type
@@ -833,10 +876,10 @@ namespace Csz
 		};
 		bool operator()();
 		void DKeepAlive(Parameter* T_data);
-		void DChoke(Parameter* T_data);/*id=0*/
-		void DUnChoke(Parameter* T_data);/*id= 1*/
-		void DInterested(Parameter* T_data);/*id= 2*/
-		void DUnInterested(Parameter* T_data);/*id=3 */
+		static void DChoke(Parameter* T_data);/*id=0*/
+		static void DUnChoke(Parameter* T_data);/*id= 1*/
+		static void DInterested(Parameter* T_data);/*id= 2*/
+		static void DUnInterested(Parameter* T_data);/*id=3 */
 		static void DHave(Parameter* T_data);/*id= 4*/
 		static void DBitField(Parameter* T_data);/*id= 5*/
 		static void AsyncDBitField(Parameter* T_data);/*id= 5*/
@@ -846,6 +889,7 @@ namespace Csz
 		static void AsyncDPiece(Parameter* T_data);/*id= 7*/
 		static void DCancle(Parameter* T_data);/*id= 8*/
 		static void DPort(Parameter* T_data);/*id= 9*/
+		static void* RequestRuner(void*);
         private:
         static void _SendPiece(int T_socket,int32_t T_index,int32_t T_begin,int32_t T_length);
         static bool _LockPiece(int T_socket,int32_t T_index,int32_t T_begin,int32_t T_length);
@@ -880,7 +924,7 @@ namespace Csz
 			int32_t length_normal;
             using DataType= std::vector<std::pair<butil::ResourceId<BT>,char*>>;
             //left cur_len,resource id
-            using Type= std::pair<int32_t,DataType>;
+            using Type= std::pair<int32_t,BitMemory::DataType>;
             using TypeP= std::shared_ptr<Type>;
             std::unordered_map<int32_t,TypeP> memory_pool;
         public:

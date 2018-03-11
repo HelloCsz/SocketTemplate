@@ -177,10 +177,21 @@ namespace Csz
 			Csz::ErrQuit("TorrentFile can't return index total,pieces is empty");
 			return 0;
 		}
+		return infos.pieces.size()/ 20;
+	}
+
+	std::uint32_t TorrentFile::GetIndexBitTotal()const
+	{
+		if (infos.pieces.empty())
+		{
+			Csz::ErrQuit("TorrentFile can't return index total,pieces is empty");
+			return 0;
+		}
 		uint32_t ret=  infos.pieces.size()/ 20;
 		return ret% 8== 0? ret/ 8 : ret/ 8 + 1;
 	}
 
+/*
 	char TorrentFile::GetEndBit()const
 	{
 		int choice= (infos.pieces.size()/ 20)% 8;
@@ -223,7 +234,8 @@ namespace Csz
 		}
 		return ret;
 	}
-    
+*/
+
 	//file name | begin | length
 	//send piece,wirte piece
 	std::vector<TorrentFile::FILEINFO> TorrentFile::GetFileName(int32_t T_index,int32_t T_begin,int32_t T_length) const
@@ -309,6 +321,7 @@ namespace Csz
         int32_t index_count= infos.pieces.size()/ 20;
         //synch index
         --index_count;
+		//1.check end index and total length<= piece length
         if (index_count== T_index && 0== index_count)
         {
             if (infos.single)
@@ -323,8 +336,10 @@ namespace Csz
                 }
             }
         }
+		//2.normal index
         else
         {
+			//end index and total length> piece length
             if (index_count== T_index)
             {   
                 if (infos.single)
@@ -362,7 +377,7 @@ namespace Csz
     {
         std::pair<bool,int32_t> ret;
         ret.first= false;
-        if (T_index== (int)(infos.pieces.size()/ 20)- 1)
+        if (T_index== GetIndexEnd())
         {
             ret.first= true;
             auto piece_len= GetPieceLength(T_index);
@@ -376,8 +391,9 @@ namespace Csz
         std::pair<bool,int32_t> ret;
         ret.first= false;
         //1.check end piece
-        if (T_index== (int)(infos.pieces.size()/ 20)- 1)
+        if (T_index== GetIndexEnd())
         {
+			ret.first= true;
             //2.end_piece length
             auto piece_len= GetPieceLength(T_index);
             if (piece_len< SLICESIZE)
@@ -385,19 +401,26 @@ namespace Csz
                 //must start is 0
                 if (0== T_begin)
                 {
-                    ret.first= true;
                     ret.second= piece_len;
                 }
                 else
                 {
-                    Csz::ErrMsg("Torrent File check end slice failed,piece is end and piece len< slice size,but index!= 0");
+					ret.second= -1;
+                    Csz::ErrMsg("[Torrent File check end slice]->failed,piece is end and piece len< slice size,but index!= 0");
                 }
             }
-            else if (T_begin== (piece_len- piece_len% SLICESIZE))
+            else if (0== T_begin% SLICESIZE)
             {
-                ret.first= true;
-                ret.second= piece_len% SLICESIZE;
+				if (T_begin+ SLICESIZE> piece_len)
+					ret.second= piece_len% SLICESIZE;
+				else
+					ret.second= SLICESIZE;
             }
+			else
+			{
+                Csz::ErrMsg("[Torrent File check end slice]->failed,piece is end and piece len> slice size,but begin%%SLICESIZE!= 0");
+				ret.second= -1;
+			}
         }
         return ret;
     }

@@ -217,7 +217,7 @@ namespace Csz
 */
 	}
 
-	void BitField::ProgressBar(const char T_end_bit)
+	void BitField::ProgressBar()
 	{
         //bug!!
 		char* data= const_cast<char*>(&prefix_and_bit_field[0]);
@@ -255,6 +255,7 @@ namespace Csz
 		{
 			bit_info.append(std::move(val.to_string()));
 		}
+		bit_info.append(",total="+ std::to_string(total)+",cur_sum="+ std::to_string(cur_sum));
 		if (!bit_info.empty())
 			Csz::LI("%s",bit_info.c_str());
 		return ;

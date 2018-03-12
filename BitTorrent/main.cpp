@@ -72,7 +72,7 @@ int main(int argc,char** argv)
 	Csz::PeerManager::GetInstance()->LoadPeerList(tracker.GetPeerList(60));
     //select
 	bthread_t tid;
-	if (bthread_start_background(&tid,NULL,&Csz::PeerManager::RequestRuner,NULL)!= 0)
+	if (bthread_start_background(&tid,NULL,&Csz::SelectSwitch::RequestRuner,NULL)!= 0)
 	{
 		Csz::ErrQuit("[main]->failed,create bthread run select switch request");
 		return -1;

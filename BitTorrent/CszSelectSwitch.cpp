@@ -798,9 +798,9 @@ namespace Csz
 	{
 		auto local_bit_field= LocalBitField::GetInstance();
 		auto need_piece= NeedPiece::GetInstance();
-		while (!local_bif_field->GameOver() && !need_piece->RunnerStatus())
+		while (!local_bit_field->GameOver() && !need_piece->RunnerStatus())
 		{
-			need_piece->Runer();
+			need_piece->Runner();
 		}
 		return nullptr;
 	}

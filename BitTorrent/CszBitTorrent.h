@@ -15,6 +15,8 @@
 #include <memory> //shared_ptr
 #include <arpa/inet.h> //htonl
 //brpc
+#include <bthread/bthread.h>
+#include <bthread/condition_variable.h>
 #include <butil/memory/singleton_on_pthread_once.h> //butil::singleton
 #include <butil/resource_pool.h> //butil::ResourcePool
 #include <bthread/mutex.h> //Mutex
@@ -824,7 +826,7 @@ namespace Csz
 			//lazy not delete when socker closed 
 			std::unordered_map<int,PeerStatus> id_queue;
 			//producer and curtomer
-			bool stop_runer;
+			bool stop_runner;
 			bthread::ConditionVariable pop_cond;
 			bthread::Mutex pop_mutex;
 		public:
@@ -849,11 +851,12 @@ namespace Csz
 			void Runner();
 			void SR()
 			{
+				//std::unique_lock<bthread::Mutex> guard(pop_mutex);
 				stop_runner= true;
 				pop_cond.notify_one();
 				return ;
 			}
-			bool RunnerStatus(){return stop_runner};
+			bool RunnerStatus(){return stop_runner;}
 			void COutInfo();
         private:
             //TODO danger!!!

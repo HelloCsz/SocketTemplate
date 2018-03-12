@@ -19,7 +19,7 @@ namespace Csz
 	{
 		if (nullptr== T_info_hash || *T_info_hash== 0)
 		{
-			Csz::ErrMsg("info hash is empty");
+			Csz::ErrMsg("[Hand Shake set parameter]->failed,info hash is empty");
 			return false;
 		}
 		memcpy(data+ 28,T_info_hash,20);
@@ -40,7 +40,7 @@ namespace Csz
 		if (T_str== nullptr || *T_str== 0)
         {
 #ifdef CszTest
-            Csz::LI("Hand Shake varification failed,str is nullpt or point empty");
+            Csz::LI("[Hand Shake varification]->failed,str is nullpt or point empty");
 #endif
 			return false;
         }
@@ -56,7 +56,7 @@ namespace Csz
         std::string out_info;
         out_info.reserve(64);
         char* p= data;
-        out_info.append("HandShake INFO:");
+        out_info.append("[HandShake INFO]:");
         out_info.append("pstrlen="+std::to_string(int(*p)));
         out_info.append(",pstr="+ std::string(p+ 1,19));
         out_info.append(",info_hash="+ Csz::UrlEscape()(std::string(p+ 28,20)));

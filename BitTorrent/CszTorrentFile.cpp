@@ -95,7 +95,7 @@ namespace Csz
 	{
 		if (announce_list.empty())
 		{
-			Csz::ErrQuit("TorrentFile can't return info,announce is empty");
+			Csz::ErrQuit("[Torrent File get track info]->failed ,announce is empty");
 			return ;
 		}
 		for (const auto& val : announce_list)
@@ -107,7 +107,7 @@ namespace Csz
 			if (val.npos== host_flag || val.npos== uri_flag)
 			{
                 //TODO 不退出,将所有正确结果读取出来
-				Csz::ErrQuit("TorrentFile can't catch host or announce,string:%s",val.c_str());
+				Csz::ErrQuit("[Torrent File get track info]->failed,can't catch host or announce,string:%s",val.c_str());
 				return ;
 			}
 			// //*.*.*:/
@@ -123,7 +123,7 @@ namespace Csz
 			{
 				if (val.npos== uri_flag)
 				{
-					Csz::ErrQuit("TorrentFile can't found serv %s",val.c_str());
+					Csz::ErrQuit("[Torrent File get track info]->failed,can't found serv %s",val.c_str());
 					return ;
 				}
 				//:54321
@@ -147,7 +147,7 @@ namespace Csz
 	{
 		if ((T_index+ 1)* 20 > (int)infos.pieces.size() || T_index< 0)
 		{
-			Csz::ErrMsg("TorrentFile can't get hash,index %d",T_index);
+			Csz::ErrMsg("[Torrent File get hash]->failed, can't get hash,index= %d",T_index);
 			return "";
 		}
 		return infos.pieces.substr(T_index* 20,20);
@@ -174,7 +174,7 @@ namespace Csz
 	{
 		if (infos.pieces.empty())
 		{
-			Csz::ErrQuit("TorrentFile can't return index total,pieces is empty");
+			Csz::ErrQuit("[Torrent File get index total]->failed, can't return index total,pieces is empty");
 			return 0;
 		}
 		return infos.pieces.size()/ 20;
@@ -184,7 +184,7 @@ namespace Csz
 	{
 		if (infos.pieces.empty())
 		{
-			Csz::ErrQuit("TorrentFile can't return index total,pieces is empty");
+			Csz::ErrQuit("[Torrent File get index bit total]->failed,can't return index total,pieces is empty");
 			return 0;
 		}
 		uint32_t ret=  infos.pieces.size()/ 20;
@@ -243,7 +243,7 @@ namespace Csz
         std::vector<TorrentFile::FILEINFO> ret;
         if (T_index< 0)
         {
-            Csz::ErrMsg("torrent file get file name failed index< 0");
+            Csz::ErrMsg("[Torrent File get file name]->failed,index< 0");
             return std::move(ret);
         }
 
@@ -315,7 +315,7 @@ namespace Csz
         int32_t ret= 0;
         if (T_index< 0)
         {
-            Csz::ErrMsg("TorrentFile get piece length failed,index< 0");
+            Csz::ErrMsg("[Torrent File get piece length]->failed,index< 0");
             return ret;   
         }
         int32_t index_count= infos.pieces.size()/ 20;
@@ -457,7 +457,7 @@ namespace Csz
 	{
 		std::string out_info;
 		out_info.reserve(256);
-        out_info.append("Torrent File INFO:");
+        out_info.append("[Torrent File INFO]:");
 		if (!announce_list.empty())
 		{
 			out_info.append("announce or announce_list:");

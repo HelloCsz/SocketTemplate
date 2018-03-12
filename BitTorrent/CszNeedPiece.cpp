@@ -434,7 +434,7 @@ namespace Csz
                 }
 				if (!out_info.empty())
 				{
-					Csz::LI("%s",out_info.c_str());
+					Csz::LI("[Need Piece INFO]:%s",out_info.c_str());
 				}
 			}
 		}

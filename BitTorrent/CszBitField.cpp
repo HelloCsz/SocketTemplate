@@ -17,7 +17,7 @@ namespace Csz
 	{
 		if (T_bit_field.empty())
 		{
-			Csz::ErrMsg("bit field is empty");
+			Csz::ErrMsg("[Bit Field set parameter]->faile,parameter is empty");
 			return ;
 		}
 		prefix_and_bit_field.append(std::move(T_bit_field));
@@ -29,7 +29,7 @@ namespace Csz
 	{
 		if (prefix_and_bit_field.size()<= 5)
 		{
-			Csz::ErrMsg("bit field too small,can't set prefix length");
+			Csz::ErrMsg("[Bit Field set prefix length]->faile,too small,can't set prefix length");
 			return ;
 		}
 		//minus prefix length
@@ -56,12 +56,12 @@ namespace Csz
 	{
 		if (T_index< 0)
 		{
-			Csz::ErrMsg("index < 0,can't fill bit field");
+			Csz::ErrMsg("[Bit Field fill bit field]->failed,index < 0,can't fill bit field");
 			return ;
 		}
 		if (prefix_and_bit_field.size()<= 5)
 		{
-			Csz::ErrMsg("bit field too small,can't fill bit field");
+			Csz::ErrMsg("[Bit Field fill bit field]->failed, too small,can't fill bit field");
 			return ;
 		}
 		//every bit express one field
@@ -112,13 +112,13 @@ namespace Csz
 	{
 		if (T_index< 0)
 		{
-			Csz::ErrMsg("Check Piece failed,index < 0");
+			Csz::ErrMsg("[Bit Field check piece]->failed,index < 0");
             T_index= -1;
 			return true;
 		}
 		if (prefix_and_bit_field.size()<= 5)
 		{
-			Csz::ErrMsg("bit field too small,not found index");
+			Csz::ErrMsg("[Bit Field check piece]->failed,too small,not found index");
             T_index= -1;
 			return true;
 		}
@@ -161,12 +161,12 @@ namespace Csz
 		std::vector<int32_t> ret;
 		if (prefix_and_bit_field.size()<= 5)
 		{
-			Csz::ErrMsg("bit field too small,found lack need piece failed");
+			Csz::ErrMsg("[Bit Field lack need piece]->failed,too small,found lack need piece failed");
 			return ret;
 		}
 		if (nullptr== T_bit_field || T_len+ 5!= (int)prefix_and_bit_field.size() )
 		{
-			Csz::ErrMsg("Bit Field not found bit field,bit field is nullptr or len != bit field len");
+			Csz::ErrMsg("[Bit Field lack need piece]->failed,not found bit field,bit field is nullptr or len != bit field len");
 			return ret;
 		}
 		int cur_len= 0;
@@ -243,7 +243,7 @@ namespace Csz
 	{
         //bug!!
 		char* data= const_cast<char*>(&prefix_and_bit_field[0]);
-		Csz::LI("Bit Field info:len=%u,id=%d",ntohl(*reinterpret_cast<uint32_t*>(data)),int(*(data+ 4)));
+		Csz::LI("[Bit Field INFO]:len=%u,id=%d",ntohl(*reinterpret_cast<uint32_t*>(data)),int(*(data+ 4)));
 		std::vector<std::bitset<8>> bit_field;
 		for (int i= 5,len= prefix_and_bit_field.size();i< len; ++i)
 		{

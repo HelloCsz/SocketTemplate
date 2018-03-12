@@ -28,7 +28,7 @@ namespace Csz
 #endif
 		if (T_content.empty() || T_content[0]!= 'd')
 		{
-			Csz::ErrQuit("BDict can't decode,content is empty or content begin character not is 'd'");
+			Csz::ErrQuit("[BDict decode]->failed,content is empty or content begin character not is 'd'");
 			return ;
 		}
 		//delete d
@@ -49,7 +49,7 @@ namespace Csz
 						}
 						catch (...) //std::bad_alloc,std::bad_array_new_length
 						{
-							Csz::ErrMsg("BDict can't new BInt");
+							Csz::ErrMsg("[BDict decode]->failed,can't new BInt");
 							return ;
 						}
 					}
@@ -62,7 +62,7 @@ namespace Csz
 						}
 						catch (...) //std::bad_alloc,std::bad_array_new_length
 						{
-							Csz::ErrMsg("BDict can't new BList");
+							Csz::ErrMsg("[BDict decode]->failed,can't new BList");
 							return ;
 						}
 					}
@@ -75,7 +75,7 @@ namespace Csz
 						}
 						catch (...) //std::bad_alloc,std::bad_array_new_length
 						{
-							Csz::ErrMsg("BDict can't new BDict");
+							Csz::ErrMsg("[BDict decode]->failed, can't new BDict");
 							return ;
 						}
 					}
@@ -88,7 +88,7 @@ namespace Csz
 						}
 						catch (...) //std::bad_alloc,std::bad_array_new_length
 						{
-							Csz::ErrMsg("BDict can't new BStr");
+							Csz::ErrMsg("[BDict decode]->failed,can't new BStr");
 							return ;
 						}
 					}
@@ -97,7 +97,7 @@ namespace Csz
 			auto check= data.emplace(std::move(key.data),base);
 			if (!check.second)
 			{
-				Csz::ErrMsg("dumplicate message %s",(check.first)->first.c_str());
+				Csz::ErrMsg("[BDice decode]->failed,dumplicate message %s",(check.first)->first.c_str());
 			}
 			//data.emplace(std::move(key),base);
 		}
@@ -133,7 +133,7 @@ namespace Csz
 	{
 		for (const auto& val : data)
 		{
-			Csz::LI("Diec:key:%s->",val.first.c_str());
+			Csz::LI("[Diec INFO]:key:%s->",val.first.c_str());
 			(val.second)->COutInfo();
 			//Csz::ErrMsg("\n");
 		}

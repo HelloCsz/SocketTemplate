@@ -29,7 +29,7 @@ namespace Csz
         }
 #ifdef CszTest
 		if (ret.empty())
-			Csz::LI("Peer Manager ret socket list failed,result is empty");
+			Csz::LI("[Peer Manager ret socket list]->failed,result is empty");
 #endif
         return std::move(ret);
     }   
@@ -49,7 +49,7 @@ namespace Csz
 #ifdef CszTest
 		else
 		{
-			Csz::LI("Peer Manager add socket failed,socket< 0");
+			Csz::LI("[Peer Manager add socket]->failed,socket< 0");
 		}
 #endif
 		return ;
@@ -59,7 +59,7 @@ namespace Csz
     {
         if (T_socket_list.empty())
         { 
-            Csz::ErrMsg("Peer Manager load peer list failed,Peer list is empty");
+            Csz::ErrMsg("[Peer Manager load peer list]->failed,Peer list is empty");
             return ;  
         }
         for (const auto& val : T_socket_list)
@@ -75,7 +75,7 @@ namespace Csz
         auto flag= T_socket_list.find("peers");
         if (std::string::npos== flag)
         {
-            Csz::ErrMsg("Peer Manager load peer list failed,not found 'peers'");
+            Csz::ErrMsg("[Peer Manager load peer list]->failed,not found 'peers'");
             return ;
         }
         flag+= 5;
@@ -108,8 +108,7 @@ namespace Csz
             {
                 if (errno!= EINPROGRESS)
                 {
-                    Csz::ErrMsg("PeerManager can't connect peer,nonblocking connection error");
-                    Csz::ErrMsg("addr=%d,port=%d",ntohl(addr.sin_addr.s_addr),ntohs(addr.sin_port));
+                    Csz::ErrMsg("[Peer Manager load peer list]->failed,can't connect peer,nonblocking connection error addr=%d,port=%d",ntohl(addr.sin_addr.s_addr),ntohs(addr.sin_port));
 					Csz::Close(socket);
                     continue;
                 }
@@ -121,17 +120,17 @@ namespace Csz
 		//5.ensure connect and send hand shake
 		_Connected(ret);
 #ifdef CszTest
-        Csz::LI("Peer Manager load peer list connected size=%d",ret.size());
+        Csz::LI("[Peer Manager load peer list]connected size=%d",ret.size());
 #endif
 		//6.send bit field
 		_SendBitField(ret);
 #ifdef CszTest
-        Csz::LI("Peer Manager load peer list send bit field size=%d",ret.size());
+        Csz::LI("[Peer Manager load peer list]send bit field size=%d",ret.size());
 #endif
 		//7.recv hand shake and delete failed socket
 		_Verification(ret);
 #ifdef CszTest
-        Csz::LI("Peer Manager load peer list verification size=%d",ret.size());
+        Csz::LI("[Peer Manager load peer list]verification size=%d",ret.size());
 #endif
 		//TODO 8.lock and update peer list and socket_map_id
 		std::vector<int> socket_id;
@@ -143,7 +142,7 @@ namespace Csz
 #ifdef CszTest
             if (peer_list.find(val)!= peer_list.end())
             {
-                Csz::ErrMsg("Peer Manager peer list insert already exist");
+                Csz::ErrMsg("[Peer Manager peer list]->failed,insert already exist");
                 continue;  
             }
 #endif
@@ -176,7 +175,7 @@ namespace Csz
     {
 		if (T_ret.empty())
 		{
-            Csz::ErrMsg("Peer Manager connected failed,parameter socket is empty");
+            Csz::ErrMsg("[Peer Manager connected]->failed,parameter socket is empty");
             return ;
         }
         //1.init select
@@ -211,7 +210,7 @@ namespace Csz
             {
                 //time out
                 errno= ETIMEDOUT;
-                Csz::ErrMsg("wait peer time out");
+                Csz::ErrMsg("[Peer Manager connected]->failed,wait peer time out");
                 //TODO 继续循环
 				for (auto& val : T_ret)
 				{
@@ -235,7 +234,7 @@ namespace Csz
             }
 			if (code< 0)
 			{
-				Csz::ErrSys("select can't used");
+				Csz::ErrSys("[Peer Manager connected]->failed,select can't used");
 				return ;
 			}
             for (auto& val : T_ret)
@@ -251,7 +250,7 @@ namespace Csz
                     socklen_t errno_len= sizeof(errno_save);
                     if (getsockopt(val,SOL_SOCKET,SO_ERROR,&errno_save,&errno_len)< 0)
                     {
-                        Csz::ErrRet("PeerManager can't connect peer");
+                        Csz::ErrRet("[Peer Manager connected]->failed,can't connect peer");
                         Csz::Close(val);
                         val= -1;
                         continue ;
@@ -260,7 +259,7 @@ namespace Csz
                     else if (errno_save)
                     {
                         //strerror non-sofathread
-                        Csz::ErrMsg("PeerManager can't connect peer:%s",strerror(errno_save));
+                        Csz::ErrMsg("[Peer Manager connected]->failed,can't connect peer:%s",strerror(errno_save));
                         Csz::Close(val);
                         val= -1;
                         continue ;
@@ -291,7 +290,7 @@ namespace Csz
 	{
 		if (T_ret.empty())
 		{
-            Csz::ErrMsg("Peer Manager verification failed,parameter socket is empty");
+            Csz::ErrMsg("[Peer Manager verification]->failed,parameter socket is empty");
             return ;
         }
 		auto hand_shake= HandShake::GetInstance();
@@ -329,7 +328,7 @@ namespace Csz
             {
                 //time out
                 errno= ETIMEDOUT;
-                Csz::ErrMsg("wait peer time out");
+                Csz::ErrMsg("[Peer Manager verification]->failed,wait peer time out");
                 //TODO 继续循环
 				for (auto& val : T_ret)
 				{
@@ -353,7 +352,7 @@ namespace Csz
             }
 			if (code< 0)
 			{
-				Csz::ErrSys("select can't used");
+				Csz::ErrSys("[Peer Manager verification]->failed,select can't used");
 				return ;
 			}
             for (auto& val : T_ret)
@@ -369,7 +368,7 @@ namespace Csz
 					if (68!=recv(val,buf,68,MSG_WAITALL))
 					{
 #ifdef CszTest
-                        Csz::LI("Peer Manager verification failed,recv num!= 68");
+                        Csz::LI("[Peer Manager verification]->failed,recv num!= 68");
 #endif	
 						Csz::Close(val);
 						val= -1;
@@ -377,7 +376,7 @@ namespace Csz
 					else if (!(hand_shake->Varification(buf)))
 					{
 #ifdef CszTest
-                        Csz::LI("Peer Manager verification failed,info error%s",UrlEscape()(std::string(buf+28,20)).c_str());
+                        Csz::LI("[Peer Manager verification]->failed,info error%s",UrlEscape()(std::string(buf+28,20)).c_str());
 #endif                          
 						Csz::Close(val);			
 						val= -1;
@@ -406,7 +405,7 @@ namespace Csz
 	{
 		if (T_ret.empty())
 	    {
-            Csz::ErrMsg("Peer Manager send bit field failed parameter socket is empty");
+            Csz::ErrMsg("[Peer Manager send bit field]->failed,parameter socket is empty");
         	return ;
         }
 		auto local_bit_field= LocalBitField::GetInstance();
@@ -433,7 +432,7 @@ namespace Csz
 #ifdef CszTest
 		else
 		{
-			Csz::LI("Peer Manager close socket failed,not found socket");
+			Csz::LI("[Peer Manager close socket]->failed,not found socket");
 		}
 #endif
 		return ;
@@ -443,7 +442,7 @@ namespace Csz
     {
         if (T_index< 0)
         {
-            Csz::ErrMsg("Peer Manager send have failed,index< 0");
+            Csz::ErrMsg("[Peer Manager send have]->failed,index< 0");
             return ;
         }
         std::vector<decltype(peer_list)::const_iterator> del_sockets;
@@ -640,7 +639,7 @@ namespace Csz
 	{
 		std::string out_info;
 		out_info.reserve(64);
-		out_info.append("Peer Manager INFO:");
+		out_info.append("[Peer Manager INFO]:");
 		for (auto &val : peer_list)
 		{
 			out_info.append("["+std::to_string(val.first)+":"+ std::to_string((val.second)->id)+"]");

@@ -28,7 +28,7 @@ namespace Csz
 #endif
 		if (T_content.empty() || 'l'!= T_content[0])
 		{
-			Csz::ErrQuit("BList can't decode,content is empty or string begin character is not 'l'");
+			Csz::ErrQuit("[BList decode]->failed,content is empty or string begin character is not 'l'");
 			return ;
 		}
 		//delete l
@@ -47,7 +47,7 @@ namespace Csz
 					}
 					catch (...) //std::bad_alloc,std::bad_array_new_length
 					{
-						Csz::ErrMsg("BList can't new BInt");
+						Csz::ErrMsg("[BList decode]->failed,can't new BInt");
 						return ;
 					}
 				}
@@ -60,7 +60,7 @@ namespace Csz
 					}
 					catch(...)
 					{
-						Csz::ErrMsg("BList can't new BLIst");
+						Csz::ErrMsg("[BList decode]->failed,can't new BLIst");
 						return ;
 					}
 				}
@@ -73,7 +73,7 @@ namespace Csz
 					}
 					catch(...)
 					{
-						Csz::ErrMsg("BList can't new BDict");
+						Csz::ErrMsg("[BList decode]->failedcan't new BDict");
 						return ;
 					}
 				}
@@ -86,7 +86,7 @@ namespace Csz
 					}
 					catch(...)
 					{
-						Csz::ErrMsg("BList can't new BStr");
+						Csz::ErrMsg("[BList decode]->failed,can't new BStr");
 						return ;
 					}
 				}
@@ -138,7 +138,7 @@ namespace Csz
 #ifdef CszTest
 	void BList::COutInfo()
 	{
-		Csz::LI("List:{");
+		Csz::LI("[BList INFO]:{");
 		for (const auto& val : data)
 		{
 			val->COutInfo();

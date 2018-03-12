@@ -181,14 +181,14 @@ namespace Csz
 			~Tracker();
 			std::vector<int> RetSocket() const;
 			void Connect();
+            //torrent file call
 			void SetTrackInfo(TrackerInfo);
 			void SetInfoHash(std::string);
-            //unuse method
-			void SetParameter(std::string);
 			std::vector<std::string> GetPeerList(int T_timeout);
 			//const std::string& GetInfoHash()const {return info_hash;}
 			void COutInfo();
 		private:
+			void SetParameter(std::string);
 			void _Capturer(const int T_socket);
 			void _Delivery(const int T_socket,const std::string& T_host,const std::string& T_serv,const std::string& T_uri);
             //update http parameter msg
@@ -233,6 +233,7 @@ namespace Csz
 		private:
 			friend void butil::GetLeakySingleton<PeerManager>::create_leaky_singleton();
         public:
+            //init peer socket
             void LoadPeerList(const std::vector<std::string> &T_socket_list);
             void AddSocket(const int T_socket);
 			std::vector<int> RetSocketList()const;
@@ -548,6 +549,7 @@ namespace Csz
 			void SetParameter(int32_t T_index,int32_t T_begin,int32_t T_length);
 			const char* GetSendData()const {return data;}
 			const char* operator()(){return GetSendData();}
+			int GetDataSize(){return 17;}
             void COutInfo();
 	};
  
@@ -575,7 +577,7 @@ namespace Csz
 			const char* GetSendData()const {return request.GetSendData();}
 			const char* operator()(){return GetSendData();}
 			//micro
-			int GetDataSize(){return 17;}
+			int GetDataSize(){return request.GetDataSize();}
 	};
 
 	//10.piece id =7
@@ -634,7 +636,7 @@ namespace Csz
 			const char* GetSendData()const {return cancle.GetSendData();}
 			const char* operator()(){return GetSendData();}
 			//micro
-			int GetDataSize(){return 17;}
+			int GetDataSize(){return cancle.GetDataSize();}
 	};
 
 	//11.port id= 9
@@ -658,9 +660,10 @@ namespace Csz
                 Csz::LI("destructor Port");
 #endif
             }
-			void SetParameter(int32_t T_port)
+			void SetParameter(int16_t T_port)
 			{
-				*reinterpret_cast<int32_t*>(port+ 5)= htonl(T_port);
+                //2byte should htons
+				*reinterpret_cast<int16_t*>(port+ 5)= htons(T_port);
 				return ;
 			}
 			const char* GetSendData()const {return port;}
@@ -704,6 +707,7 @@ namespace Csz
             //int32_t GetPieceLength()const {return piece_length;}
             bool CheckBitField(int32_t T_index);
             void FillBitField(int32_t T_index);
+            //init method
             void SetParameter(std::string T_bit_field,int32_t T_total){bit_field.SetParameter(T_bit_field,T_total);return ;}
 			void ProgressBar(){bit_field.ProgressBar();return ;}
             const char* GetSendData()const
@@ -755,6 +759,7 @@ namespace Csz
 			//TODO hash table save status
 			std::list<DownSpeed::DataType> queue;
 		public:
+            //init total
 			void AddSocket(const int T_socket)
 			{
                 DataType data(T_socket);
@@ -836,6 +841,7 @@ namespace Csz
             std::vector<int> PopPointNeed(int32_t T_index);
 			bool Empty()const;
 			//vector is id
+			//init method
 			void SocketMapId(int T_id);
 			void AmChoke(int T_id);
 			void AmUnChoke(int T_id);

@@ -84,7 +84,7 @@ namespace Csz
 					//如果不是in progress则退出程序并返回错误
 					if (errno!= EINPROGRESS)
 					{
-						Csz::ErrMsg("Tracker can't connect,nonblocking connect error host:%s,serv:%s",val.host.c_str(),val.serv.c_str());
+						Csz::ErrMsg("[Tracker connect]->failed,can't connect,nonblocking connect error host:%s,serv:%s",val.host.c_str(),val.serv.c_str());
 						close(socket_fd);
 						//释放空间再结束当前任务
 						freeaddrinfo(res);
@@ -108,7 +108,7 @@ namespace Csz
 			}
 			else
 			{
-				Csz::ErrMsg("Tracker can't connect server,socket type is unknow,%s,fd=%d\n",val.host.c_str(),val.socket_fd);
+				Csz::ErrMsg("[Tracker connect]->failed,can't connect server,socket type is unknow,%s,fd=%d\n",val.host.c_str(),val.socket_fd);
 				//val.socket_fd= -1;
 			}
 		}
@@ -153,7 +153,7 @@ namespace Csz
 			{
 				//time out
 				errno= ETIMEDOUT;
-				Csz::ErrMsg("Tracker get peer list time out");
+				Csz::ErrMsg("[Tracker get peer list]->failed,time out");
 				return std::move(ret_str);
 			}
 			//即可读又可写不同环境计算值不同,有的只计1,有些计2
@@ -170,7 +170,7 @@ namespace Csz
 					socklen_t errno_len= sizeof(errno_save);
 					if (getsockopt(val.socket_fd,SOL_SOCKET,SO_ERROR,&errno_save,&errno_len)< 0)
 					{
-						Csz::ErrRet("Tracker can't get peer list,host:%s",val.host.c_str());
+						Csz::ErrRet("[Tracker get peer list]->failed,can't get peer list,host:%s",val.host.c_str());
 						Csz::Close(val.socket_fd);
 						val.socket_fd= -1;
 						--quit_num;
@@ -180,7 +180,7 @@ namespace Csz
 					//移植问题 getsockopt return 0 if error
 					else if (errno_save)
 					{
-						Csz::ErrMsg("Tracker can't get peer list,host:%s,%s",val.host.c_str(),strerror(errno_save));
+						Csz::ErrMsg("[Tracker get peer list]->failed,can't get peer list,host:%s,%s",val.host.c_str(),strerror(errno_save));
 						Csz::Close(val.socket_fd);
 						val.socket_fd= -1;
 						--quit_num;
@@ -234,7 +234,7 @@ namespace Csz
 		size_t msg_num= request.size()>= 16? 16 : request.size()+ 1;
 		if (!request.BindMsg(data_array,msg_num))
 		{
-			Csz::ErrMsg("Tracker can't Delivery");
+			Csz::ErrMsg("[Tracker delivery]->failed");
 			return ;
 		}
 		int send_num= writev(T_socket,data_array,msg_num);
@@ -302,7 +302,7 @@ namespace Csz
 	{
 		std::string out_info;
 		out_info.reserve(64);
-		out_info.append("Tracker info:");
+		out_info.append("[Tracker INFO]:");
 		out_info.append("info hash:"+info_hash);
 		for (const auto& val : info)
 		{

@@ -19,7 +19,7 @@ namespace Csz
 			if (id< 0)
 			{
 #ifdef CszTest
-				Csz::LI("Local Bit Field recv have failed,not found socket id");
+				Csz::LI("[Local Bit Field recv have]->failed,not found socket id");
 #endif
 				return ;
 			}
@@ -33,7 +33,7 @@ namespace Csz
 	{
 		if (nullptr== T_bit_field)
 		{
-			Csz::ErrMsg("Local BitField recv empty bit filed");
+			Csz::ErrMsg("[Local BitField recv bit field]->failed,bit filed is nullptr");
 			return ;
 		}
 		auto indexs= bit_field.LackNeedPiece(T_bit_field,T_len);
@@ -43,7 +43,7 @@ namespace Csz
 		if (id< 0)
 		{
 #ifdef CszTest
-			Csz::LI("Local Bit Field recv bit field failed,not found socket id");
+			Csz::LI("[Local Bit Field recv bit field]->failed,not found socket id");
 #endif
 			return ;
 		}
@@ -64,7 +64,7 @@ namespace Csz
 
 	void LocalBitField::COutInfo() const
 	{
-        Csz::LI("Local Bit Field INFO:");
+        Csz::LI("[Local Bit Field INFO]:");
 		bit_field.COutInfo();
 		return ;
 	}

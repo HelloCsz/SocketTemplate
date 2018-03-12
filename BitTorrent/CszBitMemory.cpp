@@ -251,7 +251,7 @@ namespace Csz
 
 	void BitMemory::COutInfo()
 	{
-		Csz::LI("Bit Memory INFO:index end=%d,length end=%d,length normal=%d",index_end,length_end,length_normal);
+		Csz::LI("[Bit Memory INFO]:index end=%d,length end=%d,length normal=%d",index_end,length_end,length_normal);
 		return ;
 	}
 }

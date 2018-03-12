@@ -236,7 +236,7 @@ namespace Csz
             }
 		    if (!info_data.empty())
 			{ 
-                Csz::LI("Down Speed sort:%s",info_data.c_str());
+                Csz::LI("[Down Speed INFO]:%s",info_data.c_str());
             }
             info_data.clear();
 		}

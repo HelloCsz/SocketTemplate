@@ -23,13 +23,13 @@ namespace Csz
 #endif
 		if (T_content.empty())
 		{
-			Csz::ErrMsg("BStr can't decode,content is empty");
+			Csz::ErrMsg("[BStr decode]->failed,content is empty");
 			return ;
 		}
 		auto mid= T_content.find_first_of(':');
 		if (mid== T_content.npos)
 		{
-			Csz::ErrQuit("BStr can't decode,not found ':'");
+			Csz::ErrQuit("[BStr decode]->failed,not found ':'");
 			return ;
 		}
 		size_t num;
@@ -37,21 +37,21 @@ namespace Csz
 		{
 			num= std::stoul(T_content.substr(0,mid));
 			if ((num+mid+1)> T_content.size())
-				Csz::ErrQuit("%lu greater than string size %lu",num+mid+1,T_content.size());
+				Csz::ErrQuit("[BStr decode]->failed,%lu greater than string size %lu",num+mid+1,T_content.size());
 		}
 		catch (std::out_of_range& e)
 		{
-			Csz::ErrQuit("BStr can't decode,string %s out of range,%s",T_content.substr(0,mid).c_str(),e.what());
+			Csz::ErrQuit("[BStr decode]->failed,string %s out of range,%s",T_content.substr(0,mid).c_str(),e.what());
 			return ;
 		}
 		catch (std::invalid_argument& e)
 		{
-			Csz::ErrQuit("BStr can't decode,string %s invalid,%s",T_content.substr(0,mid).c_str(),e.what());
+			Csz::ErrQuit("[BStr decode]->failed,string %s invalid,%s",T_content.substr(0,mid).c_str(),e.what());
 			return ;
 		}
 		catch (...)
 		{		
-			Csz::ErrQuit("BStr can't decode,string %s unknow error,%s",T_content.substr(0,mid).c_str());
+			Csz::ErrQuit("[BStr decode]->failed,string %s unknow error,%s",T_content.substr(0,mid).c_str());
 			return ;
 		}
 		data= T_content.substr(mid+ 1,num);
@@ -70,10 +70,10 @@ namespace Csz
 	void BStr::COutInfo()
 	{
 		if (data.size()< 128)
-			Csz::LI("Str:%s\n",data.c_str());
+			Csz::LI("[BStr INFO]:str=%s\n",data.c_str());
 		else
 		{
-			Csz::LI("Str data greater than 256,size= %lu\n",data.size());
+			Csz::LI("[BStr INFO]:str data greater than 256,size= %lu\n",data.size());
 			//write(2,data.c_str(),data.size());
 		}
 	}

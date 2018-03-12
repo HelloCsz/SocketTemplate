@@ -6,7 +6,7 @@ namespace Csz
 	{
 		if (T_index< 0 || T_begin< 0 || T_slice.empty())
 		{
-			Csz::ErrMsg("Piece set parameter failed,index or begin less 0");
+			Csz::ErrMsg("[Piece set parameter]->failed,index or begin less 0");
 			return ;
 		}
 		//not sure host is small endian
@@ -35,7 +35,7 @@ namespace Csz
 	{
 		if (prefix_and_slice.size()<= 13)
 		{
-			Csz::ErrMsg("Piece slice too small,can't set prefix length");
+			Csz::ErrMsg("[Piece set prefix length]->failed,slice too small,can't set prefix length");
 			return ;
 		}
 		//minux prefix length
@@ -55,7 +55,7 @@ namespace Csz
         std::string out_info;
         out_info.reserve(64);
         char* p= &prefix_and_slice[0];
-        out_info.append("Piece info:len=");
+        out_info.append("[Piece INFO]:len=");
         out_info.append(std::to_string(ntohl(*reinterpret_cast<int32_t*>(p))));
         out_info.append(";id="+ std::to_string(int(*(p+4))));
         out_info.append(";index="+std::to_string(ntohl(*reinterpret_cast<int32_t*>(p+ 5))));

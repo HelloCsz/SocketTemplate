@@ -23,13 +23,13 @@ namespace Csz
 #endif
 		if (T_content.empty() || T_content[0]!= 'i')
 		{
-			Csz::ErrQuit("BInt can't decode,content is empty or content start character not 'i'");
+			Csz::ErrQuit("[BInt decode]->failed,content is empty or content start character not 'i'");
 			return ;
 		}
 		auto stop= T_content.find_first_of('e');
 		if (stop== T_content.npos)
 		{
-			Csz::ErrQuit("BInt can't decode,not found end-character");
+			Csz::ErrQuit("[BInt decode]->failed,not found end-character");
 			return ;
 		}
 		try
@@ -40,17 +40,17 @@ namespace Csz
 		}
 		catch(std::out_of_range& e)
 		{
-			Csz::ErrQuit("BInt can't decode,string %s out of range ,%s",T_content.substr(1,stop).c_str(),e.what());
+			Csz::ErrQuit("[BInt decode]->failed,string %s out of range ,%s",T_content.substr(1,stop).c_str(),e.what());
 			return ;
 		}
 		catch (std::invalid_argument& e)
 		{
-			Csz::ErrQuit("BInt can't decode,string %s invalid,%s",T_content.substr(1,stop).c_str(),e.what());
+			Csz::ErrQuit("[BInt decode]->failed,string %s invalid,%s",T_content.substr(1,stop).c_str(),e.what());
 			return ;
 		}
 		catch(...)
 		{
-			Csz::ErrQuit("BInt can't decode,string %s,unknow error",T_content.substr(1,stop).c_str());
+			Csz::ErrQuit("[BInt decode]->failed,string %s,unknow error",T_content.substr(1,stop).c_str());
 			return ;
 		}
 		//参数1是position,参数2是数量
@@ -70,7 +70,7 @@ namespace Csz
 
 	void BInt::COutInfo()
 	{
-		Csz::LI("Int:%lu",data);
+		Csz::LI("[BInt INFO]:%lu",data);
 		return ;
 	}
 }

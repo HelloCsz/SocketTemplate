@@ -15,8 +15,8 @@
 #include <memory> //shared_ptr
 #include <arpa/inet.h> //htonl
 //brpc
-#include <bthread/bthread.h>
-#include <bthread/condition_variable.h>
+//#include <bthread/bthread.h>
+//#include <bthread/condition_variable.h>
 #include <butil/memory/singleton_on_pthread_once.h> //butil::singleton
 #include <butil/resource_pool.h> //butil::ResourcePool
 #include <bthread/mutex.h> //Mutex
@@ -470,7 +470,7 @@ namespace Csz
                 std::string out_info;
                 out_info.reserve(32);
                 char* p= have;
-                out_info.append("Have info:len=");
+                out_info.append("[Have INFO]:len=");
                 out_info.append(std::to_string(ntohl(*reinterpret_cast<int32_t*>(p))));
                 out_info.append(";id="+ std::to_string(int(*(p+4))));
                 out_info.append(";index="+std::to_string(ntohl(*reinterpret_cast<int32_t*>(p+ 5))));
@@ -708,13 +708,18 @@ namespace Csz
             bool CheckBitField(int32_t T_index);
             void FillBitField(int32_t T_index);
             //init method
-            void SetParameter(std::string T_bit_field,int32_t T_total){bit_field.SetParameter(T_bit_field,T_total);return ;}
+            void SetParameter(std::string T_bit_field,int32_t T_total)
+            {
+                bit_field.SetParameter(T_bit_field,T_total);
+#ifdef CszTest
+                Csz::LI("[Local Bit Field set parameter]INFO:");
+                COutInfo();
+#endif
+                return ;
+            }
 			void ProgressBar(){bit_field.ProgressBar();return ;}
             const char* GetSendData()const
             {
-#ifdef CszTest
-                COutInfo();
-#endif
                 return bit_field.GetSendData();
             }
             int32_t GetDataSize()const {return bit_field.GetDataSize();}
@@ -788,7 +793,7 @@ namespace Csz
 	class NeedPiece
 	{
 		private:
-			NeedPiece():stop_runner(false)
+			NeedPiece()//:stop_runner(false)
             {
 #ifdef CszTest
                 Csz::LI("constructor Need Piece");
@@ -830,10 +835,12 @@ namespace Csz
 			//id->choke/unchoke and interested/uninterested
 			//lazy not delete when socker closed 
 			std::unordered_map<int,PeerStatus> id_queue;
+/*
 			//producer and curtomer
 			bool stop_runner;
 			bthread::ConditionVariable pop_cond;
 			bthread::Mutex pop_mutex;
+*/
 		public:
 			void PushNeed(const std::vector<int32_t>* T_index,const int T_socket,int T_id);
 			void PushNeed(const int32_t T_index,int T_socket,int T_id);
@@ -854,6 +861,9 @@ namespace Csz
             void ClearSocket(int T_id);
 			void ClearIndex(const int T_index);
 			void UnLockIndex(int T_index);
+            void SendReq();
+            static void* ASendReq(void* T_this);
+/*
 			void Runner();
 			void SR()
 			{
@@ -863,6 +873,7 @@ namespace Csz
 				return ;
 			}
 			bool RunnerStatus(){return stop_runner;}
+*/
 			void COutInfo();
         private:
             //TODO danger!!!
@@ -898,7 +909,7 @@ namespace Csz
 		static void AsyncDPiece(Parameter* T_data);/*id= 7*/
 		static void DCancle(Parameter* T_data);/*id= 8*/
 		static void DPort(Parameter* T_data);/*id= 9*/
-		static void* RequestRuner(void*);
+		//static void* RequestRuner(void*);
         private:
         static void _SendPiece(int T_socket,int32_t T_index,int32_t T_begin,int32_t T_length);
         static bool _LockPiece(int T_socket,int32_t T_index,int32_t T_begin,int32_t T_length);

@@ -1,3 +1,6 @@
+//brpc
+#include <bthread/bthread.h>
+#include <bthread/mutex.h>
 #include <algorithm> //make_heap,push_heap,pop_heap
 #include "CszBitTorrent.h"
 
@@ -52,9 +55,6 @@ namespace Csz
     //TODO peer_UNCHOKE && peer_INTERESTED || peer_UNINTERESTED(!!)
 	std::pair<int32_t,std::vector<int>> NeedPiece::PopNeed()
 	{
-#ifdef CszTest
-        COutInfo();
-#endif
 		std::pair<int32_t,std::vector<int>> ret;
 		if (index_queue.empty())
 		{
@@ -63,6 +63,10 @@ namespace Csz
 		}
 		//1.list sort
 		index_queue.sort(NPComp);
+#ifdef CszTest
+        Csz::LI("[Need Piece pop need]INFO:");
+        COutInfo();
+#endif
 		//TODO lock
 		auto start= index_queue.begin();
 		auto stop= index_queue.end();
@@ -266,7 +270,13 @@ namespace Csz
 		if (nullptr!= p)
 		{
 			(*p).peer_choke= 0;
-			pop_cond.notify_one();
+            bthread_t tid;
+            if (bthread_start_background(&tid,NULL,ASendReq,static_cast<void*>(this))!= 0)
+            {
+                SendReq();
+                Csz::ErrMsg("[Need Piece pr unchoke]->failed,create bthread run send request");
+            }   
+			//pop_cond.notify_one();
 		}
 		return ;
 	}
@@ -370,6 +380,77 @@ namespace Csz
 		return ;
 	}
 
+    void NeedPiece::SendReq()
+    {    
+		auto ret= PopNeed();
+		if (ret.second.empty())
+			return ;
+        auto peer_manager= PeerManager::GetInstance();
+		Request request;
+		request.SetParameter(ret.first,0,SLICESIZE);
+		for (const auto& fd : ret.second)
+		{
+            //socket mutex
+            auto mutex= peer_manager->GetSocketMutex(fd);
+            if (nullptr== mutex)
+            {
+                continue;
+            }
+            std::unique_lock<bthread::Mutex> guard(*mutex);
+			auto code= send(fd,request.GetSendData(),request.GetDataSize(),0);
+			if (code== request.GetDataSize())
+			{
+				break;
+			}
+#ifdef CszTest
+			else
+			{
+				Csz::LI("[Need Piece send req]->send request failed,send length!=%d",request.GetDataSize());
+			}
+#endif
+		}
+		return ;
+    }
+
+    void* NeedPiece::ASendReq(void* T_this)
+    {    
+        if (nullptr== T_this)
+        {
+            Csz::ErrMsg("[Need Piece async send req]->failed,parameter is nullptr");
+            return nullptr;
+        }
+        auto cur_this= static_cast<NeedPiece*>(T_this);
+		auto ret= cur_this->PopNeed();
+		if (ret.second.empty())
+			return nullptr;
+        auto peer_manager= PeerManager::GetInstance();
+		Request request;
+		request.SetParameter(ret.first,0,SLICESIZE);
+		for (const auto& fd : ret.second)
+		{
+            //socket mutex
+            auto mutex= peer_manager->GetSocketMutex(fd);
+            if (nullptr== mutex)
+            {
+                continue;
+            }
+            std::unique_lock<bthread::Mutex> guard(*mutex);
+			auto code= send(fd,request.GetSendData(),request.GetDataSize(),0);
+			if (code== request.GetDataSize())
+			{
+				break;
+			}
+#ifdef CszTest
+			else
+			{
+				Csz::LI("[Need Piece async send req]->send request failed,send length!=%d",request.GetDataSize());
+			}
+#endif
+		}
+		return nullptr;
+    }
+
+/*
 	void NeedPiece::Runner()
 	{
 		std::unique_lock<bthread::Mutex> guard(pop_mutex);
@@ -383,6 +464,7 @@ namespace Csz
 		request.SetParameter(ret.first,0,SLICESIZE);
 		for (const auto& fd : ret.second)
 		{
+            //socket mutex
 			auto code= send(fd,request.GetSendData(),request.GetDataSize(),0);
 			if (code== request.GetDataSize())
 			{
@@ -397,6 +479,7 @@ namespace Csz
 		}
 		return ;
 	}
+*/
 
 	void NeedPiece::COutInfo()
 	{

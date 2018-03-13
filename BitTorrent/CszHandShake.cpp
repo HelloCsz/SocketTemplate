@@ -31,7 +31,10 @@ namespace Csz
 		{
 			memcpy(data+ 48,T_peer_id,20);
 		}
+#ifdef CszTest
+        Csz::LI("[Hand Shake set parameter]INFO:");
 		COutInfo();
+#endif
 		return true;
 	}
 

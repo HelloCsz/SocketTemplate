@@ -23,6 +23,7 @@ namespace Csz
 #endif
 				return ;
 			}
+            //TODO recursion mutex
 			PeerManager::GetInstance()->AmInterested(T_socket);
 			NeedPiece::GetInstance()->PushNeed(T_index,T_socket,id);
 		}
@@ -57,6 +58,7 @@ namespace Csz
         bit_field.FillBitField(T_index);
         PeerManager::GetInstance()->SendHave(T_index);
 #ifdef CszTest
+        Csz::LI("[Local Bit Field fill bit field]INFO:");
         COutInfo();
 #endif
         return ;

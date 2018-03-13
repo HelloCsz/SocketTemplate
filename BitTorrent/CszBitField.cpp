@@ -9,7 +9,7 @@ namespace Csz
 	{
 		_Clear();
 		_SetParameter(std::move(T_bit_field));
-		total= total;
+		total= T_total;
 		return ;
 	}
 

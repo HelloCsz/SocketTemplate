@@ -138,6 +138,7 @@ namespace Csz
 			T_tracker->SetTrackInfo(std::move(data));
 		}
 #ifdef CszTest
+        Csz::LI("[Torrent File get track info]INFO:");
         COutInfo();
 #endif
         return ;

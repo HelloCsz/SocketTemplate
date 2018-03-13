@@ -18,6 +18,7 @@ namespace Csz
     std::vector<int> PeerManager::RetSocketList() const
     {
 #ifdef CszTest
+        Csz::LI("[Peer Manager ret socket list]INFO:");
         COutInfo();
 #endif
         std::vector<int> ret;
@@ -645,7 +646,7 @@ namespace Csz
 			out_info.append("["+std::to_string(val.first)+":"+ std::to_string((val.second)->id)+"]");
 		}
 		if (!out_info.empty())
-			Csz::LI("%s",out_info.c_str());
+			Csz::LI("%s,size=%d",out_info.c_str(),peer_list.size());
 		return ;
 	}
 }

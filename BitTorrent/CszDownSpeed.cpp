@@ -33,9 +33,6 @@ namespace Csz
 	//have peer send interested
 	std::vector<int> DownSpeed::RetSocket()
 	{
-#ifdef CszTest
-        COutInfo();
-#endif
 		std::vector<int> ret;
 		ret.reserve(5);
         int count= 0;
@@ -196,6 +193,8 @@ namespace Csz
 		//TODO die lock(may be),PeerManager call DownSpeed,alter socket status
 		for (auto & val : queue)
 		{
+            //bug
+            //interested not have 4 num
 			if (val.status.peer_interested && unchoke_count> 0)
 			{
 				--unchoke_count;
@@ -206,6 +205,10 @@ namespace Csz
 				peer_manager->AmChoke(val.socket);
 			}
 		}
+#ifdef CszTest
+        Csz::LI("[Down Speed calculate speed]INFO:");
+        COutInfo();
+#endif
 		return ;
 	}
 

@@ -237,6 +237,9 @@ namespace Csz
 	//TODO thread use 20us,this function use ??and lock other thread lock resource
 	inline void SelectSwitch::DKeepAlive(Parameter* T_data)
 	{
+#ifdef CszTest
+        Csz::LI("[Select Switch]->keep alive");
+#endif
 		if (nullptr== T_data)
 		{
 			Csz::ErrMsg("[Select Switch keep alive]->failed,parameter is nullptr");
@@ -248,6 +251,9 @@ namespace Csz
 
 	void SelectSwitch::DChoke(Parameter* T_data)
 	{
+#ifdef CszTest
+        Csz::LI("[Select Switch]->choke");
+#endif
 		if (nullptr== T_data)
 		{
 			Csz::ErrMsg("[Select Switch choke]->failed,parameter is nullptr");
@@ -260,6 +266,9 @@ namespace Csz
 
 	void SelectSwitch::DUnChoke(Parameter* T_data)
 	{
+#ifdef CszTest
+        Csz::LI("[Select Switch]->unchoke");
+#endif
 		if (nullptr== T_data)
 		{
 			Csz::ErrMsg("[Select Switch unchoke]->failed,parameter is nullptr");
@@ -272,6 +281,9 @@ namespace Csz
 
 	void SelectSwitch::DInterested(Parameter* T_data)
 	{
+#ifdef CszTest
+        Csz::LI("[Select Switch]->interested");
+#endif
 		if (nullptr== T_data)
 		{
 			Csz::ErrMsg("[Select Switch interested]->failed,parameter is nullptr");
@@ -284,6 +296,9 @@ namespace Csz
 
 	void SelectSwitch::DUnInterested(Parameter* T_data)
 	{
+#ifdef CszTest
+        Csz::LI("[Select Switch]->uninterested");
+#endif
 		if (nullptr== T_data)
 		{
 			Csz::ErrMsg("[Select Switch uninterested]->failed,parameter is nullptr");
@@ -296,6 +311,9 @@ namespace Csz
 
 	void SelectSwitch::DHave(Parameter* T_data)
 	{
+#ifdef CszTest
+        Csz::LI("[Select Switch]->have");
+#endif
 		if (nullptr== T_data)
 		{
 			Csz::ErrMsg("[Select Switch have]->failed,parameter is nullptr");
@@ -311,6 +329,9 @@ namespace Csz
 
 	void SelectSwitch::DBitField(Parameter* T_data)
 	{
+#ifdef CszTest
+        Csz::LI("[Select Switch]->bit field");
+#endif
 		if (nullptr== T_data)
 		{
 			Csz::ErrMsg("[Select Switch bit field]->failed,parameter is nullptr");
@@ -323,6 +344,9 @@ namespace Csz
 
 	void SelectSwitch::AsyncDBitField(Parameter* T_data)
 	{
+#ifdef CszTest
+        Csz::LI("[Select Switch]->async bit field");
+#endif
 		if (nullptr== T_data)
 		{
 			Csz::ErrMsg("[Select Switch async bit field]->failed,parameter is nullptr");
@@ -372,6 +396,9 @@ namespace Csz
 
 	void SelectSwitch::DRequest(Parameter* T_data)
 	{
+#ifdef CszTest
+        Csz::LI("[Select Switch]->request");
+#endif
 		if (nullptr== T_data)
 		{
 			Csz::ErrMsg("[Select Switch request]->failed,parameter is nullptr");
@@ -441,6 +468,9 @@ namespace Csz
     //FD_SET socket
 	void SelectSwitch::DPiece(Parameter* T_data)
 	{
+#ifdef CszTest
+        Csz::LI("[Select Switch]->piece");
+#endif
 		if (nullptr== T_data)
 		{
 			Csz::ErrMsg("[Select Switch piece]->parameter is nullptr");
@@ -754,6 +784,9 @@ namespace Csz
 
 	void SelectSwitch::AsyncDPiece(Parameter* T_data)
 	{
+#ifdef CszTest
+        Csz::LI("[Select Switch]->async piece");
+#endif
 		if (nullptr== T_data)
 		{
 			Csz::ErrMsg("[Select Switch async piece]->failed,parameter is nullptr");
@@ -774,6 +807,9 @@ namespace Csz
     	
 	void SelectSwitch::DCancle(Parameter* T_data)
 	{
+#ifdef CszTest
+        Csz::LI("[Select Switch]->cancle");
+#endif
 		if (nullptr== T_data)
 		{
 			Csz::ErrMsg("[Select Switch cancle]->failed,parameter is nullptr");
@@ -785,6 +821,9 @@ namespace Csz
 
 	void SelectSwitch::DPort(Parameter* T_data)
 	{
+#ifdef CszTest
+        Csz::LI("[Select Switch]->port");
+#endif
 		if (nullptr== T_data)
 		{
 			Csz::ErrMsg("[Select Switch port]->failed,parameter is nullptr");
@@ -794,6 +833,7 @@ namespace Csz
 		return ;
 	}
 
+/*
 	void* SelectSwitch::RequestRuner(void*)
 	{
 		auto local_bit_field= LocalBitField::GetInstance();
@@ -804,4 +844,6 @@ namespace Csz
 		}
 		return nullptr;
 	}
+*/
+
 }

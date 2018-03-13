@@ -1,9 +1,9 @@
 #include <string>
-#include <fstream>
-#include <iostream>
+//#include <fstream>
+//#include <iostream>
 #include <butil/files/file_path.h> //butil::file_path
 #include <butil/files/file.h> //butil::file
-#include <bthread/bthread.h>
+//#include <bthread/bthread.h>
 #include "CszBitTorrent.h"
 #include "../Thread/CszSingletonThread.hpp"
 #include "sha1.h"
@@ -61,7 +61,7 @@ int main(int argc,char** argv)
 	Csz::TorrentFile::GetInstance()->GetTrackInfo(&tracker);
 
 	tracker.Connect();
-
+	Csz::LI("total:%d",Csz::TorrentFile::GetInstance()->GetIndexTotal());
 	Csz::LocalBitField::GetInstance()->SetParameter(std::string(Csz::TorrentFile::GetInstance()->GetIndexBitTotal(),0),
 													Csz::TorrentFile::GetInstance()->GetIndexTotal());
 
@@ -70,22 +70,15 @@ int main(int argc,char** argv)
 										Csz::TorrentFile::GetInstance()->GetIndexNormalLength());
     //60s time out
 	Csz::PeerManager::GetInstance()->LoadPeerList(tracker.GetPeerList(60));
+    Csz::PeerManager::GetInstance()->COutInfo();
     //select
-	bthread_t tid;
-	if (bthread_start_background(&tid,NULL,&Csz::SelectSwitch::RequestRuner,NULL)!= 0)
 	{
-		Csz::ErrQuit("[main]->failed,create bthread run select switch request");
-		return -1;
-	}
-	{
-		for (int i= 0; i< 1; i++)
+		for (int i= 0; i< 3; i++)
 		if (Csz::SelectSwitch()()== false && !Csz::LocalBitField::GetInstance()->GameOver())
 		{
 			auto peer_list= tracker.GetPeerList(60);
 			Csz::PeerManager::GetInstance()->LoadPeerList(peer_list);
 		}
 	}
-	Csz::NeedPiece::GetInstance()->SR();
-	bthread_join(tid,NULL);
 	return 0;
 }

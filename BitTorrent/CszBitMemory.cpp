@@ -60,11 +60,22 @@ namespace Csz
     }
 
 
-#define MEMORYPOOL_DEAL(T_LEN)																	                        \
+#define MEMORYPOOL_DEAL(T_LEN)																							\
+{																														\
+			/*TODO lock*/
+			std::unique_lock<bthread::Mutex> guard(mutex);
+			guard.lock();
+			/*not use flag in after unlock,iterator invalid*/
+			auto flag= memory_pool.find(T_index);
             /*1.new memory*/																	                        \
-            if (memory_pool.find(T_index)== memory_pool.end())									                        \
-            {																				                        	\
-                DataTypeP data= std::make_shared<DataType>(T_LEN);			                        \
+            if (flag== memory_pool.end())									                        \
+            {
+				memory_pool.emplace(T_index,std::make_shared<DataType>());				\
+                DataTypeP& data= memory_pool[T_index];	                        \
+				data->cur_len= T_LEN;
+				data->lock= true;
+				guard.unlock();
+				/*unlock*/
                 int32_t cur_memory= T_LEN;														                        \
                 while (cur_memory> 0)															                        \
                 {																				                        \
@@ -80,8 +91,36 @@ namespace Csz
                     (data->data).emplace_back(reinterpret_cast<char*>(buf),id);						\
                     cur_memory-= sizeof(BT);													                        \
                 }																				                        \
-                memory_pool.emplace(T_index,std::move(data));									                        \
             }																					                        \
+			else
+			{
+				if (0== flag->second->cur_len)
+				{
+					/*TODO unlock*/
+					guard.unlock();
+					return false;
+				}
+				else if (T_LEN== flag->second->cur_len)
+				{
+					if (true== flag->second->lock)
+					{
+						/*TODO unlock*/
+						guard.unlock();
+						return false;
+					}
+					else
+					{
+						flag->second->lock= true;
+						guard.unlock;
+						/*TODO unlock*/
+					}
+				}
+				else
+				{
+
+					return false;
+				}
+			}
             /*2.write*/																	                                \
             auto block= memory_pool[T_index];													                        \
             if (block->cur_len< T_length)															                        \
@@ -117,7 +156,7 @@ namespace Csz
 				else																			                        \
 				{																				                        \
 					int32_t sha1_len= T_LEN;													                        \
-					/*if debug judge sha1_len< 0*/												                        \
+					/*fix debug judge sha1_len< 0*/												                        \
 					for (auto start= write_buf.cbegin(),stop= write_buf.cend();start< stop && sha1_len> 0; ++start)     \
 					{																			                        \
 						if (sha1_len> (int)sizeof(BT))												                    \
@@ -134,8 +173,9 @@ namespace Csz
 				if (hash_data!= TorrentFile::GetInstance()->GetHash(T_index))									        \
 				{																				                        \
 					Csz::ErrMsg("[Bit Memory write]->failed,piece hash info is error");			                        \
-                    ClearIndexV1(T_index,T_LEN);                                                                                \
-                    //TODO unlock
+                    ClearIndexV1(T_index,T_LEN);                                                                        \
+                    /*TODO unlock*/																						\
+					block->lock= false;																					\
                     return false;                                                                                       \
 				}																				                        \
 				else																			                        \
@@ -148,10 +188,19 @@ namespace Csz
 						NeedPiece::GetInstance()->ClearIndex(T_index);													\
                         return true;                                                                                    \
 					}																			                        \
-                    ClearIndex(T_index);                                                                                \
+                    ClearIndexV1(T_index);                                                                                \
+					block->lock= false;																					\
                     return false;                                                                                       \
 				}																				                        \
-            }																					
+            }																											\
+			else if (block->cur_len< 0)																					\
+			{																											\
+				Csz::ErrMsg("[Bit Memory write]->failed,cur_len< 0");													\
+				ClearIndexV1(T_index,T_LEN);																			\
+				block->lock= false;																						\
+				return false;																							\
+			}																											\
+}
 
 
     bool BitMemory::Write(int32_t T_index,int32_t T_begin,const char* T_buf,int32_t T_length)
@@ -168,16 +217,6 @@ namespace Csz
         {
             Csz::ErrMsg("[Bit Memory write]->failed,T_buf== nullptr or length < 0");
             return false;
-        }
-        //TODO lock
-        auto flag= memory_pool.find(T_index);
-        if (flag!= memory_pool.end())
-        {
-            if(0== flag->second->first)
-            {
-                Csz::LI("[Bit Memory write]->already write local file for index=%d",T_index);
-                return false;
-            }
         }
         auto resource_pool= butil::ResourcePool<BT>::singleton();
         //1.deal end index
@@ -201,7 +240,7 @@ namespace Csz
         {
             return ;
         }
-        flag->second->first= T_len;
+        flag->second->cur_len= T_len;
         return ;
     }
 
@@ -216,11 +255,11 @@ namespace Csz
             return ;
         }
         auto resource_pool= butil::ResourcePool<BT>::singleton();
-        for (auto& val : flag->second->second)
+        for (auto& val : flag->second->data)
         {
-            resource_pool->return_resource(val.first);
+            resource_pool->return_resource(val.id);
         }
-        (flag->second->second).clear();
+        (flag->second->data).clear();
         return ;
     }
 	
@@ -230,7 +269,7 @@ namespace Csz
         Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
 #endif
 		//bug,check point is nullptr
-		const auto& read_buf= memory_pool[T_index]->second;
+		const auto& read_buf= memory_pool[T_index]->data;
 		if (read_buf.empty())
 		{
 			Csz::ErrMsg("[Bit Memory write]->failed,read buf is empty");
@@ -264,20 +303,20 @@ namespace Csz
 			}
 			if (left_read>= val.second.second)
 			{
-				code= file.Write(val.second.first,start->second+ cur_read,val.second.second);
+				code= file.Write(val.second.first,start->buf+ cur_read,val.second.second);
 				cur_read+= val.second.second;
 				left_read-= val.second.second;
 			}
 			else
 			{
-				code= file.Write(val.second.first,start->second+ cur_read,left_read);
+				code= file.Write(val.second.first,start->buf+ cur_read,left_read);
 				++start;
 				if (start>= stop)
 				{
 					Csz::ErrMsg("[Bit Memory write]->failed,read buf goto end,but have need write local file");
 					return -1;
 				}
-				code= code+ file.Write(val.second.first+ left_read,start->second,val.second.second- left_read);
+				code= code+ file.Write(val.second.first+ left_read,start->buf,val.second.second- left_read);
 				cur_read= val.second.second- left_read;
 				left_read= sizeof(BT)- left_read;
 			}

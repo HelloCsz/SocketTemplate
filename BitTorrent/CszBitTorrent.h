@@ -946,9 +946,9 @@ namespace Csz
             int32_t index_end;
             int32_t length_end;
 			int32_t length_normal;
+			bthread::Mutex mutex;
             struct DataType
             {
-                DataType(int32_t T_len):lock(false),cur_len(T_len){}
                 bool lock;
                 int32_t cur_len;
                 struct Inside

@@ -8,7 +8,7 @@ namespace Csz
     {
         if (T_time<= 0)
         {
-            Csz::ErrMsg("recv time failed,time< 0");
+            Csz::ErrMsg("[Recv Timeus]->failed,time< 0");
             return -1;
         }
         //300ms once
@@ -26,12 +26,12 @@ namespace Csz
                     bthread_usleep(TIMEOUT300MS);
                     continue;
                 }
-                Csz::ErrRet("recv time failed");
+                Csz::ErrRet("[Recv Timeus time out=%d]->failed,",T_time);
                 break;
             }
             else if (0== code)
             {
-                Csz::ErrMsg("recv time failed,peer close");
+                Csz::ErrMsg("[Recv Timeus time out=%d]->failed,peer close",T_time);
                 break;
             }
             cur_len+= code;
@@ -49,12 +49,12 @@ namespace Csz
 			{
 				if (errno== EAGAIN || errno== EWOULDBLOCK)
 				{
-					Csz::ErrRet("recv time failed");
+					Csz::ErrRet("[Recv Timeus time out=%d]->failed",T_time);
 					return -1;
 				}
 				else if (0== code)
 				{
-					Csz::ErrMsg("recv time failed,peer close");
+					Csz::ErrMsg("[Recv Timeus time out=%d]->failed,peer close",T_time);
 					return -1;
 				}
 			}
@@ -68,7 +68,7 @@ namespace Csz
     {
         if (T_time<= 0)
         {
-            Csz::ErrMsg("recv time failed,time< 0");
+            Csz::ErrMsg("[Recv Timeus]->failed,time< 0");
             return -1;
         }
         //300ms once
@@ -86,12 +86,12 @@ namespace Csz
                     bthread_usleep(TIMEOUT300MS);
                     continue;
                 }
-                Csz::ErrRet("recv time failed");
+                Csz::ErrRet("[Recv Timeus time out=%d]->failed,",T_time);
                 break;
             }
             else if (0== code)
             {
-                Csz::ErrMsg("recv time failed,peer close");
+                Csz::ErrMsg("[Recv Timeus time out=%d]->failed,peer close",T_time);
                 break;
             }
             cur_len+= code;
@@ -109,12 +109,12 @@ namespace Csz
 			{
 				if (errno== EAGAIN || errno== EWOULDBLOCK)
 				{
-					Csz::ErrRet("recv time failed");
+					Csz::ErrRet("[Recv Timeus time out=%d]->failed,",T_time);
 					return -1;
 				}
 				else if (0== code)
 				{
-					Csz::ErrMsg("recv time failed,peer close");
+					Csz::ErrMsg("[Recv Timeus time out=%d]->failed,peer close",T_time);
 					return -1;
 				}
 			}

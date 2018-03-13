@@ -37,6 +37,9 @@ namespace Csz
 
 	std::vector<int> Tracker::RetSocket()const
 	{
+#ifdef CszTest
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+#endif
 		std::vector<int> ret;
 		ret.reserve(info.size());
 		for (const auto& val : info)
@@ -51,18 +54,27 @@ namespace Csz
 
 	void Tracker::SetTrackInfo(TrackerInfo T_data)
 	{
+#ifdef CszTest
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+#endif
 		info.push_back(std::move(T_data));
 		return ;
 	}
 
 	void Tracker::SetInfoHash(std::string T_data)
 	{
+#ifdef CszTest
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+#endif
 		info_hash.assign(std::move(T_data));
 		return ;
 	}
 
 	void Tracker::Connect()
 	{
+#ifdef CszTest
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+#endif
 		struct addrinfo* res;
 		int socket_fd,flag;
 		for (auto& val : info)
@@ -117,6 +129,9 @@ namespace Csz
 
 	void Tracker::SetParameter(std::string T_data)
 	{
+#ifdef CszTest
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+#endif
 		parameter_msg.append(1,'&');
 		parameter_msg.append(std::move(T_data));
 		return ;
@@ -124,6 +139,9 @@ namespace Csz
 
 	std::vector<std::string> Tracker::GetPeerList(int T_sec)
 	{
+#ifdef CszTest
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+#endif
         std::vector<std::string> ret_str;
 		fd_set wset,rset,rset_save,wset_save;
 		int fd_max= -1;
@@ -206,17 +224,22 @@ namespace Csz
 		}
 #ifdef CszTest
         COutInfo();
+/*
         for (const auto& val : ret_str)
         {
             Csz::LI("%s",val.c_str());
 			//std::cout<<val<<"\n";
         }
+*/
 #endif
 		return std::move(ret_str);
 	}
 
 	void Tracker::_Delivery(const int T_socket,const std::string& T_host,const std::string& T_serv,const std::string& T_uri)
 	{
+#ifdef CszTest
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+#endif
 		//request.SetHeader("Host",T_host+":"+T_serv);
 		std::string request_line;
 		request_line.reserve(128);
@@ -246,6 +269,9 @@ namespace Csz
 
 	inline void Tracker::_Capturer(const int T_socket)
 	{
+#ifdef CszTest
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+#endif
         response.Clear();
 		response.Capturer(T_socket,&cache);
 #ifdef CszTest
@@ -256,6 +282,9 @@ namespace Csz
     
     inline void Tracker::_InitReq()
     {
+#ifdef CszTest
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+#endif
 	    request.SetHeader("Connection","Keep-alive");
 	    request.SetHeader("User-Agent","Super Max");
 	    request.SetHeader("Accept","text/html");
@@ -264,6 +293,9 @@ namespace Csz
     
     void Tracker::_UpdateReq()
     {
+#ifdef CszTest
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+#endif
         parameter_msg.clear();
 		auto id1= time(NULL);
 		auto id2= std::rand()%100000000+ 1000000000;
@@ -293,13 +325,16 @@ namespace Csz
 		parameter.assign("event=started");
 		SetParameter(std::move(parameter));
 
-		parameter.assign("numwant=50");
+		parameter.assign("numwant=20");
 		SetParameter(std::move(parameter));
         return ;
     }
 
 	void Tracker::COutInfo()
 	{
+#ifdef CszTest
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+#endif
 		std::string out_info;
 		out_info.reserve(64);
 		out_info.append("[Tracker INFO]:");

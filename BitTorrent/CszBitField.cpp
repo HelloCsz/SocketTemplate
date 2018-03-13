@@ -7,6 +7,9 @@ namespace Csz
 {
 	void BitField::SetParameter(std::string T_bit_field,int32_t T_total)
 	{
+#ifdef CszTest
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+#endif
 		_Clear();
 		_SetParameter(std::move(T_bit_field));
 		total= T_total;
@@ -15,6 +18,9 @@ namespace Csz
 
 	inline void BitField::_SetParameter(std::string T_bit_field)
 	{
+#ifdef CszTest
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+#endif
 		if (T_bit_field.empty())
 		{
 			Csz::ErrMsg("[Bit Field set parameter]->faile,parameter is empty");
@@ -27,6 +33,9 @@ namespace Csz
 
 	inline void BitField::_SetPrefixLength()
 	{
+#ifdef CszTest
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+#endif
 		if (prefix_and_bit_field.size()<= 5)
 		{
 			Csz::ErrMsg("[Bit Field set prefix length]->faile,too small,can't set prefix length");
@@ -47,6 +56,9 @@ namespace Csz
 
 	inline void BitField::_Clear()
 	{
+#ifdef CszTest
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+#endif
 		//index -> npos
 		prefix_and_bit_field.erase(5);
 		return ;
@@ -54,6 +66,9 @@ namespace Csz
 
 	void BitField::FillBitField(int32_t T_index)
 	{
+#ifdef CszTest
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+#endif
 		if (T_index< 0)
 		{
 			Csz::ErrMsg("[Bit Field fill bit field]->failed,index < 0,can't fill bit field");
@@ -110,6 +125,16 @@ namespace Csz
 
 	bool BitField::CheckPiece(int32_t& T_index)
 	{
+#ifdef CszTest
+        if (T_index+1>= total)
+        {   
+            Csz::LI("[%s->%s->%d->T_index=%d>= total=%d]",__FILE__,__func__,__LINE__,T_index,total);
+        }
+        else
+        {
+            Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+        }
+#endif
 		if (T_index< 0)
 		{
 			Csz::ErrMsg("[Bit Field check piece]->failed,index < 0");
@@ -158,6 +183,9 @@ namespace Csz
 
 	std::vector<int32_t> BitField::LackNeedPiece(const char* T_bit_field,const int T_len)
 	{
+#ifdef CszTest
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+#endif
 		std::vector<int32_t> ret;
 		if (prefix_and_bit_field.size()<= 5)
 		{
@@ -171,9 +199,11 @@ namespace Csz
 		}
 		int cur_len= 0;
 		int32_t index= 0;
+        //fix bug
+        int32_t check_total= total;
 		while (cur_len< T_len)
 		{
-			for (int i= 0; i< 8; ++i,++index)
+			for (int i= 0; i< 8 && check_total> 0; ++i,++index,--check_total)
 			{
 				//1.have piece
 				if(T_bit_field[cur_len] & bit_hex[i])
@@ -195,6 +225,9 @@ namespace Csz
 
 	bool BitField::GameOver()const
 	{
+#ifdef CszTest
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+#endif
 		if (total== cur_sum)
 			return true;
 		return false;
@@ -219,6 +252,9 @@ namespace Csz
 
 	void BitField::ProgressBar()
 	{
+#ifdef CszTest
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+#endif
         //bug!!
 		char* data= const_cast<char*>(&prefix_and_bit_field[0]);
 		std::vector<std::bitset<8>> bit_field;
@@ -241,6 +277,9 @@ namespace Csz
 
 	void BitField::COutInfo() const
 	{
+#ifdef CszTest
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+#endif
         //bug!!
 		char* data= const_cast<char*>(&prefix_and_bit_field[0]);
 		Csz::LI("[Bit Field INFO]:len=%u,id=%d",ntohl(*reinterpret_cast<uint32_t*>(data)),int(*(data+ 4)));

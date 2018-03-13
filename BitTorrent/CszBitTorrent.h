@@ -887,12 +887,16 @@ namespace Csz
 		struct Parameter
 		{
 			Parameter():socket(-1),len(0),buf(nullptr),cur_len(0){}
-			~Parameter(){if (buf!= nullptr) delete[] buf;}
+			~Parameter()
+            {
+                if (buf!= nullptr) 
+                    delete[] buf;
+            }
 			int socket;
 			//not include id len
 			int32_t len;
 			char* buf;
-			int cur_len;
+			int32_t cur_len;
 		};
 		bool operator()();
 		void DKeepAlive(Parameter* T_data);
@@ -942,15 +946,27 @@ namespace Csz
             int32_t index_end;
             int32_t length_end;
 			int32_t length_normal;
-            using DataType= std::vector<std::pair<butil::ResourceId<BT>,char*>>;
-            //left cur_len,resource id
-            using Type= std::pair<int32_t,BitMemory::DataType>;
-            using TypeP= std::shared_ptr<Type>;
+            struct DataType
+            {
+                DataType(int32_t T_len):lock(false),cur_len(T_len){}
+                bool lock;
+                int32_t cur_len;
+                struct Inside
+                {
+                    Inside(char* T_buf,butil::ResourceId<BT>& T_id):buf(T_buf),id(T_id){}
+                    char* buf;
+                    butil::ResourceId<BT> id;
+                };
+                std::vector<Inside> data;
+            };
+            using DataTypeP= std::shared_ptr<DataType>;
             std::unordered_map<int32_t,TypeP> memory_pool;
         public:
             bool Write(int32_t T_index,int32_t T_begin,const char* T_buf,int32_t T_length);
             void Init(int32_t T_index_end,int32_t T_length_end,int32_t T_length_normal);
-            void ClearIndex(int32_t T_index);
+            void ClearIndexV1(int32_t T_index,int32_t T_len);
+            //real clear
+            void ClearIndexV2(int32_t T_index);
 			void COutInfo();
         private:
             void _Clear();

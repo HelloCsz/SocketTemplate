@@ -17,14 +17,18 @@ namespace Csz
 
     void BitMemory::_Clear()
     {
+#ifdef CszTest
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+#endif
         auto resource_pool= butil::ResourcePool<BT>::singleton();
         //1.get index
         for (auto& val : memory_pool)
         {
-            //2.get id(index have vetor id)
-            for (auto& id: (val.second)->second)
+            //2.get id(index have vector id)
+            //(val.second)->first is left cur_len
+            for (auto& data: (val.second)->data)
             {
-                resource_pool->return_resource(id.first);
+                resource_pool->return_resource(data.id);
             }    
         }
         resource_pool->clear_resources();
@@ -33,6 +37,9 @@ namespace Csz
 
     void BitMemory::Init(int32_t T_index_end,int32_t T_length_end,int32_t T_length_normal)
     {
+#ifdef CszTest
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+#endif
         if (T_index_end< 0)
         {
             Csz::ErrQuit("[Bit Memory init]->failed,index end < 0");
@@ -57,7 +64,7 @@ namespace Csz
             /*1.new memory*/																	                        \
             if (memory_pool.find(T_index)== memory_pool.end())									                        \
             {																				                        	\
-                TypeP data= std::make_shared<Type>(std::make_pair(T_LEN,DataType()));			                        \
+                DataTypeP data= std::make_shared<DataType>(T_LEN);			                        \
                 int32_t cur_memory= T_LEN;														                        \
                 while (cur_memory> 0)															                        \
                 {																				                        \
@@ -70,42 +77,42 @@ namespace Csz
                         Csz::ErrQuit("[Bit Memory write]->failed,new return null");				                        \
                         return false;															                        \
                     }																			                        \
-                    (data->second).emplace_back(std::make_pair(id,reinterpret_cast<char*>(buf)));						\
+                    (data->data).emplace_back(reinterpret_cast<char*>(buf),id);						\
                     cur_memory-= sizeof(BT);													                        \
                 }																				                        \
                 memory_pool.emplace(T_index,std::move(data));									                        \
             }																					                        \
             /*2.write*/																	                                \
             auto block= memory_pool[T_index];													                        \
-            if (block->first< T_length)															                        \
+            if (block->cur_len< T_length)															                        \
             {																					                        \
                 Csz::ErrMsg("[Bit Memory write]->failed,left< write length");						                    \
                 return false;																	                        \
             }																					                        \
             auto block_index= T_begin/ sizeof(BT);												                        \
             T_begin%= sizeof(BT);																                        \
-            auto& write_buf= block->second;														                        \
+            auto& write_buf= block->data;														                        \
 			/*2.1judge the slice are between  blocks*/											                        \
 			if (T_begin+ T_length> (int)sizeof(BT))													                    \
 			{																					                        \
 				auto lhs_len= sizeof(BT)- T_begin;												                        \
-				memcpy(write_buf[block_index].second+ T_begin,T_buf,lhs_len);					                        \
-				memcpy(write_buf[block_index+ 1].second,T_buf+ lhs_len,T_length- lhs_len);		                        \
+				memcpy(write_buf[block_index].buf+ T_begin,T_buf,lhs_len);					                        \
+				memcpy(write_buf[block_index+ 1].buf,T_buf+ lhs_len,T_length- lhs_len);		                        \
 			}																					                        \
 			else																				                        \
 			{																					                        \
-				memcpy(write_buf[block_index].second+ T_begin,T_buf,T_length);                                          \
+				memcpy(write_buf[block_index].buf+ T_begin,T_buf,T_length);                                          \
 			}																					                        \
-            block->first= block->first- T_length;												                        \
+            block->cur_len= block->cur_len- T_length;												                        \
 			/*2.2 real write*/																	                        \
-            if (0== block->first)																                        \
+            if (0== block->cur_len)																                        \
             {																					                        \
-                /*md5*/																			                        \
+                /*sha1*/																			                        \
 				std::string sha1_data;															                        \
 				sha1_data.reserve(T_LEN);														                        \
 				if (T_LEN<= (int)sizeof(BT))															                \
 				{																				                        \
-					sha1_data.append(write_buf[0].second);										                        \
+					sha1_data.append(write_buf[0].buf,T_LEN);										                        \
 				}																				                        \
 				else																			                        \
 				{																				                        \
@@ -114,9 +121,9 @@ namespace Csz
 					for (auto start= write_buf.cbegin(),stop= write_buf.cend();start< stop && sha1_len> 0; ++start)     \
 					{																			                        \
 						if (sha1_len> (int)sizeof(BT))												                    \
-							sha1_data.append(start->second,sizeof(BT));							                        \
+							sha1_data.append(start->buf,sizeof(BT));							                        \
 						else																	                        \
-							sha1_data.append(start->second,sha1_len);								                    \
+							sha1_data.append(start->buf,sha1_len);								                    \
 						sha1_len-= sizeof(BT);													                        \
 					}																			                        \
 				}																				                        \
@@ -127,7 +134,8 @@ namespace Csz
 				if (hash_data!= TorrentFile::GetInstance()->GetHash(T_index))									        \
 				{																				                        \
 					Csz::ErrMsg("[Bit Memory write]->failed,piece hash info is error");			                        \
-                    ClearIndex(T_index);                                                                                \
+                    ClearIndexV1(T_index,T_LEN);                                                                                \
+                    //TODO unlock
                     return false;                                                                                       \
 				}																				                        \
 				else																			                        \
@@ -135,7 +143,7 @@ namespace Csz
 					/*write file*/                                                                                      \
 					if (_Write(T_index)== T_LEN)														                \
 					{																			                        \
-                        ClearIndex(T_index);                                                                            \
+                        ClearIndexV2(T_index);                                                                            \
 						LocalBitField::GetInstance()->FillBitField(T_index);											\
 						NeedPiece::GetInstance()->ClearIndex(T_index);													\
                         return true;                                                                                    \
@@ -148,6 +156,9 @@ namespace Csz
 
     bool BitMemory::Write(int32_t T_index,int32_t T_begin,const char* T_buf,int32_t T_length)
     {
+#ifdef CszTest
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+#endif
         if (T_index< 0)
         {
             Csz::ErrMsg("[Bit Memory write]->failed,index < 0");
@@ -157,6 +168,16 @@ namespace Csz
         {
             Csz::ErrMsg("[Bit Memory write]->failed,T_buf== nullptr or length < 0");
             return false;
+        }
+        //TODO lock
+        auto flag= memory_pool.find(T_index);
+        if (flag!= memory_pool.end())
+        {
+            if(0== flag->second->first)
+            {
+                Csz::LI("[Bit Memory write]->already write local file for index=%d",T_index);
+                return false;
+            }
         }
         auto resource_pool= butil::ResourcePool<BT>::singleton();
         //1.deal end index
@@ -170,8 +191,25 @@ namespace Csz
 
 #undef  MEMORYPOOL_DEAL
     
-    void BitMemory::ClearIndex(int32_t T_index)
+    void BitMemory::ClearIndexV1(int32_t T_index,int32_t T_len)
     {
+#ifdef CszTest
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+#endif
+        auto flag= memory_pool.find(T_index);
+        if (flag== memory_pool.end())
+        {
+            return ;
+        }
+        flag->second->first= T_len;
+        return ;
+    }
+
+    void BitMemory::ClearIndexV2(int32_t T_index)
+    {
+#ifdef CszTest
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+#endif
         auto flag= memory_pool.find(T_index);
         if (flag== memory_pool.end())
         {
@@ -182,11 +220,15 @@ namespace Csz
         {
             resource_pool->return_resource(val.first);
         }
+        (flag->second->second).clear();
         return ;
     }
 	
 	int32_t BitMemory::_Write(int32_t T_index)
 	{
+#ifdef CszTest
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+#endif
 		//bug,check point is nullptr
 		const auto& read_buf= memory_pool[T_index]->second;
 		if (read_buf.empty())
@@ -251,6 +293,9 @@ namespace Csz
 
 	void BitMemory::COutInfo()
 	{
+#ifdef CszTest
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+#endif
 		Csz::LI("[Bit Memory INFO]:index end=%d,length end=%d,length normal=%d",index_end,length_end,length_normal);
 		return ;
 	}

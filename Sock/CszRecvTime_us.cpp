@@ -4,7 +4,7 @@
 
 namespace Csz
 {
-    int RecvTime_us(int T_socket,char* T_buf,size_t T_len,int T_time)
+    int RecvTime_us(int T_socket,char* T_buf,int32_t T_len,int T_time)
     {
         if (T_time<= 0)
         {
@@ -64,7 +64,8 @@ namespace Csz
 			return 0;
         return -1;
     }
-    int RecvTimeP_us(int T_socket,char* T_buf,size_t* T_len,int T_time)
+
+    int RecvTimeP_us(int T_socket,char* T_buf,int32_t* T_len,int T_time)
     {
         if (T_time<= 0)
         {

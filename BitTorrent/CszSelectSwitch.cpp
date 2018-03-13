@@ -14,6 +14,9 @@ namespace Csz
 	//TODO sinnal deal or pselect
 	bool SelectSwitch::operator()()
 	{
+#ifdef CszTest
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+#endif
 		using Task= Csz::TaskQueue<SelectSwitch::Parameter,THREADNUM>::Type;
 		auto thread_pool= SingletonThread<SelectSwitch::Parameter,THREADNUM>::GetInstance();
 		auto peer_manager= PeerManager::GetInstance();
@@ -45,7 +48,7 @@ namespace Csz
 		rset= rset_save;
 		timeval time_out;
 		//3min
-		time_out.tv_sec= 180;
+		time_out.tv_sec= 60;
 		time_out.tv_usec= 0;
 		int code;
 		//30s
@@ -156,8 +159,8 @@ namespace Csz
 							continue;
 						}
 						data->len= len;
-						error_code= Csz::RecvTimeP_us(data->socket,data->buf,reinterpret_cast<size_t*>(&data->len),TIMEOUT300MS);
-						if (error_code== -1)
+						error_code= Csz::RecvTimeP_us(data->socket,data->buf,reinterpret_cast<int32_t*>(&data->len),TIMEOUT300MS);
+						if (-1== error_code)
 						{
 							if (errno== EAGAIN || errno== EWOULDBLOCK)
 							{
@@ -238,7 +241,7 @@ namespace Csz
 	inline void SelectSwitch::DKeepAlive(Parameter* T_data)
 	{
 #ifdef CszTest
-        Csz::LI("[Select Switch]->keep alive");
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
 #endif
 		if (nullptr== T_data)
 		{
@@ -252,7 +255,7 @@ namespace Csz
 	void SelectSwitch::DChoke(Parameter* T_data)
 	{
 #ifdef CszTest
-        Csz::LI("[Select Switch]->choke");
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
 #endif
 		if (nullptr== T_data)
 		{
@@ -267,7 +270,7 @@ namespace Csz
 	void SelectSwitch::DUnChoke(Parameter* T_data)
 	{
 #ifdef CszTest
-        Csz::LI("[Select Switch]->unchoke");
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
 #endif
 		if (nullptr== T_data)
 		{
@@ -282,7 +285,7 @@ namespace Csz
 	void SelectSwitch::DInterested(Parameter* T_data)
 	{
 #ifdef CszTest
-        Csz::LI("[Select Switch]->interested");
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
 #endif
 		if (nullptr== T_data)
 		{
@@ -297,7 +300,7 @@ namespace Csz
 	void SelectSwitch::DUnInterested(Parameter* T_data)
 	{
 #ifdef CszTest
-        Csz::LI("[Select Switch]->uninterested");
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
 #endif
 		if (nullptr== T_data)
 		{
@@ -312,7 +315,7 @@ namespace Csz
 	void SelectSwitch::DHave(Parameter* T_data)
 	{
 #ifdef CszTest
-        Csz::LI("[Select Switch]->have");
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
 #endif
 		if (nullptr== T_data)
 		{
@@ -330,7 +333,7 @@ namespace Csz
 	void SelectSwitch::DBitField(Parameter* T_data)
 	{
 #ifdef CszTest
-        Csz::LI("[Select Switch]->bit field");
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
 #endif
 		if (nullptr== T_data)
 		{
@@ -345,7 +348,7 @@ namespace Csz
 	void SelectSwitch::AsyncDBitField(Parameter* T_data)
 	{
 #ifdef CszTest
-        Csz::LI("[Select Switch]->async bit field");
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
 #endif
 		if (nullptr== T_data)
 		{
@@ -383,8 +386,9 @@ namespace Csz
 		{
 			//RAII,unique_ptr repeat free memory
             FD_SET(T_data->socket,&rset_save);
-			auto origin= guard.release();
-			DBitField(origin);
+			//TODO auto origin= guard.release();
+			guard.release();
+			DBitField(T_data);
 		}
 		//2.3 time out,give up socket len < 0
 		else if (0== code || T_data->len!= 0)
@@ -397,7 +401,7 @@ namespace Csz
 	void SelectSwitch::DRequest(Parameter* T_data)
 	{
 #ifdef CszTest
-        Csz::LI("[Select Switch]->request");
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
 #endif
 		if (nullptr== T_data)
 		{
@@ -424,6 +428,9 @@ namespace Csz
     
     void SelectSwitch::_SendPiece(int T_socket,int32_t T_index,int32_t T_begin,int32_t T_length)
     {
+#ifdef CszTest
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+#endif
 		//1.get have slice file name
 		auto file_name= TorrentFile::GetInstance()->GetFileName(T_index,T_begin,T_length);
 		if (file_name.empty())
@@ -469,7 +476,7 @@ namespace Csz
 	void SelectSwitch::DPiece(Parameter* T_data)
 	{
 #ifdef CszTest
-        Csz::LI("[Select Switch]->piece");
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
 #endif
 		if (nullptr== T_data)
 		{
@@ -603,6 +610,9 @@ namespace Csz
     
     inline bool SelectSwitch::_LockPiece(int T_socket,int32_t T_index,int32_t T_begin,int32_t T_length)
     {
+#ifdef CszTest
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+#endif
         {
             Request request;
             request.SetParameter(T_index,T_begin,T_length);
@@ -648,13 +658,6 @@ namespace Csz
                 break;
             }
             char id;
-            --parameter->len;
-            parameter->buf= new(std::nothrow) char[parameter->len];
-            if (nullptr== parameter->buf)
-            {
-                Csz::ErrMsg("[Select Switch lock piece]->new parameter failed");
-                break;
-            }
             code= Csz::RecvTime_us(parameter->socket,&id,1,TIMEOUT1000MS);
             if (-1== code)
             {
@@ -662,29 +665,43 @@ namespace Csz
             }
             if (0== id)//catch choke
             {
+				//TODO auto orgin= guard.release();
 				guard.release();
 				DChoke(parameter);
                 break;
             }
             else if (1== id)//catch unchoke
             {
+				//TODO auto orgin= guard.release();
 				guard.release();
 				DUnChoke(parameter);
+                continue;
                 //NeedPiece::GetInstance()->UnChoke(parameter->socket);
             }
             else if (2== id)//catch interested
             {
+				//TODO auto orgin= guard.release();
 				guard.release();
 				DInterested(parameter);
+                continue;
                 //NeedPiece::GetInstance()->NPInterested(parameter->socket);
             }
             else if (3== id)//catch not interested
             {
+				//TODO auto orgin= guard.release();
 				guard.release();
 				DUnInterested(parameter);
+                continue;
                 //NeedPiece::GetInstance()->NPUnInterested(parameter->socket);
             }
-            else if (4== id)//catch have
+            --parameter->len;
+            parameter->buf= new(std::nothrow) char[parameter->len];
+            if (nullptr== parameter->buf)
+            {
+                Csz::ErrMsg("[Select Switch lock piece]->new parameter failed");
+                break;
+            }
+            if (4== id)//catch have
             {
                 if (parameter->len!= 4)
                 {
@@ -696,17 +713,22 @@ namespace Csz
                     break;
                 parameter->len-= code;
                 parameter->cur_len+= code;
+                //TODO auto orgin= guard.release();
                 guard.release();
                 DHave(parameter);
+                continue;
             }
             else if (5== id)//catch bit field
             {
+                PeerManager::GetInstance()->CloseSocket(parameter->socket);
                 Csz::ErrMsg("[Select Switch lock piece]->falied,recv bit field");
+                break;
             }
             else if (6== id)//catch request
             {   
                 if (parameter->len!= 12)
                 {
+                    PeerManager::GetInstance()->CloseSocket(parameter->socket);
                     Csz::ErrMsg("[Select Switch lock piece]->falied,recv request,but len!= 12");
                     break;
                 }
@@ -715,18 +737,24 @@ namespace Csz
                     break;
                 parameter->len-= code;
                 parameter->cur_len+= code;
+                //auto orgin= guard.release();
                 guard.release();
                 DRequest(parameter);
+                continue;
             }
             else if (7== id)//catch piece
             {
                 if (T_length!= (parameter->len- 8))
                 {
+                    PeerManager::GetInstance()->CloseSocket(parameter->socket);
                     break;
                 }
                 code= Csz::RecvTime_us(parameter->socket,parameter->buf,parameter->len,TIMEOUT3000MS);
                 if (-1== code)
+                {
+                    PeerManager::GetInstance()->CloseSocket(parameter->socket);
                     break;
+                }
                 int32_t index= ntohl(*reinterpret_cast<int32_t*>(parameter->buf));
                 if (T_index!= index)
                 {
@@ -748,14 +776,19 @@ namespace Csz
             {
                 if (parameter->len!= 12)
                 {
+                    PeerManager::GetInstance()->CloseSocket(parameter->socket);
                     Csz::ErrMsg("[Select Switch lock piece]->failed,recv cancle,but len!= 12");
                     break;
                 }
                 code= Csz::RecvTime_us(parameter->socket,parameter->buf,parameter->len,TIMEOUT1000MS);
                 if (-1== code)
+                { 
+                    PeerManager::GetInstance()->CloseSocket(parameter->socket);
                     break;
+                }
                 parameter->len-= code;
                 parameter->cur_len+= code;
+                //TODO auto orgin= guard.release();
                 guard.release();
                 DCancle(parameter);
             }
@@ -763,14 +796,19 @@ namespace Csz
             {
                 if (parameter->len!= 2)
                 {
+                    PeerManager::GetInstance()->CloseSocket(parameter->socket);
                     Csz::ErrMsg("[Select Switch lock piece]->failed,recv port,but len!= 2");
                     break;
                 }
                 code= Csz::RecvTime_us(parameter->socket,parameter->buf,parameter->len,TIMEOUT1000MS);
                 if (-1== code)
+                {
+                    PeerManager::GetInstance()->CloseSocket(parameter->socket);
                     break;
+                }
                 parameter->len-= code;
                 parameter->cur_len+= code;
+                //TODO auto orgin= guard.release();
                 guard.release();
                 DPort(parameter);
             }
@@ -785,7 +823,7 @@ namespace Csz
 	void SelectSwitch::AsyncDPiece(Parameter* T_data)
 	{
 #ifdef CszTest
-        Csz::LI("[Select Switch]->async piece");
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
 #endif
 		if (nullptr== T_data)
 		{
@@ -800,15 +838,16 @@ namespace Csz
 			return ;
 		}
 		FD_SET(T_data->socket,&rset_save);
-		auto origin= guard.release();
-		DPiece(origin);
+		//TODO auto origin= guard.release();
+		guard.release();
+		DPiece(T_data);
 		return ;
 	}
     	
 	void SelectSwitch::DCancle(Parameter* T_data)
 	{
 #ifdef CszTest
-        Csz::LI("[Select Switch]->cancle");
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
 #endif
 		if (nullptr== T_data)
 		{
@@ -822,7 +861,7 @@ namespace Csz
 	void SelectSwitch::DPort(Parameter* T_data)
 	{
 #ifdef CszTest
-        Csz::LI("[Select Switch]->port");
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
 #endif
 		if (nullptr== T_data)
 		{

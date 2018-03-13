@@ -18,6 +18,9 @@ namespace Csz
     std::vector<int> PeerManager::RetSocketList() const
     {
 #ifdef CszTest
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+#endif
+#ifdef CszTest
         Csz::LI("[Peer Manager ret socket list]INFO:");
         COutInfo();
 #endif
@@ -37,6 +40,9 @@ namespace Csz
 
     void PeerManager::AddSocket(const int T_socket)
     {
+#ifdef CszTest
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+#endif
         if (T_socket>= 0)
         {
 			//TODO lock id
@@ -58,6 +64,9 @@ namespace Csz
 
     void PeerManager::LoadPeerList(const std::vector<std::string>& T_socket_list)
     {
+#ifdef CszTest
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+#endif
         if (T_socket_list.empty())
         { 
             Csz::ErrMsg("[Peer Manager load peer list]->failed,Peer list is empty");
@@ -72,6 +81,9 @@ namespace Csz
 
     void PeerManager::_LoadPeerList(const std::string& T_socket_list)
     {
+#ifdef CszTest
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+#endif
 		std::vector<int> ret;
         auto flag= T_socket_list.find("peers");
         if (std::string::npos== flag)
@@ -88,6 +100,7 @@ namespace Csz
         auto start= T_socket_list.c_str()+ flag+ num_length+ 1;
         auto stop= T_socket_list.c_str()+ T_socket_list.size();
         //TODO 2.check comopact??
+        //TODO num-= 6
         while (num> 0 && start< stop)
         {
             sockaddr_in addr;
@@ -174,6 +187,9 @@ namespace Csz
 
     void PeerManager::_Connected(std::vector<int>& T_ret)
     {
+#ifdef CszTest
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+#endif
 		if (T_ret.empty())
 		{
             Csz::ErrMsg("[Peer Manager connected]->failed,parameter socket is empty");
@@ -219,6 +235,7 @@ namespace Csz
 					{
 						Csz::Close(val);
 						val= -1;
+                        --stop;
 					}
 				}
 				//clear failed socket
@@ -289,6 +306,9 @@ namespace Csz
 
 	void PeerManager::_Verification(std::vector<int>& T_ret)
 	{
+#ifdef CszTest
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+#endif
 		if (T_ret.empty())
 		{
             Csz::ErrMsg("[Peer Manager verification]->failed,parameter socket is empty");
@@ -337,6 +357,7 @@ namespace Csz
 					{
 						Csz::Close(val);
 						val= -1;
+                        --stop;
 					}
 				}
 				//clear failed socket
@@ -404,6 +425,9 @@ namespace Csz
 
 	void PeerManager::_SendBitField(std::vector<int>& T_ret)
 	{
+#ifdef CszTest
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+#endif
 		if (T_ret.empty())
 	    {
             Csz::ErrMsg("[Peer Manager send bit field]->failed,parameter socket is empty");
@@ -419,6 +443,9 @@ namespace Csz
 
 	void PeerManager::CloseSocket(int T_socket)
 	{
+#ifdef CszTest
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+#endif
 		auto result= peer_list.find(T_socket);
 		//lock
 		if (result!= peer_list.end())
@@ -441,6 +468,9 @@ namespace Csz
 
     void PeerManager::SendHave(int32_t T_index)
     {
+#ifdef CszTest
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+#endif
         if (T_index< 0)
         {
             Csz::ErrMsg("[Peer Manager send have]->failed,index< 0");
@@ -470,6 +500,9 @@ namespace Csz
     //TODO safe
     bthread::Mutex* PeerManager::GetSocketMutex(int T_socket)
     {
+#ifdef CszTest
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+#endif
         auto flag= peer_list.find(T_socket);
         if (flag== peer_list.end())
         {
@@ -480,6 +513,9 @@ namespace Csz
  
 	int PeerManager::GetSocketId(int T_socket) 
 	{
+#ifdef CszTest
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+#endif
 		if (peer_list.find(T_socket)!= peer_list.end())
 		{
 			return peer_list[T_socket]->id;
@@ -489,6 +525,9 @@ namespace Csz
 
 	void PeerManager::AmChoke(int T_socket)
 	{
+#ifdef CszTest
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+#endif
 		auto flag= peer_list.find(T_socket);
 		if (flag== peer_list.end())
 		{
@@ -509,6 +548,9 @@ namespace Csz
 
 	void PeerManager::AmUnChoke(int T_socket)
 	{
+#ifdef CszTest
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+#endif
 		auto flag= peer_list.find(T_socket);
 		if (flag== peer_list.end())
 		{
@@ -529,6 +571,9 @@ namespace Csz
 
 	void PeerManager::AmInterested(int T_socket)
 	{
+#ifdef CszTest
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+#endif
 		auto flag= peer_list.find(T_socket);
 		if (flag== peer_list.end())
 		{
@@ -549,6 +594,9 @@ namespace Csz
 
 	void PeerManager::AmUnInterested(int T_socket)
 	{
+#ifdef CszTest
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+#endif
 		auto flag= peer_list.find(T_socket);
 		if (flag== peer_list.end())
 		{
@@ -568,6 +616,9 @@ namespace Csz
 
 	void PeerManager::PrChoke(int T_socket)
 	{
+#ifdef CszTest
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+#endif
 		auto flag= peer_list.find(T_socket);
 		if (flag== peer_list.end())
 		{
@@ -581,6 +632,9 @@ namespace Csz
 
 	void PeerManager::PrUnChoke(int T_socket)
 	{
+#ifdef CszTest
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+#endif
 		auto flag= peer_list.find(T_socket);
 		if (flag== peer_list.end())
 		{
@@ -594,6 +648,9 @@ namespace Csz
 
 	void PeerManager::PrInterested(int T_socket)
 	{
+#ifdef CszTest
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+#endif
 		auto flag= peer_list.find(T_socket);
 		if (flag== peer_list.end())
 		{
@@ -607,6 +664,9 @@ namespace Csz
 
 	void PeerManager::PrUnInterested(int T_socket)
 	{
+#ifdef CszTest
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+#endif
 		auto flag= peer_list.find(T_socket);
 		if (flag== peer_list.end())
 		{
@@ -619,6 +679,9 @@ namespace Csz
 	
 	void PeerManager::Optimistic()
 	{
+#ifdef CszTest
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+#endif
 		//TODO lock
 		int optimistic= butil::gettimeofday_us() % (peer_list.size()- 4);
 		for (auto& val : peer_list)
@@ -638,6 +701,9 @@ namespace Csz
 
 	void PeerManager::COutInfo() const
 	{
+#ifdef CszTest
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+#endif
 		std::string out_info;
 		out_info.reserve(64);
 		out_info.append("[Peer Manager INFO]:");

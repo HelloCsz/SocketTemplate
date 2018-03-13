@@ -5,6 +5,9 @@ namespace Csz
 {
 	bool LocalBitField::CheckBitField(int32_t T_index)
     {
+#ifdef CszTest
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+#endif
         //may be bit field size< 5
         if (bit_field.CheckPiece(T_index) && T_index>= 0)
             return true;
@@ -13,6 +16,9 @@ namespace Csz
 
 	void LocalBitField::RecvHave(int T_socket,int32_t T_index)
 	{
+#ifdef CszTest
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+#endif
 		if (!bit_field.CheckPiece(T_index))
 		{
 			auto id= PeerManager::GetInstance()->GetSocketId(T_socket);
@@ -24,6 +30,9 @@ namespace Csz
 				return ;
 			}
             //TODO recursion mutex
+#ifdef CszTest
+            Csz::LI("[Local Bit Field->../BitTorrent/CszNeedPiece.cpp->PushNeed->12]");
+#endif
 			PeerManager::GetInstance()->AmInterested(T_socket);
 			NeedPiece::GetInstance()->PushNeed(T_index,T_socket,id);
 		}
@@ -32,6 +41,9 @@ namespace Csz
 
 	void LocalBitField::RecvBitField(int T_socket,const char* T_bit_field,const int T_len)
 	{
+#ifdef CszTest
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+#endif
 		if (nullptr== T_bit_field)
 		{
 			Csz::ErrMsg("[Local BitField recv bit field]->failed,bit filed is nullptr");
@@ -55,6 +67,9 @@ namespace Csz
     
     void LocalBitField::FillBitField(int32_t T_index)
     {
+#ifdef CszTest
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+#endif
         bit_field.FillBitField(T_index);
         PeerManager::GetInstance()->SendHave(T_index);
 #ifdef CszTest
@@ -66,6 +81,9 @@ namespace Csz
 
 	void LocalBitField::COutInfo() const
 	{
+#ifdef CszTest
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+#endif
         Csz::LI("[Local Bit Field INFO]:");
 		bit_field.COutInfo();
 		return ;

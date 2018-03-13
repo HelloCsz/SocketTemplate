@@ -5,6 +5,9 @@ namespace Csz
 {
 	void DownSpeed::AddTotal(const int T_socket,const uint32_t T_speed)
 	{
+#ifdef CszTest
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+#endif
 		if (queue.empty())
 		{
 			Csz::ErrMsg("[Down Speed]->add total failed,queue is empty");
@@ -23,6 +26,9 @@ namespace Csz
 
 	void DownSpeed::AddTotal(std::vector<std::pair<int,uint32_t>>& T_queue)
 	{
+#ifdef CszTest
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+#endif
 		for (const auto& val : T_queue)
 		{
 			AddTotal(val.first,val.second);
@@ -33,6 +39,9 @@ namespace Csz
 	//have peer send interested
 	std::vector<int> DownSpeed::RetSocket()
 	{
+#ifdef CszTest
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+#endif
 		std::vector<int> ret;
 		ret.reserve(5);
         int count= 0;
@@ -52,6 +61,9 @@ namespace Csz
 
 	bool DownSpeed::CheckSocket(const int T_socket)
 	{
+#ifdef CszTest
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+#endif
         auto check= RetSocket();
         for (const auto& val : check)
         {
@@ -65,6 +77,9 @@ namespace Csz
     
     void DownSpeed::ClearSocket(int T_socket)
     {
+#ifdef CszTest
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+#endif
         auto flag= queue.cbegin();
         auto stop= queue.cend();
         for (; flag!= stop; ++flag)
@@ -82,6 +97,9 @@ namespace Csz
 	//hash table find status
 	void DownSpeed::AmChoke(int T_socket)
 	{
+#ifdef CszTest
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+#endif
 		for (auto& val : queue)
 		{
 			if (val.socket== T_socket)
@@ -95,6 +113,9 @@ namespace Csz
 
 	void DownSpeed::AmUnChoke(int T_socket)
 	{
+#ifdef CszTest
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+#endif
 		for (auto& val : queue)
 		{
 			if (val.socket== T_socket)
@@ -108,6 +129,9 @@ namespace Csz
 
 	void DownSpeed::AmInterested(int T_socket)
 	{
+#ifdef CszTest
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+#endif
 		for (auto& val : queue)
 		{
 			if (val.socket== T_socket)
@@ -121,6 +145,9 @@ namespace Csz
 
 	void DownSpeed::AmUnInterested(int T_socket)
 	{
+#ifdef CszTest
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+#endif
 		for (auto& val : queue)
 		{
 			if (val.socket== T_socket)
@@ -134,6 +161,9 @@ namespace Csz
 
 	void DownSpeed::PrChoke(int T_socket)
 	{
+#ifdef CszTest
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+#endif
 		for (auto& val : queue)
 		{
 			if (val.socket== T_socket)
@@ -147,6 +177,9 @@ namespace Csz
 
 	void DownSpeed::PrUnChoke(int T_socket)
 	{
+#ifdef CszTest
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+#endif
 		for (auto& val : queue)
 		{
 			if (val.socket== T_socket)
@@ -160,6 +193,9 @@ namespace Csz
 
 	void DownSpeed::PrInterested(int T_socket)
 	{
+#ifdef CszTest
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+#endif
 		for (auto& val : queue)
 		{
 			if (val.socket== T_socket)
@@ -173,6 +209,9 @@ namespace Csz
 
 	void DownSpeed::PrUnInterested(int T_socket)
 	{
+#ifdef CszTest
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+#endif
 		for (auto& val : queue)
 		{
 			if (val.socket== T_socket)
@@ -186,6 +225,9 @@ namespace Csz
 
 	void DownSpeed::CalculateSpeed()
 	{
+#ifdef CszTest
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+#endif
 		queue.sort(DSComp);
 		//send
 		auto peer_manager= PeerManager::GetInstance();
@@ -214,6 +256,9 @@ namespace Csz
 
 	void DownSpeed::COutInfo()
 	{
+#ifdef CszTest
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+#endif
 		std::string info_data;
 		info_data.reserve(256);
 		queue.sort(DSComp);

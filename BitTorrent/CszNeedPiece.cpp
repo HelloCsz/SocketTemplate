@@ -8,6 +8,9 @@ namespace Csz
 {
 	void NeedPiece::PushNeed(const int32_t T_index,int T_socket,int T_id)
 	{
+#ifdef CszTest
+        //Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+#endif
 		if (T_index< 0)
 		{
 			Csz::ErrMsg("[Need Piece push need]->failed,index< 0");
@@ -26,19 +29,26 @@ namespace Csz
 				((*start)->queue).emplace_back(std::make_pair(T_socket,T_id));
 				break;
 			}
+            ++start;
 		}
 		//1.2not found
 		if (start== stop)
 		{
 			std::shared_ptr<NeedPiece::DataType> data= std::make_shared<NeedPiece::DataType>();
+            //fix bug,not write index
+            data->index= T_index;
 			(data->queue).emplace_back(std::make_pair(T_socket,T_id));
 			index_queue.push_back(std::move(data));
 		}
 
 		return ;
 	}
+
 	void NeedPiece::PushNeed(const std::vector<int32_t>* T_indexs,const int T_socket,int T_id)
 	{
+#ifdef CszTest
+        Csz::LI("[%s->%s->%d->socket=%d->id=%d]",__FILE__,__func__,__LINE__,T_socket,T_id);
+#endif
 		if (nullptr== T_indexs || T_indexs->empty())
 		{
 			Csz::ErrMsg("[Need Piece push need]->failed,indexs is nullptr or empty");
@@ -55,6 +65,9 @@ namespace Csz
     //TODO peer_UNCHOKE && peer_INTERESTED || peer_UNINTERESTED(!!)
 	std::pair<int32_t,std::vector<int>> NeedPiece::PopNeed()
 	{
+#ifdef CszTest
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+#endif
 		std::pair<int32_t,std::vector<int>> ret;
 		if (index_queue.empty())
 		{
@@ -63,10 +76,6 @@ namespace Csz
 		}
 		//1.list sort
 		index_queue.sort(NPComp);
-#ifdef CszTest
-        Csz::LI("[Need Piece pop need]INFO:");
-        COutInfo();
-#endif
 		//TODO lock
 		auto start= index_queue.begin();
 		auto stop= index_queue.end();
@@ -107,12 +116,19 @@ namespace Csz
 			}
 			++start;
 		}
+#ifdef CszTest
+        //Csz::LI("[Need Piece pop need]INFO:");
+        //COutInfo();
+#endif
 		return std::move(ret);
 	}
 
 	//support lock point piece
     std::vector<int> NeedPiece::PopPointNeed(int32_t T_index)
     {
+#ifdef CszTest
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+#endif
         std::vector<int> ret;
         if (T_index< 0)
         {
@@ -189,11 +205,17 @@ namespace Csz
 
 	bool NeedPiece::Empty()const
 	{
+#ifdef CszTest
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+#endif
 		return index_queue.empty() || id_queue.empty();
 	}
 
 	void NeedPiece::SocketMapId(int T_id)
 	{
+#ifdef CszTest
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+#endif
 		//TODO lock
 		id_queue.emplace(T_id,PeerStatus());
 		return ;
@@ -201,6 +223,9 @@ namespace Csz
     
     void NeedPiece::ClearSocket(int T_id)
     {
+#ifdef CszTest
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+#endif
         //TODO lock
         if (id_queue.find(T_id)!= id_queue.end())
         {
@@ -216,6 +241,9 @@ namespace Csz
 
 	void NeedPiece::AmChoke(int T_id)
 	{
+#ifdef CszTest
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+#endif
         auto p= RetSocketStatus(T_id);
         if (nullptr!= p)
         {
@@ -226,6 +254,9 @@ namespace Csz
 
 	void NeedPiece::AmUnChoke(int T_id)
 	{
+#ifdef CszTest
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+#endif
 		auto p= RetSocketStatus(T_id);
 		if (nullptr!= p)
 		{
@@ -236,6 +267,9 @@ namespace Csz
 
 	void NeedPiece::AmInterested(int T_id)
 	{
+#ifdef CszTest
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+#endif
 		auto p= RetSocketStatus(T_id);
 		if (nullptr!= p)
 		{
@@ -246,6 +280,9 @@ namespace Csz
 
 	void NeedPiece::AmUnInterested(int T_id)
 	{
+#ifdef CszTest
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+#endif
 		auto p= RetSocketStatus(T_id);
 		if (nullptr!= p)
 		{
@@ -256,6 +293,9 @@ namespace Csz
     
 	void NeedPiece::PrChoke(int T_id)
 	{
+#ifdef CszTest
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+#endif
         auto p= RetSocketStatus(T_id);
         if (nullptr!= p)
         {
@@ -266,10 +306,15 @@ namespace Csz
 
 	void NeedPiece::PrUnChoke(int T_id)
 	{
+#ifdef CszTest
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+#endif
 		auto p= RetSocketStatus(T_id);
 		if (nullptr!= p)
 		{
 			(*p).peer_choke= 0;
+            SendReq();
+/*
             bthread_t tid;
             if (bthread_start_background(&tid,NULL,ASendReq,static_cast<void*>(this))!= 0)
             {
@@ -277,12 +322,16 @@ namespace Csz
                 Csz::ErrMsg("[Need Piece pr unchoke]->failed,create bthread run send request");
             }   
 			//pop_cond.notify_one();
+*/
 		}
 		return ;
 	}
 
 	void NeedPiece::PrInterested(int T_id)
 	{
+#ifdef CszTest
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+#endif
 		auto p= RetSocketStatus(T_id);
 		if (nullptr!= p)
 		{
@@ -293,6 +342,9 @@ namespace Csz
 
 	void NeedPiece::PrUnInterested(int T_id)
 	{
+#ifdef CszTest
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+#endif
 		auto p= RetSocketStatus(T_id);
 		if (nullptr!= p)
 		{
@@ -303,6 +355,9 @@ namespace Csz
 	
     inline PeerStatus* NeedPiece::RetSocketStatus(int T_id)
     {
+#ifdef CszTest
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+#endif
         //1.find socket
         auto flag= id_queue.find(T_id);
         if (flag!= id_queue.end())
@@ -320,6 +375,9 @@ namespace Csz
 
 	void NeedPiece::ClearIndex(const int T_index)
 	{
+#ifdef CszTest
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+#endif
 		if (T_index< 0)
 		{
 			Csz::ErrMsg("[Need Piece clear index]->failed,index< 0");
@@ -351,6 +409,9 @@ namespace Csz
 
 	void NeedPiece::UnLockIndex(int T_index)
 	{
+#ifdef CszTest
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+#endif
 		if (T_index< 0)
 		{
 			Csz::ErrMsg("[Need Piece unlock index]->failed,index< 0");
@@ -382,6 +443,9 @@ namespace Csz
 
     void NeedPiece::SendReq()
     {    
+#ifdef CszTest
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+#endif
 		auto ret= PopNeed();
 		if (ret.second.empty())
 			return ;
@@ -390,17 +454,22 @@ namespace Csz
 		request.SetParameter(ret.first,0,SLICESIZE);
 		for (const auto& fd : ret.second)
 		{
+#ifdef CszTest
+            Csz::LI("[Need Piece send req]->index=%d,socket=%d",ret.first,fd);
+#endif
             //socket mutex
             auto mutex= peer_manager->GetSocketMutex(fd);
             if (nullptr== mutex)
             {
                 continue;
             }
+            //TODO all socket
             std::unique_lock<bthread::Mutex> guard(*mutex);
 			auto code= send(fd,request.GetSendData(),request.GetDataSize(),0);
 			if (code== request.GetDataSize())
 			{
-				break;
+                ;
+				//break;
 			}
 #ifdef CszTest
 			else
@@ -414,6 +483,9 @@ namespace Csz
 
     void* NeedPiece::ASendReq(void* T_this)
     {    
+#ifdef CszTest
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+#endif
         if (nullptr== T_this)
         {
             Csz::ErrMsg("[Need Piece async send req]->failed,parameter is nullptr");
@@ -434,11 +506,13 @@ namespace Csz
             {
                 continue;
             }
+            //TODO all socket
             std::unique_lock<bthread::Mutex> guard(*mutex);
 			auto code= send(fd,request.GetSendData(),request.GetDataSize(),0);
 			if (code== request.GetDataSize())
 			{
-				break;
+                ;
+				//break;
 			}
 #ifdef CszTest
 			else
@@ -483,6 +557,9 @@ namespace Csz
 
 	void NeedPiece::COutInfo()
 	{
+#ifdef CszTest
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+#endif
 		for (auto& val : index_queue)
 		{
 			if (val!= nullptr)

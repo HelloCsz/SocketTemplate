@@ -93,6 +93,9 @@ namespace Csz
 
 	void TorrentFile::GetTrackInfo(Tracker* T_tracker)
 	{
+#ifdef CszTest
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+#endif
 		if (announce_list.empty())
 		{
 			Csz::ErrQuit("[Torrent File get track info]->failed ,announce is empty");
@@ -146,6 +149,9 @@ namespace Csz
 
 	std::string TorrentFile::GetHash(int32_t T_index) const
 	{
+#ifdef CszTest
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+#endif
 		if ((T_index+ 1)* 20 > (int)infos.pieces.size() || T_index< 0)
 		{
 			Csz::ErrMsg("[Torrent File get hash]->failed, can't get hash,index= %d",T_index);
@@ -156,6 +162,9 @@ namespace Csz
 
 	std::uint64_t TorrentFile::GetFileTotal()const
 	{
+#ifdef CszTest
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+#endif
 		uint64_t ret= 0;
 		if (infos.single)
 		{
@@ -173,6 +182,9 @@ namespace Csz
 
 	std::uint32_t TorrentFile::GetIndexTotal()const
 	{
+#ifdef CszTest
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+#endif
 		if (infos.pieces.empty())
 		{
 			Csz::ErrQuit("[Torrent File get index total]->failed, can't return index total,pieces is empty");
@@ -183,6 +195,9 @@ namespace Csz
 
 	std::uint32_t TorrentFile::GetIndexBitTotal()const
 	{
+#ifdef CszTest
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+#endif
 		if (infos.pieces.empty())
 		{
 			Csz::ErrQuit("[Torrent File get index bit total]->failed,can't return index total,pieces is empty");
@@ -241,6 +256,9 @@ namespace Csz
 	//send piece,wirte piece
 	std::vector<TorrentFile::FILEINFO> TorrentFile::GetFileName(int32_t T_index,int32_t T_begin,int32_t T_length) const
     {
+#ifdef CszTest
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+#endif
         std::vector<TorrentFile::FILEINFO> ret;
         if (T_index< 0)
         {
@@ -308,11 +326,17 @@ namespace Csz
 
 	std::vector<TorrentFile::FILEINFO> TorrentFile::GetFileName(int32_t T_index) const
 	{
+#ifdef CszTest
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+#endif
 		return GetFileName(T_index,0,infos.piece_length);
 	}
 
     int32_t TorrentFile::GetPieceLength(int32_t T_index) const
     {
+#ifdef CszTest
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+#endif
         int32_t ret= 0;
         if (T_index< 0)
         {
@@ -366,6 +390,9 @@ namespace Csz
 
     int32_t TorrentFile::GetPieceBit(int32_t T_index) const
     {
+#ifdef CszTest
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+#endif
         auto ret= GetPieceLength(T_index);
         if (ret% SLICESIZE== 0)
         {
@@ -376,6 +403,9 @@ namespace Csz
     
     std::pair<bool,int32_t> TorrentFile::CheckEndSlice(int32_t T_index) const
     {
+#ifdef CszTest
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+#endif
         std::pair<bool,int32_t> ret;
         ret.first= false;
         if (T_index== GetIndexEnd())
@@ -389,6 +419,9 @@ namespace Csz
     
     std::pair<bool,int32_t> TorrentFile::CheckEndSlice(int32_t T_index,int32_t T_begin) const
     {
+#ifdef CszTest
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+#endif
         std::pair<bool,int32_t> ret;
         ret.first= false;
         //1.check end piece
@@ -428,11 +461,17 @@ namespace Csz
 
     int32_t TorrentFile::GetIndexEnd() const
     {
+#ifdef CszTest
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+#endif
         return infos.pieces.size()/ 20 - 1;
     }
 
     int32_t TorrentFile::GetIndexEndLength() const
     {
+#ifdef CszTest
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+#endif
         uint64_t total= 0;
         if (infos.single)
         {
@@ -450,12 +489,17 @@ namespace Csz
 
     int32_t TorrentFile::GetIndexNormalLength() const
     {
+#ifdef CszTest
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+#endif
         return infos.piece_length;
     }
 
-#ifdef CszTest
 	void TorrentFile::COutInfo()
 	{
+#ifdef CszTest
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+#endif
 		std::string out_info;
 		out_info.reserve(256);
         out_info.append("[Torrent File INFO]:");
@@ -520,5 +564,4 @@ namespace Csz
 		if (!out_info.empty())
 			Csz::LI("%s",out_info.c_str());
 	}
-#endif
 }

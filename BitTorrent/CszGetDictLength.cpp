@@ -5,6 +5,9 @@ namespace Csz
 	//d***
 	int GetDictLength::operator()(const char* T_str,int T_len)const
 	{
+#ifdef CszTest
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+#endif
 		if (nullptr== T_str || T_len<= 0)
 			return -1;
 		if (*T_str!= 'd')

@@ -62,20 +62,19 @@ namespace Csz
 
 #define MEMORYPOOL_DEAL(T_LEN)																							\
 {																														\
-			/*TODO lock*/
-			std::unique_lock<bthread::Mutex> guard(mutex);
-			guard.lock();
-			/*not use flag in after unlock,iterator invalid*/
-			auto flag= memory_pool.find(T_index);
+			/*TODO lock*/                                                                                               \
+			std::unique_lock<bthread::Mutex> guard(mutex);                                                              \
+			guard.lock();                                                                                               \
+			/*not use flag in after unlock,iterator invalid*/                                                           \
+			auto flag= memory_pool.find(T_index);                                                                       \
             /*1.new memory*/																	                        \
-            if (flag== memory_pool.end())									                        \
-            {
-				memory_pool.emplace(T_index,std::make_shared<DataType>());				\
-                DataTypeP& data= memory_pool[T_index];	                        \
-				data->cur_len= T_LEN;
-				data->lock= true;
-				guard.unlock();
-				/*unlock*/
+            if (flag== memory_pool.end())									                                            \
+            {                                                                                                           \
+				memory_pool.emplace(T_index,std::make_shared<DataType>());				                                \
+                DataTypeP data= memory_pool[T_index];	                                                                \
+				guard.unlock();                                                                                         \
+				/*unlock*/                                                                                              \
+				data->cur_len= T_LEN;                                                                                   \
                 int32_t cur_memory= T_LEN;														                        \
                 while (cur_memory> 0)															                        \
                 {																				                        \
@@ -88,44 +87,20 @@ namespace Csz
                         Csz::ErrQuit("[Bit Memory write]->failed,new return null");				                        \
                         return false;															                        \
                     }																			                        \
-                    (data->data).emplace_back(reinterpret_cast<char*>(buf),id);						\
+                    (data->data).emplace_back(reinterpret_cast<char*>(buf),id);						                    \
                     cur_memory-= sizeof(BT);													                        \
-                }																				                        \
+                }                                                                                                       \
+                /*lock*/                                                                                                \
+                guard.lock();																				            \
             }																					                        \
-			else
-			{
-				if (0== flag->second->cur_len)
-				{
-					/*TODO unlock*/
-					guard.unlock();
-					return false;
-				}
-				else if (T_LEN== flag->second->cur_len)
-				{
-					if (true== flag->second->lock)
-					{
-						/*TODO unlock*/
-						guard.unlock();
-						return false;
-					}
-					else
-					{
-						flag->second->lock= true;
-						guard.unlock;
-						/*TODO unlock*/
-					}
-				}
-				else
-				{
-
-					return false;
-				}
-			}
             /*2.write*/																	                                \
             auto block= memory_pool[T_index];													                        \
-            if (block->cur_len< T_length)															                        \
+            guard.unlock();                                                                                             \
+            /*unlock*/                                                                                                  \
+            if (block->cur_len< T_length)															                    \
             {																					                        \
                 Csz::ErrMsg("[Bit Memory write]->failed,left< write length");						                    \
+                ClearIndex(T_index,T_LEN);                                                                              \
                 return false;																	                        \
             }																					                        \
             auto block_index= T_begin/ sizeof(BT);												                        \
@@ -135,23 +110,24 @@ namespace Csz
 			if (T_begin+ T_length> (int)sizeof(BT))													                    \
 			{																					                        \
 				auto lhs_len= sizeof(BT)- T_begin;												                        \
-				memcpy(write_buf[block_index].buf+ T_begin,T_buf,lhs_len);					                        \
-				memcpy(write_buf[block_index+ 1].buf,T_buf+ lhs_len,T_length- lhs_len);		                        \
+				memcpy(write_buf[block_index].buf+ T_begin,T_buf,lhs_len);					                            \
+				memcpy(write_buf[block_index+ 1].buf,T_buf+ lhs_len,T_length- lhs_len);		                            \
 			}																					                        \
 			else																				                        \
 			{																					                        \
-				memcpy(write_buf[block_index].buf+ T_begin,T_buf,T_length);                                          \
+				memcpy(write_buf[block_index].buf+ T_begin,T_buf,T_length);                                             \
 			}																					                        \
-            block->cur_len= block->cur_len- T_length;												                        \
+            block->cur_len= block->cur_len- T_length;												                    \
+                                                                                                                        \
 			/*2.2 real write*/																	                        \
             if (0== block->cur_len)																                        \
             {																					                        \
-                /*sha1*/																			                        \
+                /*sha1*/																			                    \
 				std::string sha1_data;															                        \
 				sha1_data.reserve(T_LEN);														                        \
 				if (T_LEN<= (int)sizeof(BT))															                \
 				{																				                        \
-					sha1_data.append(write_buf[0].buf,T_LEN);										                        \
+					sha1_data.append(write_buf[0].buf,T_LEN);										                    \
 				}																				                        \
 				else																			                        \
 				{																				                        \
@@ -162,7 +138,7 @@ namespace Csz
 						if (sha1_len> (int)sizeof(BT))												                    \
 							sha1_data.append(start->buf,sizeof(BT));							                        \
 						else																	                        \
-							sha1_data.append(start->buf,sha1_len);								                    \
+							sha1_data.append(start->buf,sha1_len);								                        \
 						sha1_len-= sizeof(BT);													                        \
 					}																			                        \
 				}																				                        \
@@ -173,9 +149,7 @@ namespace Csz
 				if (hash_data!= TorrentFile::GetInstance()->GetHash(T_index))									        \
 				{																				                        \
 					Csz::ErrMsg("[Bit Memory write]->failed,piece hash info is error");			                        \
-                    ClearIndexV1(T_index,T_LEN);                                                                        \
-                    /*TODO unlock*/																						\
-					block->lock= false;																					\
+                    ClearIndex(T_index,T_LEN);                                                                          \
                     return false;                                                                                       \
 				}																				                        \
 				else																			                        \
@@ -183,21 +157,19 @@ namespace Csz
 					/*write file*/                                                                                      \
 					if (_Write(T_index)== T_LEN)														                \
 					{																			                        \
-                        ClearIndexV2(T_index);                                                                            \
+                        ClearIndex(T_index,0);                                                                          \
 						LocalBitField::GetInstance()->FillBitField(T_index);											\
 						NeedPiece::GetInstance()->ClearIndex(T_index);													\
                         return true;                                                                                    \
 					}																			                        \
-                    ClearIndexV1(T_index);                                                                                \
-					block->lock= false;																					\
+                    ClearIndex(T_index,T_LEN);                                                                          \
                     return false;                                                                                       \
 				}																				                        \
             }																											\
 			else if (block->cur_len< 0)																					\
 			{																											\
 				Csz::ErrMsg("[Bit Memory write]->failed,cur_len< 0");													\
-				ClearIndexV1(T_index,T_LEN);																			\
-				block->lock= false;																						\
+				ClearIndex(T_index,T_LEN);																			    \
 				return false;																							\
 			}																											\
 }
@@ -223,14 +195,16 @@ namespace Csz
         if (index_end== T_index)
         { 
             MEMORYPOOL_DEAL(length_end);
+            return true;
         }
         //2.deal normal index
         MEMORYPOOL_DEAL(length_normal);
+        return true;
     }
 
 #undef  MEMORYPOOL_DEAL
     
-    void BitMemory::ClearIndexV1(int32_t T_index,int32_t T_len)
+    void BitMemory::ClearIndex(int32_t T_index,int32_t T_len)
     {
 #ifdef CszTest
         Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
@@ -240,26 +214,20 @@ namespace Csz
         {
             return ;
         }
-        flag->second->cur_len= T_len;
-        return ;
-    }
-
-    void BitMemory::ClearIndexV2(int32_t T_index)
-    {
-#ifdef CszTest
-        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
-#endif
-        auto flag= memory_pool.find(T_index);
-        if (flag== memory_pool.end())
+    
+        if (0== T_len)
         {
-            return ;
+            auto resource_pool= butil::ResourcePool<BT>::singleton();
+            for (auto& val : flag->second->data)
+            {
+                resource_pool->return_resource(val.id);
+            }
+            (flag->second->data).clear();
         }
-        auto resource_pool= butil::ResourcePool<BT>::singleton();
-        for (auto& val : flag->second->data)
+        else
         {
-            resource_pool->return_resource(val.id);
+            flag->second->cur_len= T_len;
         }
-        (flag->second->data).clear();
         return ;
     }
 	

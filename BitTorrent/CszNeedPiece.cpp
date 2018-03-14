@@ -85,7 +85,7 @@ namespace Csz
 			auto& result= *start;
 			//2.check lock piece and socket status
 			//2.1 check lock piece
-			if (!(result->lock))
+			if (!(result->index_status& 0x01))
 			{
 				for (const auto& val : result->queue)
 				{
@@ -108,8 +108,9 @@ namespace Csz
 				}	
 				if (!ret.second.empty())
 				{
+                    //read
+                    result->index_status= 0x01;
 					ret.first= result->index;
-					result->lock= true;
 					//index_queue.erase(start);
 					break;
 				}
@@ -148,13 +149,13 @@ namespace Csz
             {
 #ifdef CszTest
 				//check lock piece status
-				if (val->lock)
+				if (val->index_status & 0x01 && val->index_status & 0x02)
 				{
-					Csz::LI("[Need Piece pop point need]->not correct for index=%d",T_index);
+					Csz::LI("[Need Piece pop point need]->correct for index=%d",T_index);
 				}
 				else
 				{
-					Csz::LI("[NeedPiece pop point need]->correct for index=%d",T_index);
+					Csz::LI("[NeedPiece pop point need]->not correct for index=%d",T_index);
 				}
 #endif
 #ifdef CszTest
@@ -430,7 +431,7 @@ namespace Csz
 		}
 		if (start!= stop)
 		{
-			(*start)->lock= false;
+			(*start)->index_status= 0;
 		}
 #ifdef CszTest
 		else
@@ -522,6 +523,47 @@ namespace Csz
 #endif
 		}
 		return nullptr;
+    }
+
+    bool NeedPiece::SetIndexW(int32_t T_index)
+    {
+        bool ret= false;
+        if (T_index< 0)
+        {
+            Csz::ErrMsg("[Need Piece ret index status]->failed,index< 0");
+            return ret;
+        }
+#ifdef CszTest
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+#endif
+		//TODO lock
+		auto start= index_queue.begin();
+		auto stop= index_queue.end();
+		while (start!= stop)
+		{
+			if(T_index== (*start)->index)
+			{
+				break;
+			}
+			++start;
+		}
+		if (start!= stop)
+		{
+			if((*start)->index_status & 0x02)
+            {
+                ;
+            }
+            else
+            {
+                (*start)->index_status|= 0x02;
+                ret= true;
+            }
+		}
+		else
+		{
+			Csz::ErrMsg("[Need Piece unlock index]->failed,not found index");
+		}
+		return ret;
     }
 
 /*

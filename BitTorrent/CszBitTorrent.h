@@ -186,6 +186,7 @@ namespace Csz
 			void SetInfoHash(std::string);
 			std::vector<std::string> GetPeerList(int T_timeout);
 			//const std::string& GetInfoHash()const {return info_hash;}
+			std::string& GetAmId(){return am_id;}
 			void COutInfo();
 		private:
 			void SetParameter(std::string);
@@ -197,6 +198,7 @@ namespace Csz
 		private:
 			std::string info_hash;
 			std::string parameter_msg;
+            std::string am_id;
 			std::vector<TrackerInfo> info;
 			HttpRequest request;
 			HttpResponse response;
@@ -824,9 +826,10 @@ namespace Csz
 			//index->sockets|id
 			struct DataType
             {
-				DataType():index(-1),lock(false){}
+				DataType():index(-1),index_status(0){}
                 int32_t index;
-				bool lock;
+                //read 0x01 write 0x02
+				uint8_t index_status;
                 std::vector<std::pair<int,int>> queue;
             };
 			//socket|id
@@ -863,6 +866,7 @@ namespace Csz
 			void UnLockIndex(int T_index);
             void SendReq();
             static void* ASendReq(void* T_this);
+            bool SetIndexW(int32_t T_index);
 /*
 			void Runner();
 			void SR()
@@ -883,6 +887,8 @@ namespace Csz
 	//select & switch message type
 	struct SelectSwitch
 	{
+        static bool run;
+        static int fd_max;
 		static fd_set rset_save;
 		struct Parameter
 		{
@@ -916,7 +922,7 @@ namespace Csz
 		//static void* RequestRuner(void*);
         private:
         static void _SendPiece(int T_socket,int32_t T_index,int32_t T_begin,int32_t T_length);
-        static bool _LockPiece(int T_socket,int32_t T_index,int32_t T_begin,int32_t T_length);
+        static int8_t _LockPiece(int T_socket,int32_t T_index,int32_t T_begin,int32_t T_length);
 	};
     
 	struct BT
@@ -949,7 +955,6 @@ namespace Csz
 			bthread::Mutex mutex;
             struct DataType
             {
-                bool lock;
                 int32_t cur_len;
                 struct Inside
                 {
@@ -960,13 +965,11 @@ namespace Csz
                 std::vector<Inside> data;
             };
             using DataTypeP= std::shared_ptr<DataType>;
-            std::unordered_map<int32_t,TypeP> memory_pool;
+            std::unordered_map<int32_t,DataTypeP> memory_pool;
         public:
             bool Write(int32_t T_index,int32_t T_begin,const char* T_buf,int32_t T_length);
             void Init(int32_t T_index_end,int32_t T_length_end,int32_t T_length_normal);
-            void ClearIndexV1(int32_t T_index,int32_t T_len);
-            //real clear
-            void ClearIndexV2(int32_t T_index);
+            void ClearIndex(int32_t T_index,int32_t T_len);
 			void COutInfo();
         private:
             void _Clear();

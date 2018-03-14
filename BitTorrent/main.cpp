@@ -50,7 +50,7 @@ int main(int argc,char** argv)
         std::string info_hash= Csz::UrlEscape()(std::string(info_buf,20));
 		tracker.SetInfoHash(info_hash);
         //set reserved|info hash|peer id
-	    Csz::HandShake::GetInstance()->SetParameter(nullptr,info_buf,nullptr);
+	    Csz::HandShake::GetInstance()->SetParameter(nullptr,info_buf,tracker.GetAmId().c_str());
 	}
 
 	Csz::BDict match;

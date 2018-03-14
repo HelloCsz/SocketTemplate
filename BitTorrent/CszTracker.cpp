@@ -16,6 +16,13 @@ namespace Csz
 #ifdef CszTest
 		Csz::LI("construct Tracker");
 #endif
+        std::string parameter;
+		auto id1= time(NULL);
+		auto id2= std::rand()%100000000+ 1000000000;
+		std::string id(std::to_string(id1));
+		id.append(std::to_string(id2));
+		parameter.append(Csz::UrlEscape()(id));
+        am_id.assign(std::move(parameter));
         //init http request header
         _InitReq();
         //init http parameter msg
@@ -248,6 +255,8 @@ namespace Csz
 		request_line.append(1,'?');
 		request_line.append("info_hash=");
 		request_line.append(info_hash);
+        request_line.append("&peer_id=");
+        request_line.append(am_id);
 		request_line.append(parameter_msg);
 		request_line.append(" HTTP/1.1");
 		request.SetFirstLine(std::move(request_line));
@@ -297,14 +306,7 @@ namespace Csz
         Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
 #endif
         parameter_msg.clear();
-		auto id1= time(NULL);
-		auto id2= std::rand()%100000000+ 1000000000;
-		std::string id(std::to_string(id1));
-		id.append(std::to_string(id2));
-		std::string parameter("peer_id=");
-		parameter.append(Csz::UrlEscape()(id));
-		SetParameter(std::move(parameter));
-
+        std::string parameter;
 		parameter.assign("port=54321");
 		SetParameter(std::move(parameter));
 
@@ -329,7 +331,7 @@ namespace Csz
 		SetParameter(std::move(parameter));
         return ;
     }
-
+    
 	void Tracker::COutInfo()
 	{
 #ifdef CszTest

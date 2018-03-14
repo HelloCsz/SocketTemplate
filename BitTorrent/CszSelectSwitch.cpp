@@ -10,7 +10,11 @@
 
 namespace Csz
 {
+
+/*
     fd_set SelectSwitch::rset_save;
+    bool run= false;
+    int fd_max= -1;
 	//TODO sinnal deal or pselect
 	bool SelectSwitch::operator()()
 	{
@@ -30,8 +34,10 @@ namespace Csz
 
 		//1.set check record
 		fd_set rset;
-		FD_ZERO(&rset_save);
-		int fd_max= -1;
+        if (!run)
+		{
+            FD_ZERO(&rset_save);
+        }
 		//init
 		for (const auto& val : peer_list)
 		{
@@ -47,8 +53,8 @@ namespace Csz
 		}
 		rset= rset_save;
 		timeval time_out;
-		//3min
-		time_out.tv_sec= 60;
+		//5min
+		time_out.tv_sec= 300;
 		time_out.tv_usec= 0;
 		int code;
 		//30s
@@ -81,8 +87,6 @@ namespace Csz
 			int32_t len= 0;
 			for (const auto& val : peer_list)
 			{
-                if (code<= 0)
-                    break;
                 if (val< 0)
                     continue;
 				if (FD_ISSET(val,&rset))
@@ -236,6 +240,7 @@ namespace Csz
 			Csz::ErrRet("[Select Switch]->failed,not do sure:");
 		return false;
 	}
+*/
 
 	//TODO thread use 20us,this function use ??and lock other thread lock resource
 	inline void SelectSwitch::DKeepAlive(Parameter* T_data)
@@ -503,6 +508,13 @@ namespace Csz
             return ;
         }
 
+        auto need_piece= NeedPiece::GetInstance();
+        if (!need_piece->SetIndexW(index))
+        {   
+            Csz::ErrMsg("[Select Switch piece]->index alread lock,index=%d",index);
+            return ;
+        }
+
         auto down_speed= DownSpeed::GetInstance()->GetInstance();
         //1.write memory
         if (true== BitMemory::GetInstance()->Write(index,begin,T_data->buf+ 8,length))
@@ -516,7 +528,6 @@ namespace Csz
         }
 
         //2.lock piece
-        auto need_piece= NeedPiece::GetInstance();
         auto peer_manager= PeerManager::GetInstance();
         std::vector<uint8_t> over(torrent_file->GetPieceBit(index),0);
         over[begin/SLICESIZE]= 1;
@@ -550,11 +561,16 @@ namespace Csz
                         cur_write= SLICESIZE;
                     }
                     //success recv slice
-                    if (true== code)
+                    if (code> 0)
                     {
                         down_speed->AddTotal(cur_socket,cur_write);
                         over[i]= 1;
                         ++fill;
+                    }
+                    else if (code< 0)
+                    {
+					    need_piece->UnLockIndex(index);
+                        break;   
                     }
                     // failed socket,unoder
                     else if (!sockets_alive.empty())
@@ -593,6 +609,7 @@ namespace Csz
                         }
                         if (cur_socket< 0)
                         {
+                            BitMemory::GetInstance()->ClearIndex(index,torrent_file->GetPieceLength(index));
 							need_piece->UnLockIndex(index);
 							Csz::ErrMsg("[Select Switch dpiece]->failed,wait connected socket time out");
                             break;
@@ -608,7 +625,8 @@ namespace Csz
         return ;
 	}
     
-    inline bool SelectSwitch::_LockPiece(int T_socket,int32_t T_index,int32_t T_begin,int32_t T_length)
+    // bit memory error < 0 | socket request== 0 | success > 0
+    inline int8_t SelectSwitch::_LockPiece(int T_socket,int32_t T_index,int32_t T_begin,int32_t T_length)
     {
 #ifdef CszTest
         Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
@@ -620,16 +638,16 @@ namespace Csz
             if (nullptr== mutex)
             {
                 Csz::ErrMsg("[Select Switch look piece]->failed,return mutex is nullptr");
-                return false;
+                return 0;
             }
             std::unique_lock<bthread::Mutex> mutex_guard(*mutex);
             if (send(T_socket,request.GetSendData(),request.GetDataSize(),0)!= T_length)
             {
                 Csz::ErrMsg("[Select Switch lock piece]->failed,send size!=%d",T_length);
-                return false;
+                return 0;
             }
         }
-        bool ret= false;
+        int ret= 0;
         for (int i= 0; i< 3; ++i)
         {
             Parameter* parameter= new(std::nothrow) Parameter();
@@ -769,7 +787,13 @@ namespace Csz
                     continue;   
                 }
                 if (true== BitMemory::GetInstance()->Write(index,begin,parameter->buf+ 8,parameter->len -8))
-                    ret= true;
+                {    
+                    ret= 1;
+                }
+                else
+                {
+                    ret= -1;
+                }
                 break;
             }
             else if (8== id)//catch cancle

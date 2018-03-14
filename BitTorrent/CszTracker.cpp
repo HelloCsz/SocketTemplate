@@ -327,7 +327,7 @@ namespace Csz
 		parameter.assign("event=started");
 		SetParameter(std::move(parameter));
 
-		parameter.assign("numwant=20");
+		parameter.assign("numwant=35");
 		SetParameter(std::move(parameter));
         return ;
     }

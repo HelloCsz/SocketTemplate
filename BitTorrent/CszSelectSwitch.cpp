@@ -53,7 +53,7 @@ namespace Csz
 		rset= rset_save;
 		timeval time_out;
 		//5min
-		time_out.tv_sec= 300;
+		time_out.tv_sec= 600;
 		time_out.tv_usec= 0;
 		int code;
 		//30s

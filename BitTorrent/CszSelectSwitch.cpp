@@ -11,10 +11,9 @@
 namespace Csz
 {
 
-/*
     fd_set SelectSwitch::rset_save;
-    bool run= false;
-    int fd_max= -1;
+    bool SelectSwitch::run= false;
+    int SelectSwitch::fd_max= -1;
 	//TODO sinnal deal or pselect
 	bool SelectSwitch::operator()()
 	{
@@ -240,7 +239,6 @@ namespace Csz
 			Csz::ErrRet("[Select Switch]->failed,not do sure:");
 		return false;
 	}
-*/
 
 	//TODO thread use 20us,this function use ??and lock other thread lock resource
 	inline void SelectSwitch::DKeepAlive(Parameter* T_data)

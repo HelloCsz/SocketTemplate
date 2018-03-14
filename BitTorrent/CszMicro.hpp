@@ -29,7 +29,7 @@
 
 //
 //Slice Size
-#define SLICESIZE       (16* 1024)
+#define SLICESIZE       (32* 1024)
 
 //socket timeout s to us
 #define TIMEOUT300MS	{300000}

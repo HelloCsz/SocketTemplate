@@ -10,6 +10,10 @@ namespace Csz
 		*reinterpret_cast<int32_t*>(data+ 5)= index;
 		*reinterpret_cast<int32_t*>(data+ 9)= begin;
 		*reinterpret_cast<int32_t*>(data+ 13)= length;
+#ifdef CszTest
+        Csz::LI("[ReqCleBase->set parameter]:INFO");
+        COutInfo();
+#endif
 		return ;
 	}
     

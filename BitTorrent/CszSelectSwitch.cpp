@@ -12,8 +12,6 @@ namespace Csz
 {
 
     fd_set SelectSwitch::rset_save;
-    bool SelectSwitch::run= false;
-    int SelectSwitch::fd_max= -1;
 	//TODO sinnal deal or pselect
 	bool SelectSwitch::operator()()
 	{
@@ -33,10 +31,6 @@ namespace Csz
 
 		//1.set check record
 		fd_set rset;
-        if (!run)
-		{
-            FD_ZERO(&rset_save);
-        }
 		//init
 		for (const auto& val : peer_list)
 		{

@@ -887,8 +887,6 @@ namespace Csz
 	//select & switch message type
 	struct SelectSwitch
 	{
-        static bool run;
-        static int fd_max;
 		static fd_set rset_save;
 		struct Parameter
 		{

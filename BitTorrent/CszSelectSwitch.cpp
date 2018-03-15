@@ -158,7 +158,7 @@ namespace Csz
                             continue;
                         }
 #ifdef CszTest
-                        Csz::LI("[Select Switch Run]->id=%d",(int)id);
+                        Csz::LI("[Select Switch Run]->id=%d,len=%d",(int)id,len-1);
 #endif
 						//reduce id len
 						--len;
@@ -175,6 +175,7 @@ namespace Csz
 						error_code= Csz::RecvTimeP_us(data->socket,data->buf,reinterpret_cast<int32_t*>(&data->len),TIMEOUT300MS);
 						if (-1== error_code)
 						{
+/*
 							if (errno== EAGAIN || errno== EWOULDBLOCK)
 							{
                                 data->cur_len= len- data->len;
@@ -199,6 +200,7 @@ namespace Csz
                                     continue;
 								}
 							}
+*/
                             peer_manager->CloseSocket(data->socket);
                             FD_CLR(data->socket,&rset_save);
                             continue;
@@ -335,81 +337,6 @@ namespace Csz
 		return ;
 	}
 
-	//TODO thread use 20us,this function use ??and lock other thread lock resource
-	inline void SelectSwitch::DKeepAlive(Parameter* T_data)
-	{
-#ifdef CszTest
-        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
-#endif
-		if (nullptr== T_data)
-		{
-			Csz::ErrMsg("[Select Switch keep alive]->failed,parameter is nullptr");
-			return ;
-		}
-		std::unique_ptr<Parameter> guard(T_data);
-		return ;
-	}
-
-	void SelectSwitch::DChoke(Parameter* T_data)
-	{
-#ifdef CszTest
-        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
-#endif
-		if (nullptr== T_data)
-		{
-			Csz::ErrMsg("[Select Switch choke]->failed,parameter is nullptr");
-			return ;
-		}
-		std::unique_ptr<Parameter> guard(T_data);
-		PeerManager::GetInstance()->PrChoke(T_data->socket);
-		return ;
-	}
-
-	void SelectSwitch::DUnChoke(Parameter* T_data)
-	{
-#ifdef CszTest
-        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
-#endif
-		if (nullptr== T_data)
-		{
-			Csz::ErrMsg("[Select Switch unchoke]->failed,parameter is nullptr");
-			return ;
-		}
-		std::unique_ptr<Parameter> guard(T_data);
-		PeerManager::GetInstance()->PrUnChoke(T_data->socket);
-		return ;
-	}
-
-	void SelectSwitch::DInterested(Parameter* T_data)
-	{
-#ifdef CszTest
-        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
-#endif
-		if (nullptr== T_data)
-		{
-			Csz::ErrMsg("[Select Switch interested]->failed,parameter is nullptr");
-			return ;
-		}
-		std::unique_ptr<Parameter> guard(T_data);
-		PeerManager::GetInstance()->PrInterested(T_data->socket);
-		return ;
-	}
-
-	void SelectSwitch::DUnInterested(Parameter* T_data)
-	{
-#ifdef CszTest
-        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
-#endif
-		if (nullptr== T_data)
-		{
-			Csz::ErrMsg("[Select Switch uninterested]->failed,parameter is nullptr");
-			return ;
-		}
-		std::unique_ptr<Parameter> guard(T_data);
-		PeerManager::GetInstance()->PrUnInterested(T_data->socket);
-		return ;
-	}
-
 	void SelectSwitch::DHave(Parameter* T_data)
 	{
 #ifdef CszTest
@@ -442,7 +369,7 @@ namespace Csz
 		LocalBitField::GetInstance()->RecvBitField(T_data->socket,T_data->buf,T_data->cur_len);
 		return ;
 	}
-
+/*
 	void SelectSwitch::AsyncDBitField(Parameter* T_data)
 	{
 #ifdef CszTest
@@ -495,7 +422,7 @@ namespace Csz
 		}
 		return ;
 	}
-
+*/
 	void SelectSwitch::DRequest(Parameter* T_data)
 	{
 #ifdef CszTest
@@ -565,7 +492,7 @@ namespace Csz
             Csz::ErrMsg("[Select Switch send piece]->failed,return mutex is nullptr");
             return ;
         }
-        std::unique_lock<bthread::Mutex> mutex_guard(*mutex);
+        std::lock_guard<bthread::Mutex> mutex_guard(*mutex);
 		send(T_socket,piece.GetSendData(),piece.GetDataSize(),0);
         return ;
     }
@@ -661,7 +588,8 @@ namespace Csz
                         ++fill;
                     }
                     else if (code< 0)
-                    {
+                    {   
+                        cur_socket= -1;
 					    need_piece->UnLockIndex(index);
                         break;   
                     }
@@ -718,7 +646,7 @@ namespace Csz
         return ;
 	}
     
-    // bit memory error < 0 | socket request== 0 | success > 0
+    // bit memory error < 0 | socket close== 0 | success > 0
     inline int8_t SelectSwitch::_LockPiece(int T_socket,int32_t T_index,int32_t T_begin,int32_t T_length)
     {
 #ifdef CszTest
@@ -733,7 +661,7 @@ namespace Csz
                 Csz::ErrMsg("[Select Switch look piece]->failed,return mutex is nullptr");
                 return 0;
             }
-            std::unique_lock<bthread::Mutex> mutex_guard(*mutex);
+            std::lock_guard<bthread::Mutex> mutex_guard(*mutex);
             if (send(T_socket,request.GetSendData(),request.GetDataSize(),0)!= T_length)
             {
                 Csz::ErrMsg("[Select Switch lock piece]->failed,send size!=%d",T_length);
@@ -743,196 +671,145 @@ namespace Csz
         int ret= 0;
         for (int i= 0; i< 3; ++i)
         {
-            Parameter* parameter= new(std::nothrow) Parameter();
-            if (nullptr== parameter)
-            {
-                Csz::ErrMsg("[Select Switch lock piece]->failed,new Parameter return nullptr");
-                continue;
-            }
-            std::unique_ptr<Parameter> guard(parameter);
-            parameter->socket= T_socket;
-            int code= Csz::RecvTime_us(parameter->socket,(char*)&parameter->len,sizeof(parameter->len),TIMEOUT1000MS);
-            if (-1== code)
-            {
-                break;
-            }
-            //catch keep alive
-            if (0== parameter->len)
-            {
-                continue;
-            }
-            //network byte
-            parameter->len= ntohl(parameter->len);
-            if (parameter->len< 0)
-            {
-                Csz::ErrMsg("[Select Switch lock piece]->failed,recv len < 0");
-                break;
-            }
-            char id;
-            code= Csz::RecvTime_us(parameter->socket,&id,1,TIMEOUT1000MS);
-            if (-1== code)
-            {
-                break;
-            }
-            if (0== id)//catch choke
-            {
-				//TODO auto orgin= guard.release();
-				guard.release();
-				DChoke(parameter);
-                break;
-            }
-            else if (1== id)//catch unchoke
-            {
-				//TODO auto orgin= guard.release();
-				guard.release();
-				DUnChoke(parameter);
-                continue;
-                //NeedPiece::GetInstance()->UnChoke(parameter->socket);
-            }
-            else if (2== id)//catch interested
-            {
-				//TODO auto orgin= guard.release();
-				guard.release();
-				DInterested(parameter);
-                continue;
-                //NeedPiece::GetInstance()->NPInterested(parameter->socket);
-            }
-            else if (3== id)//catch not interested
-            {
-				//TODO auto orgin= guard.release();
-				guard.release();
-				DUnInterested(parameter);
-                continue;
-                //NeedPiece::GetInstance()->NPUnInterested(parameter->socket);
-            }
-            --parameter->len;
-            parameter->buf= new(std::nothrow) char[parameter->len];
-            if (nullptr== parameter->buf)
-            {
-                Csz::ErrMsg("[Select Switch lock piece]->new parameter failed");
-                break;
-            }
-            if (4== id)//catch have
-            {
-                if (parameter->len!= 4)
+            int32_t len;
+		    int error_code= Csz::RecvTime_us(T_socket,(char*)&len,sizeof(len),TIMEOUT3000MS);
+			//fix bug
+			len= ntohl(len);
+			if (4== error_code)
+			{
+				//catch message
+				//keep alive
+				if (0== len)
+				{
+					DKeepAlive(NULL);
+					continue;
+				}
+				char id;
+				error_code= recv(val,&id,1,MSG_DONTWAIT);
+				if (error_code!= 1)
+				{
+					//1s
+					bthread_usleep(1000000);
+					error_code= recv(val,&id,1,MSG_DONTWAIT);
+				}
+				if (error_code!= 1)
+				{
+					FD_CLR(val,&rset_save);
+					peer_manager->CloseSocket(val);
+					break;
+				}
+                        
+				//normal socket
+				//thorw exception new
+				std::unique_ptr<Parameter> data(new(std::nothrow) Parameter());
+				if (nullptr== data)
+				{
+                    //TODO wait,bug socket already take data(eg len and id),should close socket
+					Csz::ErrMsg("[Select Switch Run]->failed,new parameter is nullptr");
+                    peer_manager->CloseSocket(val);
+                    FD_CLR(val,&rset_save);
+					break;
+			    }
+				data->socket= T_socket;
+                        
+                if(0== id)
                 {
-                    Csz::ErrMsg("[Select Switch lock piece]->failed,recv have,but len!= 4");
-                    break;
-                }
-                code= Csz::RecvTime_us(parameter->socket,parameter->buf,parameter->len,TIMEOUT1000MS);
-                if (-1== code)
-                    break;
-                parameter->len-= code;
-                parameter->cur_len+= code;
-                //TODO auto orgin= guard.release();
-                guard.release();
-                DHave(parameter);
-                continue;
-            }
-            else if (5== id)//catch bit field
-            {
-                PeerManager::GetInstance()->CloseSocket(parameter->socket);
-                Csz::ErrMsg("[Select Switch lock piece]->falied,recv bit field");
-                break;
-            }
-            else if (6== id)//catch request
-            {   
-                if (parameter->len!= 12)
-                {
-                    PeerManager::GetInstance()->CloseSocket(parameter->socket);
-                    Csz::ErrMsg("[Select Switch lock piece]->falied,recv request,but len!= 12");
-                    break;
-                }
-                code= Csz::RecvTime_us(parameter->socket,parameter->buf,parameter->len,TIMEOUT1000MS);
-                if (-1== code)
-                    break;
-                parameter->len-= code;
-                parameter->cur_len+= code;
-                //auto orgin= guard.release();
-                guard.release();
-                DRequest(parameter);
-                continue;
-            }
-            else if (7== id)//catch piece
-            {
-                if (T_length!= (parameter->len- 8))
-                {
-                    PeerManager::GetInstance()->CloseSocket(parameter->socket);
-                    break;
-                }
-                code= Csz::RecvTime_us(parameter->socket,parameter->buf,parameter->len,TIMEOUT3000MS);
-                if (-1== code)
-                {
-                    PeerManager::GetInstance()->CloseSocket(parameter->socket);
-                    break;
-                }
-                int32_t index= ntohl(*reinterpret_cast<int32_t*>(parameter->buf));
-                if (T_index!= index)
-                {
-                    //TODO recv
-                    Csz::ErrMsg("[Select Switch lock piece]->falied,recv piece,but index is mismatch");
+                    auto orgin= data.get();
+                    data.release();
+                    DChoke(orgin);
                     continue;
                 }
-                int32_t begin= ntohl(*reinterpret_cast<int32_t*>(parameter->buf+ 4));
-                if (T_begin!= begin)
+                else if(1== id)
                 {
-                    //TODO recv
-                    continue;   
+                    auto orgin= data.get();
+                    data.release();
+                    DUnChoke(orgin);
+                    continue;
                 }
-                if (true== BitMemory::GetInstance()->Write(index,begin,parameter->buf+ 8,parameter->len -8))
-                {    
-                    ret= 1;
-                }
-                else
+                else if(2== id)
                 {
-                    ret= -1;
+                    auto orgin= data.get();
+                    data.release();
+                    DInterested(orgin);
+                    continue;
                 }
-                break;
-            }
-            else if (8== id)//catch cancle
-            {
-                if (parameter->len!= 12)
+                else if(3== id)
                 {
-                    PeerManager::GetInstance()->CloseSocket(parameter->socket);
-                    Csz::ErrMsg("[Select Switch lock piece]->failed,recv cancle,but len!= 12");
+                    auto orgin= data.get();
+                    data.release();
+                    DUnInterested(orgin);
+                    continue;
+                }
+#ifdef CszTest
+                Csz::LI("[Select Switch lock piece]->id=%d,len=%d",(int)id,len-1);
+#endif
+				//reduce id len
+			    --len;
+			    data->buf= new(std::nothrow) char[len];
+			    if (nullptr== data->buf)
+				{
+                    //TODO wait,bug socket already take data(eg len and id),should close socket
+					Csz::ErrMsg("[Select Switch lock piece]->failed,new buf is nullptr");
+                    peer_manager->CloseSocket(data->socket);
+                    FD_CLR(data->socket,&rset_save);
+					break;
+				}
+			    data->len= len;
+				error_code= Csz::RecvTimeP_us(data->socket,data->buf,reinterpret_cast<int32_t*>(&data->len),TIMEOUT300MS);
+				if (-1== error_code)
+				{
+                    peer_manager->CloseSocket(data->socket);
+                    FD_CLR(data->socket,&rset_save);
                     break;
-                }
-                code= Csz::RecvTime_us(parameter->socket,parameter->buf,parameter->len,TIMEOUT1000MS);
-                if (-1== code)
-                { 
-                    PeerManager::GetInstance()->CloseSocket(parameter->socket);
-                    break;
-                }
-                parameter->len-= code;
-                parameter->cur_len+= code;
-                //TODO auto orgin= guard.release();
-                guard.release();
-                DCancle(parameter);
-            }
-            else if (9== id)//catch port
-            {
-                if (parameter->len!= 2)
-                {
-                    PeerManager::GetInstance()->CloseSocket(parameter->socket);
-                    Csz::ErrMsg("[Select Switch lock piece]->failed,recv port,but len!= 2");
-                    break;
-                }
-                code= Csz::RecvTime_us(parameter->socket,parameter->buf,parameter->len,TIMEOUT1000MS);
-                if (-1== code)
-                {
-                    PeerManager::GetInstance()->CloseSocket(parameter->socket);
-                    break;
-                }
-                parameter->len-= code;
-                parameter->cur_len+= code;
-                //TODO auto orgin= guard.release();
-                guard.release();
-                DPort(parameter);
-            }
-            else
-            {
-                Csz::ErrMsg("[Select Switch lock piece]->failed,recv unknow id%d",(int)id);
-            }
+			    }
+                //success recv all data
+                data->cur_len= len;
+                //Task task;
+                auto orgin= data.get();
+                data.release();
+                        //task.second= orgin;
+                        if (4== id)
+                        {
+                            //task.first= &DHave;
+                            //thread_pool->Push(&task);
+							DHave(orgin);
+                            continue;
+                        }
+                        else if (5== id)
+                        {
+                            //task.first= &DBitField;
+                            //thread_pool->Push(&task);
+							DBitField(orgin);
+                            continue;
+                        }
+                        else if (6== id)
+                        {
+                            //task.first= &DRequest;
+                            //thread_pool->Push(&task);
+							DRequest(orgin);
+                            continue;
+                        }
+                        else if (7== id)
+                        {
+                            //task.first= &DPiece;
+                            //thread_pool->Push(&task);
+							DPiece(orgin);
+                            continue;
+                        }
+                        else if (8== id)
+                        {
+                            //task.first= &DCancle;
+                            //thread_pool->Push(&task);
+                            DCancle(orgin);
+                            continue;
+                        }
+                        else if (9== id)
+                        {
+                            //task.first= &DPort;
+                            //thread_pool->Push(&task);
+                            DPort(orgin);
+                            continue;
+                        }
         }
         return ret;   
     } 

@@ -10,7 +10,9 @@
 
 namespace Csz
 {
-
+#ifdef CszTest
+    int SelectSwitch::total= 0;
+#endif
     fd_set SelectSwitch::rset_save;
 	//TODO sinnal deal or pselect
 	bool SelectSwitch::operator()()
@@ -31,6 +33,7 @@ namespace Csz
 
 		//1.set check record
 		fd_set rset;
+        int fd_max= -1;
 		//init
 		for (const auto& val : peer_list)
 		{
@@ -112,9 +115,10 @@ namespace Csz
 							peer_manager->CloseSocket(val);
 							continue;
 						}
+                        
 						//normal socket
 						//thorw exception new
-						Parameter* data= new(std::nothrow) Parameter();
+						std::unique_ptr<Parameter> data(new(std::nothrow) Parameter());
 						if (nullptr== data)
 						{
                             //TODO wait,bug socket already take data(eg len and id),should close socket
@@ -124,26 +128,38 @@ namespace Csz
 							continue;
 						}
 						data->socket= val;
-						if (0== id)
-						{
-							DChoke(data);
-							continue;
-						}
-						else if (1== id)
-						{
-							DUnChoke(data);
-							continue;
-						}
-						else if (2== id)
-						{
-							DInterested(data);
-							continue;
-						}
-						else if (3== id)
-						{
-							DUnInterested(data);
-							continue;
-						}
+                        
+                        if(0== id)
+                        {
+                            auto orgin= data.get();
+                            data.release();
+                            DChoke(orgin);
+                            continue;
+                        }
+                        else if(1== id)
+                        {
+                            auto orgin= data.get();
+                            data.release();
+                            DUnChoke(orgin);
+                            continue;
+                        }
+                        else if(2== id)
+                        {
+                            auto orgin= data.get();
+                            data.release();
+                            DInterested(orgin);
+                            continue;
+                        }
+                        else if(3== id)
+                        {
+                            auto orgin= data.get();
+                            data.release();
+                            DUnInterested(orgin);
+                            continue;
+                        }
+#ifdef CszTest
+                        Csz::LI("[Select Switch Run]->id=%d",(int)id);
+#endif
 						//reduce id len
 						--len;
 						data->buf= new(std::nothrow) char[len];
@@ -164,16 +180,22 @@ namespace Csz
                                 data->cur_len= len- data->len;
 								if (5== id)
 								{
-									//Task task(std::make_pair(&AsyncDBitField,data));
+                                    auto orgin= data.get();
+                                    data.release();
+                                    FD_CLR(data->socket,&rest_save);
+									//Task task(std::make_pair(&AsyncDBitField,orgin));
 									//thread_pool->Push(&task);
-									AsyncDBitField(data);
+									AsyncDBitField(orgin);
                                     continue;
 								}
 								else if (7== id)
 								{
-									//Task task(std::make_pair(&AsyncDPiece,data));
+                                    auto orgin= data.get();
+                                    data.release();
+                                    FD_CLR(data->socket,&rset_save);
+									//Task task(std::make_pair(&AsyncDPiece,orgin));
 									//thread_pool->Push(&task);
-									AsyncDPiece(data);
+									AsyncDPiece(orgin);
                                     continue;
 								}
 							}
@@ -183,46 +205,50 @@ namespace Csz
 						}
                         //success recv all data
                         data->cur_len= len;
-                        Task task;
-                        task.second= data;
+                        //Task task;
+                        auto orgin= data.get();
+                        data.release();
+                        //task.second= orgin;
                         if (4== id)
                         {
                             //task.first= &DHave;
                             //thread_pool->Push(&task);
-							DHave(data);
+							DHave(orgin);
                             continue;
                         }
                         else if (5== id)
                         {
                             //task.first= &DBitField;
                             //thread_pool->Push(&task);
-							DBitField(data);
+							DBitField(orgin);
                             continue;
                         }
                         else if (6== id)
                         {
                             //task.first= &DRequest;
                             //thread_pool->Push(&task);
-							DRequest(data);
+							DRequest(orgin);
                             continue;
                         }
                         else if (7== id)
                         {
                             //task.first= &DPiece;
                             //thread_pool->Push(&task);
-							DPiece(data);
+							DPiece(orgin);
                             continue;
                         }
                         else if (8== id)
                         {
                             //task.first= &DCancle;
                             //thread_pool->Push(&task);
+                            DCancle(orgin);
                             continue;
                         }
                         else if (9== id)
                         {
                             //task.first= &DPort;
                             //thread_pool->Push(&task);
+                            DPort(orgin);
                             continue;
                         }
 					}
@@ -232,6 +258,81 @@ namespace Csz
 		if (code < 0)
 			Csz::ErrRet("[Select Switch]->failed,not do sure:");
 		return false;
+	}
+
+	//TODO thread use 20us,this function use ??and lock other thread lock resource
+	inline void SelectSwitch::DKeepAlive(Parameter* T_data)
+	{
+#ifdef CszTest
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+#endif
+		if (nullptr== T_data)
+		{
+			Csz::ErrMsg("[Select Switch keep alive]->failed,parameter is nullptr");
+			return ;
+		}
+		std::unique_ptr<Parameter> guard(T_data);
+		return ;
+	}
+
+	void SelectSwitch::DChoke(Parameter* T_data)
+	{
+#ifdef CszTest
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+#endif
+		if (nullptr== T_data)
+		{
+			Csz::ErrMsg("[Select Switch choke]->failed,parameter is nullptr");
+			return ;
+		}
+		std::unique_ptr<Parameter> guard(T_data);
+		PeerManager::GetInstance()->PrChoke(T_data->socket);
+		return ;
+	}
+
+	void SelectSwitch::DUnChoke(Parameter* T_data)
+	{
+#ifdef CszTest
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+#endif
+		if (nullptr== T_data)
+		{
+			Csz::ErrMsg("[Select Switch unchoke]->failed,parameter is nullptr");
+			return ;
+		}
+		std::unique_ptr<Parameter> guard(T_data);
+		PeerManager::GetInstance()->PrUnChoke(T_data->socket);
+		return ;
+	}
+
+	void SelectSwitch::DInterested(Parameter* T_data)
+	{
+#ifdef CszTest
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+#endif
+		if (nullptr== T_data)
+		{
+			Csz::ErrMsg("[Select Switch interested]->failed,parameter is nullptr");
+			return ;
+		}
+		std::unique_ptr<Parameter> guard(T_data);
+		PeerManager::GetInstance()->PrInterested(T_data->socket);
+		return ;
+	}
+
+	void SelectSwitch::DUnInterested(Parameter* T_data)
+	{
+#ifdef CszTest
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+#endif
+		if (nullptr== T_data)
+		{
+			Csz::ErrMsg("[Select Switch uninterested]->failed,parameter is nullptr");
+			return ;
+		}
+		std::unique_ptr<Parameter> guard(T_data);
+		PeerManager::GetInstance()->PrUnInterested(T_data->socket);
+		return ;
 	}
 
 	//TODO thread use 20us,this function use ??and lock other thread lock resource

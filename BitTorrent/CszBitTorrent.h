@@ -888,14 +888,31 @@ namespace Csz
 	struct SelectSwitch
 	{
 		static fd_set rset_save;
+#ifdef CszTest
+        static int total;
+#endif 
 		struct Parameter
 		{
-			Parameter():socket(-1),len(0),buf(nullptr),cur_len(0){}
+			Parameter():socket(-1),len(0),buf(nullptr),cur_len(0)
+            {
+#ifdef  CszTest
+                ++total;
+                Csz::LI("[Select Switch parameter]->constructor->%s->%s->%d",__FILE__,__func__,__LINE__);
+#endif
+            }
 			~Parameter()
             {
+#ifdef CszTest
+                --total;
+                Csz::LI("[Select Switch parameter]->destructor->%s->%s->%d",__FILE__,__func__,__LINE__);
+#endif
                 if (buf!= nullptr) 
+                {
                     delete[] buf;
-            }
+#ifdef CszTest
+                    Csz::LI("[Select Switch parameter]->delete");
+#endif
+                }
 			int socket;
 			//not include id len
 			int32_t len;

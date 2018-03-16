@@ -61,7 +61,6 @@ int main(int argc,char** argv)
 	Csz::TorrentFile::GetInstance()->GetTrackInfo(&tracker);
 
 	tracker.Connect();
-	Csz::LI("total:%d",Csz::TorrentFile::GetInstance()->GetIndexTotal());
 	Csz::LocalBitField::GetInstance()->SetParameter(std::string(Csz::TorrentFile::GetInstance()->GetIndexBitTotal(),0),
 													Csz::TorrentFile::GetInstance()->GetIndexTotal());
 

@@ -114,16 +114,26 @@ namespace Csz
         int num= std::stoi(std::string(T_socket_list.begin()+ flag,T_socket_list.begin()+ flag+ 3),&num_length);
         //peersxxx:
         auto start= T_socket_list.c_str()+ flag+ num_length+ 1;
-        auto stop= T_socket_list.c_str()+ T_socket_list.size();
+        auto stop= start+ num;
         //TODO 2.check comopact??
         //TODO num-= 6
+#ifdef CszTest
+        Csz::LI("[Peer Manager load peer list]->num=%d,length=%d,flag=%d",num,T_socket_list.size(),flag);   
+#endif
+#ifdef CszTest
+        Csz::LI("[Peer Manager load peer list]->start=%d,stop=%d",start,stop);   
+#endif
         while (num> 0 && start< stop)
         {
+#ifdef CszTest
+        Csz::LI("[Peer Manager load peer list]->start=%d,stop=%d",start,stop);   
+#endif
             sockaddr_in addr;
             bzero(&addr,sizeof(addr));
             addr.sin_family= AF_INET;
             addr.sin_addr.s_addr= *(reinterpret_cast<int32_t*>(const_cast<char*>(start)));
             addr.sin_port= *(reinterpret_cast<int16_t*>(const_cast<char*>(start+ 4)));
+            //num-= 6;
             start= start+ 6;
 #ifdef CszTest
 			//all thread,in only one thread run

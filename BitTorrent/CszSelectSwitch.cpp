@@ -236,6 +236,7 @@ namespace Csz
                         {
                             //task.first= &DPiece;
                             //thread_pool->Push(&task);
+                            FD_CLR(orgin->socket,&rset_save);
 							DPiece(orgin);
                             continue;
                         }
@@ -520,17 +521,20 @@ namespace Csz
         if (!real_end_slice.first && SLICESIZE!= length)
         {
             Csz::ErrMsg("[Select Switch piece]->recv piece is error,slice !=%d",SLICESIZE);
+            FD_SET(T_data->socket,&rset_save);
             return ;
         }
         if (real_end_slice.first && real_end_slice.second!= length)
         {
+            FD_SET(T_data->socket,&rset_save);
             Csz::ErrMsg("[Select Switch piece]->recv piece is error,slice !=%d",real_end_slice.second);
             return ;
         }
 
         auto need_piece= NeedPiece::GetInstance();
         if (!need_piece->SetIndexW(index))
-        {   
+        {
+            FD_SET(T_data->socket,&rset_save);   
             Csz::ErrMsg("[Select Switch piece]->index alread lock,index=%d",index);
             return ;
         }
@@ -542,23 +546,23 @@ namespace Csz
             down_speed->AddTotal(T_data->socket,length);
         }
         else
-        {	
+        {
+            FD_SET(T_data->socket,&rset_save);
+            need_piece->UnLockIndex(index);
 			Csz::ErrMsg("[Select Switch piece]->write memory failed");
             return ;
         }
 
         //2.lock piece
-        auto peer_manager= PeerManager::GetInstance();
         std::vector<uint8_t> over(torrent_file->GetPieceBit(index),0);
         over[begin/SLICESIZE]= 1;
-        int cur_socket= T_data->socket;
         int fill= 1;
         const int size= over.size();
         auto end_slice= torrent_file->CheckEndSlice(index);
 
         //if index is end_end,upon write is fill piece space
         //2.1 quick donwload piece
-        std::vector<int> sockets_alive;
+        int code= 0;
         while (!local_bit_field->CheckBitField(index) && fill< size)
         { 
             int32_t cur_write= 0;
@@ -567,81 +571,44 @@ namespace Csz
                 //lack slice
                 if (over[i]== 0)
                 {   
-                    int code;
                     //2.1.1 end slice
                     if ((i== size- 1) && end_slice.first)
                     {
-                        code= _LockPiece(cur_socket,index,i* SLICESIZE,end_slice.second);
+                        code= _LockPiece(T_data->socket,index,i* SLICESIZE,end_slice.second);
                         cur_write= end_slice.second;
                     }
                     //2.1.2 normal slice
                     else
                     {
-                        code= _LockPiece(cur_socket,index,i* SLICESIZE,SLICESIZE);
+                        code= _LockPiece(T_data->socket,index,i* SLICESIZE,SLICESIZE);
                         cur_write= SLICESIZE;
                     }
                     //success recv slice
                     if (code> 0)
                     {
-                        down_speed->AddTotal(cur_socket,cur_write);
+                        down_speed->AddTotal(T_data->socket,cur_write);
                         over[i]= 1;
                         ++fill;
                     }
-                    else if (code< 0)
+                    else if (code<= 0)
                     {   
-                        cur_socket= -1;
-					    need_piece->UnLockIndex(index);
                         break;   
                     }
-                    // failed socket,unoder
-                    else if (!sockets_alive.empty())
-                    {
-                        //close failed socket
-                        peer_manager->CloseSocket(cur_socket);
-
-                        cur_socket= sockets_alive.back();
-                        sockets_alive.pop_back();
-                    }
-                    else
-                    {
-                        //close failed socket
-                        peer_manager->CloseSocket(cur_socket);
-
-                        //init cur_socket
-                        cur_socket= -1;
-
-                        //get new hot socket for piece
-                        int time_out= TIMEOUT1000MS;
-                        for (int num= 0; num< 7; ++num)
-                        {
-                            sockets_alive= std::move(need_piece->PopPointNeed(index));
-                            if (sockets_alive.empty())
-                            {
-                                Csz::ErrMsg("[Select Switch piece]->failed,pop point need return alive socket is empty");
-                                bthread_usleep(time_out);
-                                time_out*= 2;   
-                            }
-                            else
-                            {
-                                cur_socket= sockets_alive.back();
-                                sockets_alive.pop_back();
-                                break;
-                            }
-                        }
-                        if (cur_socket< 0)
-                        {
-                            BitMemory::GetInstance()->ClearIndex(index,torrent_file->GetPieceLength(index));
-							need_piece->UnLockIndex(index);
-							Csz::ErrMsg("[Select Switch dpiece]->failed,wait connected socket time out");
-                            break;
-                        }
-					}
                 }
             }
-            if (cur_socket< 0)
+            if (code< 0)
             {    
                 break;
             }  
+        }
+        if (code> 0 && fill== size && local_bit_field->CheckBitField(index))
+        {
+            FD_SET(T_data->socket,&rset_save);
+        }
+        else
+        {
+		    need_piece->UnLockIndex(index);
+            PeerManager::GetInstance()->CloseSocket(T_data->socket);
         }
         return ;
 	}
@@ -681,21 +648,19 @@ namespace Csz
 				//keep alive
 				if (0== len)
 				{
-					DKeepAlive(NULL);
+				    DKeepAlive(NULL);
 					continue;
 				}
 				char id;
-				error_code= recv(val,&id,1,MSG_DONTWAIT);
+				error_code= recv(T_socket,&id,1,MSG_DONTWAIT);
 				if (error_code!= 1)
 				{
 					//1s
 					bthread_usleep(1000000);
-					error_code= recv(val,&id,1,MSG_DONTWAIT);
+					error_code= recv(T_socket,&id,1,MSG_DONTWAIT);
 				}
 				if (error_code!= 1)
 				{
-					FD_CLR(val,&rset_save);
-					peer_manager->CloseSocket(val);
 					break;
 				}
                         
@@ -705,9 +670,7 @@ namespace Csz
 				if (nullptr== data)
 				{
                     //TODO wait,bug socket already take data(eg len and id),should close socket
-					Csz::ErrMsg("[Select Switch Run]->failed,new parameter is nullptr");
-                    peer_manager->CloseSocket(val);
-                    FD_CLR(val,&rset_save);
+					Csz::ErrMsg("[Select Switch lock piece]->failed,new parameter is nullptr");
 					break;
 			    }
 				data->socket= T_socket;
@@ -750,16 +713,12 @@ namespace Csz
 				{
                     //TODO wait,bug socket already take data(eg len and id),should close socket
 					Csz::ErrMsg("[Select Switch lock piece]->failed,new buf is nullptr");
-                    peer_manager->CloseSocket(data->socket);
-                    FD_CLR(data->socket,&rset_save);
 					break;
 				}
 			    data->len= len;
-				error_code= Csz::RecvTimeP_us(data->socket,data->buf,reinterpret_cast<int32_t*>(&data->len),TIMEOUT300MS);
+				error_code= Csz::RecvTime_us(data->socket,data->buf,data->len,TIMEOUT3000MS);
 				if (-1== error_code)
 				{
-                    peer_manager->CloseSocket(data->socket);
-                    FD_CLR(data->socket,&rset_save);
                     break;
 			    }
                 //success recv all data
@@ -767,53 +726,77 @@ namespace Csz
                 //Task task;
                 auto orgin= data.get();
                 data.release();
-                        //task.second= orgin;
-                        if (4== id)
+                //task.second= orgin;
+                if (4== id)
+                {
+                    //task.first= &DHave;
+                    //thread_pool->Push(&task);
+					DHave(orgin);
+                    continue;
+                }
+                else if (5== id)
+                {
+                    //task.first= &DBitField;
+                    //thread_pool->Push(&task);
+					DBitField(orgin);
+                    continue;
+                }
+                else if (6== id)
+                {
+                    //task.first= &DRequest;
+                    //thread_pool->Push(&task);
+					DRequest(orgin);
+                    continue;
+                }
+                else if (7== id)
+                {
+                    data.reset(orgin);
+                    int32_t index= ntohl(*reinterpret_cast<int32_t*>(data->buf));
+                    int32_t begin= ntohl(*reinterpret_cast<int32_t*>(data->buf+ 4));
+                    if (T_index== index && T_begin== begin && T_length== data->cur_len- 8)
+                    {
+                        if (BitMemory::GetInstance()->Write(index,begin,data->buf+ 8,T_length))
                         {
-                            //task.first= &DHave;
-                            //thread_pool->Push(&task);
-							DHave(orgin);
-                            continue;
-                        }
-                        else if (5== id)
+                            ret= 1;
+                        }                      
+                        else
                         {
-                            //task.first= &DBitField;
-                            //thread_pool->Push(&task);
-							DBitField(orgin);
-                            continue;
+                            ret= -1;
                         }
-                        else if (6== id)
-                        {
-                            //task.first= &DRequest;
-                            //thread_pool->Push(&task);
-							DRequest(orgin);
-                            continue;
-                        }
-                        else if (7== id)
-                        {
-                            //task.first= &DPiece;
-                            //thread_pool->Push(&task);
-							DPiece(orgin);
-                            continue;
-                        }
-                        else if (8== id)
-                        {
-                            //task.first= &DCancle;
-                            //thread_pool->Push(&task);
-                            DCancle(orgin);
-                            continue;
-                        }
-                        else if (9== id)
-                        {
-                            //task.first= &DPort;
-                            //thread_pool->Push(&task);
-                            DPort(orgin);
-                            continue;
-                        }
+                        break;
+                    }
+                    else
+                    {
+                        Csz::ErrMsg("[Select Switch lock piece]->recv other piece");
+                        //TODO delete i
+                        --i;
+                        continue;
+                    }
+                }
+                else if (8== id)
+                {
+                    //task.first= &DCancle;
+                    //thread_pool->Push(&task);
+                    DCancle(orgin);
+                    continue;
+                }
+                else if (9== id)
+                {
+                    //task.first= &DPort;
+                    //thread_pool->Push(&task);
+                    DPort(orgin);
+                    continue;
+                }
+            }
+            else
+            {
+                break;
+            }
         }
         return ret;   
     } 
 
+/*
 	void SelectSwitch::AsyncDPiece(Parameter* T_data)
 	{
 #ifdef CszTest
@@ -837,7 +820,8 @@ namespace Csz
 		DPiece(T_data);
 		return ;
 	}
-    	
+*/
+  	
 	void SelectSwitch::DCancle(Parameter* T_data)
 	{
 #ifdef CszTest

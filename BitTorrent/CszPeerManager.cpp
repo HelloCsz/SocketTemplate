@@ -15,7 +15,7 @@ namespace Csz
 */
 	
 	//bug->data repetition
-    std::vector<int> PeerManager::RetSocketList() const
+    std::vector<int> PeerManager::RetSocketList()
     {
 #ifdef CszTest
         Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
@@ -26,11 +26,20 @@ namespace Csz
 #endif
         std::vector<int> ret;
         ret.reserve(peer_list.size());
+        //TODO RAII lock
+        //lock
+        if (0!= pthread_rwlock_rdlock(&lock))
+        {
+            Csz::ErrMsg("[Peer Manager ret socket list]->failed,read lock failed");
+            return ret;
+        }
         for (auto& val : peer_list)
         {
             if (val.first>= 0)
                 ret.emplace_back(val.first);
         }
+        pthread_rwlock_unlock(&lock);
+        //unlock
 #ifdef CszTest
 		if (ret.empty())
 			Csz::LI("[Peer Manager ret socket list]->failed,result is empty");
@@ -45,13 +54,20 @@ namespace Csz
 #endif
         if (T_socket>= 0)
         {
-			//TODO lock id
             std::shared_ptr<PeerManager::DataType> data= std::make_shared<PeerManager::DataType>();
+            //lock
+            if (0!= pthread_rwlock_wrlock(&lock))
+            {
+                Csz::ErrMsg("[Peer Manager add socket]->failed,write lock failed");
+                return ;
+            }
 			data->id= cur_id++;
+            auto temp_id= data->id;
+            peer_list.emplace(std::make_pair(T_socket,data));
+            pthread_rwlock_unlock(&lock);
 			//unlock id
             DownSpeed::GetInstance()->AddSocket(T_socket);
-			NeedPiece::GetInstance()->SocketMapId(data->id);
-            peer_list.emplace(std::make_pair(T_socket,data));
+			NeedPiece::GetInstance()->SocketMapId(temp_id);
         }
 #ifdef CszTest
 		else
@@ -137,10 +153,8 @@ namespace Csz
         Csz::LI("[Peer Manager load peer list]connected size=%d",ret.size());
 #endif
 		//6.send bit field
-		_SendBitField(ret);
-#ifdef CszTest
-        Csz::LI("[Peer Manager load peer list]send bit field size=%d",ret.size());
-#endif
+		if (had_file)
+		    _SendBitField(ret);
 		//7.recv hand shake and delete failed socket
 		_Verification(ret);
 #ifdef CszTest
@@ -161,12 +175,22 @@ namespace Csz
             }
 #endif
 			//TODO lock id
+			if (0!= pthread_rwlock_wrlock(&lock))
+            {
+                Csz::ErrMsg("[Peer Manager peer list]->failed,write lock failed");
+                continue ;
+            }
             std::shared_ptr<PeerManager::DataType> data= std::make_shared<PeerManager::DataType>();
 			data->id= cur_id++;
-			//unlock id
-            down_speed->AddSocket(val);
-			need_piece->SocketMapId(data->id);
+            data->mutex= std::make_shared<bthread::Mutex>();
+            auto temp_id= data->id;
             peer_list.emplace(std::make_pair(val,data));
+            pthread_rwlock_unlock(&lock);
+			//unlock id
+
+            down_speed->AddSocket(val);
+			need_piece->SocketMapId(temp_id);
+
         }
         return ;       
     }
@@ -176,6 +200,7 @@ namespace Csz
 #ifdef CszTest
         Csz::LI("destructor Peer Manager");
 #endif
+        pthread_rwlock_destroy(&lock);
         for (auto& val : peer_list)
         {
             if (val.first>= 0)
@@ -446,23 +471,34 @@ namespace Csz
 #ifdef CszTest
         Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
 #endif
+        //lock
+        if (0!= pthread_rwlock_wrlock(&lock))
+        {
+            Csz::ErrMsg("[Peer Manager close socket]->failed,write lock failed");
+            return ;
+        }
 		auto result= peer_list.find(T_socket);
-		//lock
 		if (result!= peer_list.end())
 		{
 			Csz::Close(result->first);
-			//socket
-            DownSpeed::GetInstance()->ClearSocket(result->first);
-			//id
-            NeedPiece::GetInstance()->ClearSocket(result->second->id);
+            auto temp_id= result->second->id;
 			peer_list.erase(result);
+            pthread_rwlock_unlock(&lock);
+            //unlock
+
+			//socket
+            DownSpeed::GetInstance()->ClearSocket(T_socket);
+			//id
+            NeedPiece::GetInstance()->ClearSocket(temp_id);
+
 		}
-#ifdef CszTest
 		else
 		{
-			Csz::LI("[Peer Manager close socket]->failed,not found socket");
+            pthread_rwlock_unlock(&lock);
+            //unlock
+
+			Csz::ErrMsg("[Peer Manager close socket]->failed,not found socket");
 		}
-#endif
 		return ;
 	}
 
@@ -480,35 +516,62 @@ namespace Csz
         Have have;
         have.SetParameter(T_index);
         int code;
+
+        //lock
+        if (0!= pthread_rwlock_rdlock(&lock))
+        {
+            Csz::ErrMsg("[Peer Manager send have]->failed,read lock failed");
+            return ;
+        }
         for (auto start= peer_list.cbegin(),stop= peer_list.cend(); start!= stop; ++start)
         {
-            std::unique_lock<bthread::Mutex> guard(start->second->mutex);
+            std::unique_lock<bthread::Mutex> guard(*(start->second->mutex));
             code= send(start->first,have.GetSendData(),have.GetDataSize(),0);
             if (-1== code || code != have.GetDataSize())
             {
                 del_sockets.emplace_back(start);
             }      
         }
+        pthread_rwlock_unlock(&lock);
+        //unlock
+
+        if (0!= pthread_rwlock_wrlock(&lock))
+        {
+            Csz::ErrMsg("[Peer Manager send have]->failed,write lock failed");
+            return ;
+        }
         //TODO lock peer_list 
         for (const auto & val : del_sockets)
         {
             peer_list.erase(val->first);
         }
+        pthread_rwlock_unlock(&lock);
+        //unlock
+
         return ;
     }
     
-    //TODO safe
-    bthread::Mutex* PeerManager::GetSocketMutex(int T_socket)
+    //TODO not safe,peer erase socket,but mutex out put
+    std::shared_ptr<bthread::Mutex> PeerManager::GetSocketMutex(int T_socket)
     {
 #ifdef CszTest
         Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
 #endif
-        auto flag= peer_list.find(T_socket);
-        if (flag== peer_list.end())
+        //lock
+        std::shared_ptr<bthread::Mutex> ret(nullptr);
+        if (0!= pthread_rwlock_rdlock(&lock))
         {
-            return nullptr;
+            Csz::ErrMsg("[Peer Manager get socket mutex]->failed,read lock failed");
+            return ret;
+        }   
+        auto flag= peer_list.find(T_socket);
+        if (flag!= peer_list.end())
+        {
+            ret= flag->second->mutex;
         }
-        return &(flag->second->mutex);
+        //unlock
+        pthread_rwlock_unlock(&lock);
+        return ret;
     } 
  
 	int PeerManager::GetSocketId(int T_socket) 
@@ -516,11 +579,18 @@ namespace Csz
 #ifdef CszTest
         Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
 #endif
+        int ret= -1;
+        if (0!= pthread_rwlock_rdlock(&lock))
+        {
+            Csz::ErrMsg("[Peer Manager get socket id]->failed,read lock failed");
+            return ret;
+        }   
 		if (peer_list.find(T_socket)!= peer_list.end())
 		{
-			return peer_list[T_socket]->id;
+			ret= peer_list[T_socket]->id;
 		}
-		return -1;
+        pthread_rwlock_unlock(&lock);
+		return ret;
 	}
 
 	void PeerManager::AmChoke(int T_socket)
@@ -528,20 +598,33 @@ namespace Csz
 #ifdef CszTest
         Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
 #endif
+        //lock
+        if (0!= pthread_rwlock_wrlock(&lock))
+        {
+            Csz::ErrMsg("[Peer Manager am choke]->failed,write lock failed");
+            return ;
+        }   
 		auto flag= peer_list.find(T_socket);
 		if (flag== peer_list.end())
 		{
+            pthread_rwlock_unlock(&lock);
 			return ;
 		}
 		if ((flag->second->status).am_choke)
 		{
+            pthread_rwlock_unlock(&lock);
 			return ;
 		}
 		(flag->second->status).am_choke= 1;
-		NeedPiece::GetInstance()->AmChoke(flag->second->id);
+        auto mutex= flag->second->mutex;
+        auto temp_id= flag->second->id;
+        pthread_rwlock_unlock(&lock);
+        //unlock
+        
+		NeedPiece::GetInstance()->AmChoke(temp_id);
 		DownSpeed::GetInstance()->AmChoke(T_socket);
 		Choke choke;
-		std::unique_lock<bthread::Mutex> guard(flag->second->mutex);
+		std::unique_lock<bthread::Mutex> guard(*mutex);
 		send(T_socket,choke.GetSendData(),choke.GetDataSize(),0);
 		return ;
 	}
@@ -551,20 +634,33 @@ namespace Csz
 #ifdef CszTest
         Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
 #endif
+        //lock
+        if (0!= pthread_rwlock_wrlock(&lock))
+        {
+            Csz::ErrMsg("[Peer Manager am unchoke]->failed,write lock failed");
+            return ;
+        }   
 		auto flag= peer_list.find(T_socket);
 		if (flag== peer_list.end())
 		{
+            pthread_rwlock_unlock(&lock);
 			return ;
 		}
 		if (!(flag->second->status).am_choke)
 		{
+            pthread_rwlock_unlock(&lock);
 			return ;
 		}
 		(flag->second->status).am_choke= 0;
-		NeedPiece::GetInstance()->AmUnChoke(flag->second->id);
+        auto temp_id= flag->second->id;
+        auto mutex= flag->second->mutex;
+        pthread_rwlock_unlock(&lock);
+        //unlock
+
+		NeedPiece::GetInstance()->AmUnChoke(temp_id);
 		DownSpeed::GetInstance()->AmUnChoke(T_socket);
 		UnChoke unchoke;
-		std::unique_lock<bthread::Mutex> guard(flag->second->mutex);
+		std::unique_lock<bthread::Mutex> guard(*mutex);
 		send(T_socket,unchoke.GetSendData(),unchoke.GetDataSize(),0);
 		return ;
 	}
@@ -574,20 +670,33 @@ namespace Csz
 #ifdef CszTest
         Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
 #endif
+        //lock
+        if (0!= pthread_rwlock_wrlock(&lock))
+        {
+            Csz::ErrMsg("[Peer Manager am interested]->failed,write lock failed");
+            return ;
+        }   
 		auto flag= peer_list.find(T_socket);
 		if (flag== peer_list.end())
 		{
+            pthread_rwlock_unlock(&lock);
 			return ;
 		}
 		if ((flag->second->status).am_interested)
 		{
+            pthread_rwlock_unlock(&lock);
 			return ;
 		}
 		(flag->second->status).am_interested= 1;
-		NeedPiece::GetInstance()->AmInterested(flag->second->id);
+        auto temp_id= flag->second->id;
+        auto mutex= flag->second->mutex;
+        pthread_rwlock_unlock(&lock);
+        //unlock
+
+		NeedPiece::GetInstance()->AmInterested(temp_id);
 		DownSpeed::GetInstance()->AmInterested(T_socket);
 		Interested interested;
-		std::unique_lock<bthread::Mutex> guard(flag->second->mutex);
+		std::unique_lock<bthread::Mutex> guard(*mutex);
 		send(T_socket,interested.GetSendData(),interested.GetDataSize(),0);
 		return ;
 	}
@@ -597,21 +706,35 @@ namespace Csz
 #ifdef CszTest
         Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
 #endif
+        //lock
+        if (0!= pthread_rwlock_wrlock(&lock))
+        {
+            Csz::ErrMsg("[Peer Manager am uninterested]->failed,write lock failed");
+            return ;
+        }   
 		auto flag= peer_list.find(T_socket);
 		if (flag== peer_list.end())
 		{
+            pthread_rwlock_unlock(&lock);
 			return ;
 		}
 		if (!(flag->second->status).am_interested)
 		{
+            pthread_rwlock_unlock(&lock);
 			return ;
 		}
 		(flag->second->status).am_interested= 0;
-		NeedPiece::GetInstance()->AmUnInterested(flag->second->id);
+        auto temp_id= flag->second->id;
+        auto mutex= flag->second->mutex;
+        pthread_rwlock_unlock(&lock);
+        //unlock
+
+		NeedPiece::GetInstance()->AmUnInterested(temp_id);
 		DownSpeed::GetInstance()->AmUnInterested(T_socket);
 		UnInterested uninterested;
-		std::unique_lock<bthread::Mutex> guard(flag->second->mutex);
+		std::unique_lock<bthread::Mutex> guard(*mutex);
 		send(T_socket,uninterested.GetSendData(),uninterested.GetDataSize(),0);
+        return ;
 	}
 
 	void PeerManager::PrChoke(int T_socket)
@@ -619,13 +742,24 @@ namespace Csz
 #ifdef CszTest
         Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
 #endif
+        //lock
+        if (0!= pthread_rwlock_wrlock(&lock))
+        {
+            Csz::ErrMsg("[Peer Manager pr choke]->failed,write lock failed");
+            return ;
+        }   
 		auto flag= peer_list.find(T_socket);
 		if (flag== peer_list.end())
 		{
+            pthread_rwlock_unlock(&lock);
 			return ;
 		}
 		(flag->second->status).peer_choke= 1;
-		NeedPiece::GetInstance()->PrChoke(flag->second->id);
+        auto temp_id= flag->second->id;
+        pthread_rwlock_unlock(&lock);
+        //unlock
+
+		NeedPiece::GetInstance()->PrChoke(temp_id);
 		DownSpeed::GetInstance()->PrChoke(T_socket);
 		return ;
 	}
@@ -635,13 +769,24 @@ namespace Csz
 #ifdef CszTest
         Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
 #endif
+        //lock
+        if (0!= pthread_rwlock_wrlock(&lock))
+        {
+            Csz::ErrMsg("[Peer Manager pr unchoke]->failed,write lock failed");
+            return ;
+        }   
 		auto flag= peer_list.find(T_socket);
 		if (flag== peer_list.end())
 		{
+            pthread_rwlock_unlock(&lock);
 			return ;
 		}
 		(flag->second->status).peer_choke= 0;
-		NeedPiece::GetInstance()->PrUnChoke(flag->second->id);
+        auto temp_id= flag->second->id;
+        pthread_rwlock_unlock(&lock);
+        //unlock
+        
+		NeedPiece::GetInstance()->PrUnChoke(temp_id);
 		DownSpeed::GetInstance()->PrUnChoke(T_socket);
 		return ;
 	}
@@ -651,13 +796,24 @@ namespace Csz
 #ifdef CszTest
         Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
 #endif
+        //lock
+        if (0!= pthread_rwlock_wrlock(&lock))
+        {
+            Csz::ErrMsg("[Peer Manager pr interested]->failed,write lock failed");
+            return ;
+        }   
 		auto flag= peer_list.find(T_socket);
 		if (flag== peer_list.end())
 		{
+            pthread_rwlock_unlock(&lock);
 			return ;
 		}
 		(flag->second->status).peer_interested= 1;
-		NeedPiece::GetInstance()->PrInterested(flag->second->id);
+        auto temp_id= flag->second->id;
+        pthread_rwlock_unlock(&lock);
+        //unlock
+        
+		NeedPiece::GetInstance()->PrInterested(temp_id);
 		DownSpeed::GetInstance()->PrInterested(T_socket);
 		return ;
 	}
@@ -667,13 +823,24 @@ namespace Csz
 #ifdef CszTest
         Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
 #endif
+        //lock
+        if (0!= pthread_rwlock_wrlock(&lock))
+        {
+            Csz::ErrMsg("[Peer Manager pr uninterested]->failed,write lock failed");
+            return ;
+        }   
 		auto flag= peer_list.find(T_socket);
 		if (flag== peer_list.end())
 		{
+            pthread_rwlock_unlock(&lock);
 			return ;
 		}
 		(flag->second->status).peer_interested= 0;
-		NeedPiece::GetInstance()->PrUnInterested(flag->second->id);
+        auto temp_id= flag->second->id;
+        pthread_rwlock_unlock(&lock);
+        //unlock
+        
+		NeedPiece::GetInstance()->PrUnInterested(temp_id);
 		DownSpeed::GetInstance()->PrUnInterested(T_socket);
 	}
 	
@@ -683,6 +850,12 @@ namespace Csz
         Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
 #endif
 		//TODO lock
+        //lock
+        if (0!= pthread_rwlock_wrlock(&lock))
+        {
+            Csz::ErrMsg("[Peer Manager pr choke]->failed,write lock failed");
+            return ;
+        }   
 		int optimistic= butil::gettimeofday_us() % (peer_list.size()- 4);
 		for (auto& val : peer_list)
 		{
@@ -691,11 +864,17 @@ namespace Csz
 				--optimistic;
 				if (optimistic<= 0)
 				{
-					AmUnChoke(val.first);
+		            ((val.second)->status).am_choke= 0;
+		            NeedPiece::GetInstance()->AmUnChoke((val.second)->id);
+		            DownSpeed::GetInstance()->AmUnChoke(val.first);
+		            UnChoke unchoke;
+		            std::unique_lock<bthread::Mutex> guard(*((val.second)->mutex));
+		            send(val.first,unchoke.GetSendData(),unchoke.GetDataSize(),0);
 					break;
 				}
 			}
 		}
+        pthread_rwlock_unlock(&lock);
 		return ;
 	}
 

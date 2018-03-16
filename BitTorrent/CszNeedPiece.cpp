@@ -19,6 +19,7 @@ namespace Csz
 
 		//1.find index
 		//iterator invalid,must lock
+		std::lock_guard<bthread::Mutex> guard(index_lock);
 		auto start= index_queue.begin();
 		auto stop= index_queue.end();
 		while (start!= stop)
@@ -69,6 +70,8 @@ namespace Csz
         Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
 #endif
 		std::pair<int32_t,std::vector<int>> ret;
+		//TODO lock
+		std::lock_guard<bthread::Mutex> guard(index_lock);
 		if (index_queue.empty())
 		{
 			Csz::ErrMsg("[Need Piece pop need]->failed,queue is empty");
@@ -76,7 +79,6 @@ namespace Csz
 		}
 		//1.list sort
 		index_queue.sort(NPComp);
-		//TODO lock
 		auto start= index_queue.begin();
 		auto stop= index_queue.end();
 		//TODO stop- start> 1
@@ -89,6 +91,12 @@ namespace Csz
 			{
 				for (const auto& val : result->queue)
 				{
+                    //lock
+                    if (0!= pthread_rwlock_rdlock(&id_lock))
+                    {
+                        Csz::ErrMsg("[Need Piece pop need]->failed,read lock failed");
+                        continue;
+                    }
 					auto flag= id_queue.find(val.second);
 					//2.2find socket id
 					if (flag!= id_queue.end())
@@ -105,6 +113,8 @@ namespace Csz
 						Csz::LI("[Need Piece pop need]->failed,not found id=%d",val.second);
 					}
 #endif
+                    pthread_rwlock_unlock(&id_lock);
+                    //unlock
 				}	
 				if (!ret.second.empty())
 				{
@@ -130,6 +140,8 @@ namespace Csz
 #ifdef CszTest
         Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
 #endif
+        //TODO lock
+        std::lock_guard<bthread::Mutex> guard(index_lock);
         std::vector<int> ret;
         if (T_index< 0)
         {
@@ -140,7 +152,7 @@ namespace Csz
         {
             Csz::ErrMsg("[Need Piece pop point need]->falied,index queue is empty");
         }
-        //TODO lock
+
         //index vector
         for (auto& val : index_queue)
         {
@@ -155,7 +167,7 @@ namespace Csz
 				}
 				else
 				{
-					Csz::LI("[NeedPiece pop point need]->not correct for index=%d",T_index);
+					Csz::LI("[Need Piece pop point need]->not correct for index=%d",T_index);
 				}
 #endif
 #ifdef CszTest
@@ -166,6 +178,12 @@ namespace Csz
 #endif
 				for (auto& fd : val->queue)
 				{
+                    //lock
+                    if (0!=pthread_rwlock_rdlock(&id_lock))
+                    {
+                        Csz::ErrMsg("[Need Piece pop point need]->failed,read lock failed");
+                        continue;
+                    }
 					//2.find id
 					auto flag= id_queue.find(fd.second);
 					if (flag!= id_queue.end())
@@ -194,9 +212,9 @@ namespace Csz
 					else
 					{
 						Csz::LI("[Need Piece pop point need]->failed,not found id=%d",fd.first);
-						continue;
 					}
 #endif
+                    pthread_rwlock_unlock(&id_lock);
                 }
                 break;
             }
@@ -204,11 +222,13 @@ namespace Csz
         return std::move(ret);
     }
 
-	bool NeedPiece::Empty()const
+	bool NeedPiece::Empty()
 	{
 #ifdef CszTest
         Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
 #endif
+        std::lock_guard<bthread::Mutex> guard(index_lock);
+        pthread_rwlock_rdlock(&id_lock);
 		return index_queue.empty() || id_queue.empty();
 	}
 
@@ -218,7 +238,14 @@ namespace Csz
         Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
 #endif
 		//TODO lock
+		if (0!= pthread_rwlock_wrlock(&id_lock))
+        {
+            Csz::ErrMsg("[Need Piece socket map id]->failed,write lock failed");
+            return ;
+        }
 		id_queue.emplace(T_id,PeerStatus());
+        pthread_rwlock_unlock(&id_lock);
+        //unlock
 		return ;
 	}
     
@@ -228,6 +255,11 @@ namespace Csz
         Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
 #endif
         //TODO lock
+		if (0!= pthread_rwlock_wrlock(&id_lock))
+        {
+            Csz::ErrMsg("[Need Piece clear socket]->failed,write lock failed");
+            return ;
+        }
         if (id_queue.find(T_id)!= id_queue.end())
         {
 			//one method
@@ -238,6 +270,9 @@ namespace Csz
 			//id_queue[T_id].am_choke= 1;
 			//id_queue[T_id].am_interested= 0;
         }
+        pthread_rwlock_unlock(&id_lock);
+        //unlock
+        return ;
     }
 
 	void NeedPiece::AmChoke(int T_id)
@@ -245,11 +280,17 @@ namespace Csz
 #ifdef CszTest
         Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
 #endif
+		if (0!= pthread_rwlock_wrlock(&id_lock))
+        {
+            Csz::ErrMsg("[Need Piece am choke]->failed,write lock failed");
+            return ;
+        }
         auto p= RetSocketStatus(T_id);
         if (nullptr!= p)
         {
             (*p).am_choke= 1;
         }
+        pthread_rwlock_unlock(&id_lock);
 		return ;
 	}
 
@@ -258,11 +299,17 @@ namespace Csz
 #ifdef CszTest
         Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
 #endif
+		if (0!= pthread_rwlock_wrlock(&id_lock))
+        {
+            Csz::ErrMsg("[Need Piece am unchoke]->failed,write lock failed");
+            return ;
+        }
 		auto p= RetSocketStatus(T_id);
 		if (nullptr!= p)
 		{
 			(*p).am_choke= 0;
 		}
+        pthread_rwlock_unlock(&id_lock);
 		return ;
 	}
 
@@ -271,11 +318,17 @@ namespace Csz
 #ifdef CszTest
         Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
 #endif
+		if (0!= pthread_rwlock_wrlock(&id_lock))
+        {
+            Csz::ErrMsg("[Need Piece am interested]->failed,write lock failed");
+            return ;
+        }
 		auto p= RetSocketStatus(T_id);
 		if (nullptr!= p)
 		{
 			(*p).am_interested= 1;
 		}
+        pthread_rwlock_unlock(&id_lock);
 		return ;
 	}
 
@@ -284,11 +337,17 @@ namespace Csz
 #ifdef CszTest
         Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
 #endif
+		if (0!= pthread_rwlock_wrlock(&id_lock))
+        {
+            Csz::ErrMsg("[Need Piece am uninterested]->failed,write lock failed");
+            return ;
+        }
 		auto p= RetSocketStatus(T_id);
 		if (nullptr!= p)
 		{
 			(*p).am_interested= 0;
 		}
+        pthread_rwlock_unlock(&id_lock);
 		return ;
 	}
     
@@ -297,11 +356,17 @@ namespace Csz
 #ifdef CszTest
         Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
 #endif
+		if (0!= pthread_rwlock_wrlock(&id_lock))
+        {
+            Csz::ErrMsg("[Need Piece pr choke]->failed,write lock failed");
+            return ;
+        }
         auto p= RetSocketStatus(T_id);
         if (nullptr!= p)
         {
             (*p).peer_choke= 1;
         }
+        pthread_rwlock_unlock(&id_lock);
 		return ;
 	}
 
@@ -310,10 +375,16 @@ namespace Csz
 #ifdef CszTest
         Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
 #endif
+		if (0!= pthread_rwlock_wrlock(&id_lock))
+        {
+            Csz::ErrMsg("[Need Piece pr unchoke]->failed,write lock failed");
+            return ;
+        }
 		auto p= RetSocketStatus(T_id);
 		if (nullptr!= p)
 		{
 			(*p).peer_choke= 0;
+            pthread_rwlock_unlock(&id_lock);
             SendReq();
 /*
             bthread_t tid;
@@ -325,6 +396,10 @@ namespace Csz
 			//pop_cond.notify_one();
 */
 		}
+        else
+        {
+            pthread_rwlock_unlock(&id_lock);
+        }
 		return ;
 	}
 
@@ -333,11 +408,17 @@ namespace Csz
 #ifdef CszTest
         Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
 #endif
+		if (0!= pthread_rwlock_wrlock(&id_lock))
+        {
+            Csz::ErrMsg("[Need Piece pr interested]->failed,write lock failed");
+            return ;
+        }
 		auto p= RetSocketStatus(T_id);
 		if (nullptr!= p)
 		{
 			(*p).peer_interested= 1;
 		}
+        pthread_rwlock_unlock(&id_lock);
 		return ;
 	}
 
@@ -346,11 +427,17 @@ namespace Csz
 #ifdef CszTest
         Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
 #endif
+		if (0!= pthread_rwlock_wrlock(&id_lock))
+        {
+            Csz::ErrMsg("[Need Piece pr uninterested]->failed,write lock failed");
+            return ;
+        }
 		auto p= RetSocketStatus(T_id);
 		if (nullptr!= p)
 		{
 			(*p).peer_interested= 0;
 		}
+        pthread_rwlock_unlock(&id_lock);
 		return ;
 	}
 	
@@ -385,6 +472,7 @@ namespace Csz
 			return ;
 		}
 		//TODO lock
+		std::lock_guard<bthread::Mutex> guard(index_lock);
 		auto start= index_queue.begin();
 		auto stop= index_queue.end();
 		while (start!= stop)
@@ -419,6 +507,7 @@ namespace Csz
 			return ;
 		}
 		//TODO lock
+		std::lock_guard<bthread::Mutex> guard(index_lock);
 		auto start= index_queue.begin();
 		auto stop= index_queue.end();
 		while (start!= stop)
@@ -482,49 +571,6 @@ namespace Csz
 		return ;
     }
 
-    void* NeedPiece::ASendReq(void* T_this)
-    {    
-#ifdef CszTest
-        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
-#endif
-        if (nullptr== T_this)
-        {
-            Csz::ErrMsg("[Need Piece async send req]->failed,parameter is nullptr");
-            return nullptr;
-        }
-        auto cur_this= static_cast<NeedPiece*>(T_this);
-		auto ret= cur_this->PopNeed();
-		if (ret.second.empty())
-			return nullptr;
-        auto peer_manager= PeerManager::GetInstance();
-		Request request;
-		request.SetParameter(ret.first,0,SLICESIZE);
-		for (const auto& fd : ret.second)
-		{
-            //socket mutex
-            auto mutex= peer_manager->GetSocketMutex(fd);
-            if (nullptr== mutex)
-            {
-                continue;
-            }
-            //TODO all socket
-            std::unique_lock<bthread::Mutex> guard(*mutex);
-			auto code= send(fd,request.GetSendData(),request.GetDataSize(),0);
-			if (code== request.GetDataSize())
-			{
-                ;
-				//break;
-			}
-#ifdef CszTest
-			else
-			{
-				Csz::LI("[Need Piece async send req]->send request failed,send length!=%d",request.GetDataSize());
-			}
-#endif
-		}
-		return nullptr;
-    }
-
     bool NeedPiece::SetIndexW(int32_t T_index)
     {
         bool ret= false;
@@ -537,6 +583,7 @@ namespace Csz
         Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
 #endif
 		//TODO lock
+		std::lock_guard<bthread::Mutex> guard(index_lock);
 		auto start= index_queue.begin();
 		auto stop= index_queue.end();
 		while (start!= stop)

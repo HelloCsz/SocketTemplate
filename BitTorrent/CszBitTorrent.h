@@ -14,6 +14,7 @@
 #include <utility> //std::make_pair
 #include <memory> //shared_ptr
 #include <arpa/inet.h> //htonl
+#include <pthread.h> //pthread_rwlock_t
 //brpc
 //#include <bthread/bthread.h>
 //#include <bthread/condition_variable.h>
@@ -220,11 +221,12 @@ namespace Csz
     {
 		private:
             //PeerManager(const std::vector<std::string> &T_socket_list);
-			PeerManager():cur_id(0)
+			PeerManager():cur_id(0),had_file(false)
             {
 #ifdef CszTest
                 Csz::LI("construct Peer Manager");
 #endif
+                pthread_rwlock_init(&lock,NULL);
             }
             ~PeerManager();
 		public:
@@ -238,11 +240,11 @@ namespace Csz
             //init peer socket
             void LoadPeerList(const std::vector<std::string> &T_socket_list);
             void AddSocket(const int T_socket);
-			std::vector<int> RetSocketList()const;
+			std::vector<int> RetSocketList();
 			void CloseSocket(int T_socket);
 			void CloseSocket(std::vector<int>* T_sockets);
             void SendHave(int32_t T_index);
-            bthread::Mutex* GetSocketMutex(int T_socket);
+            std::shared_ptr<bthread::Mutex> GetSocketMutex(int T_socket);
 			int GetSocketId(int T_socket);
 			void AmChoke(int T_socket);
 			void AmUnChoke(int T_socket);
@@ -253,6 +255,7 @@ namespace Csz
 			void PrInterested(int T_socket);
 			void PrUnInterested(int T_socket);
 			void Optimistic();
+            void SetHadFile(){had_file= true;}
 			void COutInfo()const;
         private:
             void _LoadPeerList(const std::string& T_socket_list);
@@ -260,15 +263,17 @@ namespace Csz
             void _Verification(std::vector<int>& T_ret);
 			void _SendBitField(std::vector<int>& T_ret);
         private:
+            bool had_file;
             struct DataType
             {
 				PeerStatus status;
                 int id;
-                bthread::Mutex mutex;
+                std::shared_ptr<bthread::Mutex> mutex;
             };
             //socket have singleton id
             std::unordered_map<int,std::shared_ptr<PeerManager::DataType>> peer_list;
             int32_t cur_id;
+            pthread_rwlock_t lock;
     };
 
     //bt message type
@@ -734,12 +739,14 @@ namespace Csz
 		private:
 			DownSpeed()
             {
+                pthread_rwlock_init(&lock,NULL);
 #ifdef CszTest
                 Csz::LI("constructor Down Speed");
 #endif
             }
 			~DownSpeed()
             {
+                pthread_rwlock_destroy(&lock);
 #ifdef CszTest
                 Csz::LI("destructor Down Speed");
 #endif
@@ -765,6 +772,7 @@ namespace Csz
             };
 			//TODO hash table save status
 			std::list<DownSpeed::DataType> queue;
+            pthread_rwlock_t lock;
 		public:
             //init total
 			void AddSocket(const int T_socket)
@@ -797,12 +805,14 @@ namespace Csz
 		private:
 			NeedPiece()//:stop_runner(false)
             {
+                pthread_rwlock_init(&id_lock,NULL);
 #ifdef CszTest
                 Csz::LI("constructor Need Piece");
 #endif
             }
 			~NeedPiece()
             {
+                pthread_rwlock_destroy(&id_lock);
 #ifdef CszTest
                 Csz::LI("destructor Need Piece");
 #endif       
@@ -834,9 +844,11 @@ namespace Csz
             };
 			//socket|id
 			std::list<std::shared_ptr<NeedPiece::DataType>> index_queue;
+            bthread::Mutex index_lock;
 			//socket may be reuse
 			//id->choke/unchoke and interested/uninterested
-			//lazy not delete when socker closed 
+			//lazy not delete when socker closed
+			pthread_rwlock_t id_lock;
 			std::unordered_map<int,PeerStatus> id_queue;
 /*
 			//producer and curtomer
@@ -849,7 +861,7 @@ namespace Csz
 			void PushNeed(const int32_t T_index,int T_socket,int T_id);
 			std::pair<int32_t,std::vector<int>> PopNeed();
             std::vector<int> PopPointNeed(int32_t T_index);
-			bool Empty()const;
+			bool Empty();
 			//vector is id
 			//init method
 			void SocketMapId(int T_id);
@@ -913,6 +925,7 @@ namespace Csz
                     Csz::LI("[Select Switch parameter]->delete");
 #endif
                 }
+            }
 			int socket;
 			//not include id len
 			int32_t len;
@@ -920,7 +933,7 @@ namespace Csz
 			int32_t cur_len;
 		};
 		bool operator()();
-		void DKeepAlive(Parameter* T_data);
+		static void DKeepAlive(Parameter* T_data);
 		static void DChoke(Parameter* T_data);/*id=0*/
 		static void DUnChoke(Parameter* T_data);/*id= 1*/
 		static void DInterested(Parameter* T_data);/*id= 2*/

@@ -166,13 +166,14 @@ namespace Csz
 //tracker
 	struct TrackerInfo
 	{
-        //tcp set -1,udp set -2
-		TrackerInfo():socket_fd(-3){}
+        //tcp set true,udp set false
+		TrackerInfo():socket_tcp(true),socket_fd(-3){}
 		TrackerInfo(TrackerInfo&&);
+		bool socket_tcp;
+		int socket_fd;
 		std::string host;
 		std::string serv;
 		std::string uri;
-		int socket_fd;
 	};
 
 	class Tracker
@@ -546,6 +547,7 @@ namespace Csz
 				bzero(data,sizeof(data));
 				//set id
 				data[4]= T_id;
+				*reinterpret_cast<int32_t*>(data)= htonl(13);
 			}
             ~ReqCleBase()
             {
@@ -660,6 +662,7 @@ namespace Csz
 				bzero(port,sizeof(port));
 				//set id
 				port[4]= 9;
+				*reinterpret_cast<int32_t*>(port)= htonl(3);
 			}
             ~Port()
             {
@@ -837,9 +840,10 @@ namespace Csz
 			struct DataType
             {
 				DataType():index(-1),index_status(0){}
-                int32_t index;
                 //read 0x01 write 0x02
 				uint8_t index_status;
+                int32_t index;
+				uint32_t expire;
                 std::vector<std::pair<int,int>> queue;
             };
 			//socket|id
@@ -883,7 +887,7 @@ namespace Csz
 			void Runner();
 			void SR()
 			{
-				//std::unique_lock<bthread::Mutex> guard(pop_mutex);
+				//std::lock_guard<bthread::Mutex> guard(pop_mutex);
 				stop_runner= true;
 				pop_cond.notify_one();
 				return ;
@@ -899,7 +903,6 @@ namespace Csz
 	//select & switch message type
 	struct SelectSwitch
 	{
-		static fd_set rset_save;
 #ifdef CszTest
         static int total;
 #endif 

@@ -117,23 +117,14 @@ namespace Csz
         auto stop= start+ num;
         //TODO 2.check comopact??
         //TODO num-= 6
-#ifdef CszTest
-        Csz::LI("[Peer Manager load peer list]->num=%d,length=%d,flag=%d",num,T_socket_list.size(),flag);   
-#endif
-#ifdef CszTest
-        Csz::LI("[Peer Manager load peer list]->start=%d,stop=%d",start,stop);   
-#endif
         while (num> 0 && start< stop)
         {
-#ifdef CszTest
-        Csz::LI("[Peer Manager load peer list]->start=%d,stop=%d",start,stop);   
-#endif
             sockaddr_in addr;
             bzero(&addr,sizeof(addr));
             addr.sin_family= AF_INET;
             addr.sin_addr.s_addr= *(reinterpret_cast<int32_t*>(const_cast<char*>(start)));
             addr.sin_port= *(reinterpret_cast<int16_t*>(const_cast<char*>(start+ 4)));
-            //num-= 6;
+            num-= 6;
             start= start+ 6;
 #ifdef CszTest
 			//all thread,in only one thread run
@@ -237,7 +228,7 @@ namespace Csz
         
         //1.time out
         struct timeval time_val;
-        time_val.tv_sec= 60;
+        time_val.tv_sec= 30;
         time_val.tv_usec= 0;  
         
         FD_ZERO(&wset);
@@ -356,7 +347,7 @@ namespace Csz
         
         //1.time out
         struct timeval time_val;
-        time_val.tv_sec= 60;
+        time_val.tv_sec= 30;
         time_val.tv_usec= 0;  
         
         FD_ZERO(&rset_save);
@@ -535,7 +526,7 @@ namespace Csz
         }
         for (auto start= peer_list.cbegin(),stop= peer_list.cend(); start!= stop; ++start)
         {
-            std::unique_lock<bthread::Mutex> guard(*(start->second->mutex));
+            std::lock_guard<bthread::Mutex> guard(*(start->second->mutex));
             code= send(start->first,have.GetSendData(),have.GetDataSize(),0);
             if (-1== code || code != have.GetDataSize())
             {
@@ -634,7 +625,7 @@ namespace Csz
 		NeedPiece::GetInstance()->AmChoke(temp_id);
 		DownSpeed::GetInstance()->AmChoke(T_socket);
 		Choke choke;
-		std::unique_lock<bthread::Mutex> guard(*mutex);
+		std::lock_guard<bthread::Mutex> guard(*mutex);
 		send(T_socket,choke.GetSendData(),choke.GetDataSize(),0);
 		return ;
 	}
@@ -670,7 +661,7 @@ namespace Csz
 		NeedPiece::GetInstance()->AmUnChoke(temp_id);
 		DownSpeed::GetInstance()->AmUnChoke(T_socket);
 		UnChoke unchoke;
-		std::unique_lock<bthread::Mutex> guard(*mutex);
+		std::lock_guard<bthread::Mutex> guard(*mutex);
 		send(T_socket,unchoke.GetSendData(),unchoke.GetDataSize(),0);
 		return ;
 	}
@@ -706,7 +697,7 @@ namespace Csz
 		NeedPiece::GetInstance()->AmInterested(temp_id);
 		DownSpeed::GetInstance()->AmInterested(T_socket);
 		Interested interested;
-		std::unique_lock<bthread::Mutex> guard(*mutex);
+		std::lock_guard<bthread::Mutex> guard(*mutex);
 		send(T_socket,interested.GetSendData(),interested.GetDataSize(),0);
 		return ;
 	}
@@ -742,7 +733,7 @@ namespace Csz
 		NeedPiece::GetInstance()->AmUnInterested(temp_id);
 		DownSpeed::GetInstance()->AmUnInterested(T_socket);
 		UnInterested uninterested;
-		std::unique_lock<bthread::Mutex> guard(*mutex);
+		std::lock_guard<bthread::Mutex> guard(*mutex);
 		send(T_socket,uninterested.GetSendData(),uninterested.GetDataSize(),0);
         return ;
 	}
@@ -878,7 +869,7 @@ namespace Csz
 		            NeedPiece::GetInstance()->AmUnChoke((val.second)->id);
 		            DownSpeed::GetInstance()->AmUnChoke(val.first);
 		            UnChoke unchoke;
-		            std::unique_lock<bthread::Mutex> guard(*((val.second)->mutex));
+		            std::lock_guard<bthread::Mutex> guard(*((val.second)->mutex));
 		            send(val.first,unchoke.GetSendData(),unchoke.GetDataSize(),0);
 					break;
 				}

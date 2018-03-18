@@ -133,11 +133,11 @@ namespace Csz
 				data.serv.assign(val.substr(serv_flag+ 1,uri_flag- serv_flag- 1));
 			}
 			data.uri.assign(val.substr(uri_flag));
-			//tcp set -1.udp set -2
+			//tcp set true.udp set false
 			if ((host_flag= val.find("udp"))== val.npos)
-				data.socket_fd= -1;
+				data.socket_tcp= true;
 			else
-				data.socket_fd= -2;
+				data.socket_tcp= false;
 			T_tracker->SetTrackInfo(std::move(data));
 		}
 #ifdef CszTest

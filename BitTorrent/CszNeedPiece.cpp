@@ -84,10 +84,23 @@ namespace Csz
 		//TODO stop- start> 1
 		while (start!= stop)
 		{
+			bool judge= false;
 			auto& result= *start;
 			//2.check lock piece and socket status
 			//2.1 check lock piece
-			if (!(result->index_status& 0x01))
+			if (result->index_status & 0x01)
+			{
+				if (time(NULL)- result->expire>= EXPIRETIME)
+				{
+					judge= true;
+				}
+			}
+			else
+			{
+				judge= true;
+			}
+
+			if (judge)
 			{
 				for (const auto& val : result->queue)
 				{
@@ -118,8 +131,9 @@ namespace Csz
 				}	
 				if (!ret.second.empty())
 				{
-                    //read
+                    //TODO read
                     result->index_status= 0x01;
+					result->expire= time(NULL);
 					ret.first= result->index;
 					//index_queue.erase(start);
 					break;
@@ -161,7 +175,7 @@ namespace Csz
             {
 #ifdef CszTest
 				//check lock piece status
-				if (val->index_status & 0x01 && val->index_status & 0x02)
+				if ((val->index_status & 0x02) && (val->index_status & 0x01))
 				{
 					Csz::LI("[Need Piece pop point need]->correct for index=%d",T_index);
 				}
@@ -554,7 +568,7 @@ namespace Csz
                 continue;
             }
             //TODO all socket
-            std::unique_lock<bthread::Mutex> guard(*mutex);
+            std::lock_guard<bthread::Mutex> guard(*mutex);
 			auto code= send(fd,request.GetSendData(),request.GetDataSize(),0);
 			if (code== request.GetDataSize())
 			{
@@ -616,7 +630,7 @@ namespace Csz
 /*
 	void NeedPiece::Runner()
 	{
-		std::unique_lock<bthread::Mutex> guard(pop_mutex);
+		std::lock_guard<bthread::Mutex> guard(pop_mutex);
 		//10s
 		pop_cond.wait_for(guard,10000000);
 		auto ret= PopNeed();

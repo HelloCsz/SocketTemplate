@@ -86,8 +86,8 @@ namespace Csz
 		int socket_fd,flag;
 		for (auto& val : info)
 		{
-			//tcp set -1,udp set -2,other unkonw
-			if (-1== val.socket_fd)
+			//tcp set true,udp set false
+			if (val.socket_tcp)
 			{
 				//设置为地址族未定义 ipv4 or ipv6
 				//释放res
@@ -115,7 +115,7 @@ namespace Csz
 				val.socket_fd= socket_fd;
 				freeaddrinfo(res);
 			}
-			else if (-2== val.socket_fd)
+			else 
 			{
 				res= SocketHostServNull(val.host.c_str(),val.serv.c_str(),AF_UNSPEC,SOCK_DGRAM);
 				if (NULL== res)
@@ -124,11 +124,6 @@ namespace Csz
 				connect(socket_fd,res->ai_addr,res->ai_addrlen);
 				val.socket_fd= socket_fd;
 				freeaddrinfo(res);
-			}
-			else
-			{
-				Csz::ErrMsg("[Tracker connect]->failed,can't connect server,socket type is unknow,%s,fd=%d\n",val.host.c_str(),val.socket_fd);
-				//val.socket_fd= -1;
 			}
 		}
 		return ;
@@ -149,6 +144,7 @@ namespace Csz
 #ifdef CszTest
         Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
 #endif
+		Connect();
         std::vector<std::string> ret_str;
 		fd_set wset,rset,rset_save,wset_save;
 		int fd_max= -1;
@@ -163,23 +159,28 @@ namespace Csz
 			{
 				if (fd_max< val.socket_fd)
 					fd_max= val.socket_fd;
-				FD_SET(val.socket_fd,&rset);
+				FD_SET(val.socket_fd,&wset_save);
 				++quit_num;
 			}
 		}
-		wset_save= rset_save= wset= rset;
-		//int count= 0;
-		while (quit_num> 0)
+		wset= wset_save;
+
+		FD_ZERO(&rset_save);
+		rset= rset_save;
+
+		int code= 0;
+		//因为使用到一块共享内存作为接收缓冲(用来每次读取一行),可能发生interesting happend
+		//从程序接收缓冲从读取到共享内存中,而这些数据包含着下次的数据,当再次调用select时,检查
+		//的是程序接收缓冲区而不是共享内存区
+		while (quit_num> 0 && (code= select(fd_max+ 1,&rset,&wset,NULL,T_sec? &time_val : NULL))>= 0)
 		{
-			//因为使用到一块共享内存作为接收缓冲(用来每次读取一行),可能发生interesting happend
-			//从程序接收缓冲从读取到共享内存中,而这些数据包含着下次的数据,当再次调用select时,检查
-			//的是程序接收缓冲区而不是共享内存区
-			if (0== (/*count=*/ select(fd_max+ 1,&rset,&wset,NULL,T_sec? &time_val : NULL)))
+
+			if (0== code)
 			{
 				//time out
 				errno= ETIMEDOUT;
 				Csz::ErrMsg("[Tracker get peer list]->failed,time out");
-				return std::move(ret_str);
+				break;
 			}
 			//即可读又可写不同环境计算值不同,有的只计1,有些计2
 			for (auto& val :info)
@@ -213,16 +214,43 @@ namespace Csz
 						continue;
 					}
 					//normal socket
-					_Delivery(val.socket_fd,val.host,val.serv,val.uri);
+					//tcp
+					if (val.socket_tcp)
+					{
+						_Delivery(val.socket_fd,val.host,val.serv,val.uri);
+						FD_SET(val.socket_fd,&rset_save);
+					}
+					//udp
+					else
+					{
+#ifdef CszTest
+						Csz::LI("[Tracker get peer list]->failed,socket type udp");
+#endif
+						Csz::Close(val.socket_fd);
+						val.socket_fd= -1;
+						--quit_num;
+						continue ;
+					}	
 					//--count;
 				}
 				if (FD_ISSET(val.socket_fd,&rset))
 				{
 					FD_CLR(val.socket_fd,&rset_save);
-					_Capturer(val.socket_fd);
-                    ret_str.emplace_back(std::move(response.GetBody()));
-                    //auto body= response.GetBody();
-                    //ret_str.emplace_back(std::move(body));
+					//tcp
+					if (val.socket_tcp)
+					{
+						_Capturer(val.socket_fd);
+						ret_str.emplace_back(std::move(response.GetBody()));
+					}
+					//udp
+					else
+					{
+#ifdef CszTest
+						Csz::LI("[Tracker ger peer list]->failed,socket type udp");
+#endif
+					}
+					Csz::Close(val.socket_fd);
+					val.socket_fd= -1;
 					--quit_num;
 				}
 			}
@@ -294,7 +322,7 @@ namespace Csz
 #ifdef CszTest
         Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
 #endif
-	    request.SetHeader("Connection","Keep-alive");
+	    request.SetHeader("Connection","close");
 	    request.SetHeader("User-Agent","Super Max");
 	    request.SetHeader("Accept","text/html");
         return ;
@@ -327,7 +355,7 @@ namespace Csz
 		parameter.assign("event=started");
 		SetParameter(std::move(parameter));
 
-		parameter.assign("numwant=35");
+		parameter.assign("numwant=20");
 		SetParameter(std::move(parameter));
         return ;
     }

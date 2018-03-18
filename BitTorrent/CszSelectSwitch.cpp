@@ -13,7 +13,7 @@ namespace Csz
 #ifdef CszTest
     int SelectSwitch::total= 0;
 #endif
-    fd_set SelectSwitch::rset_save;
+
 	//TODO sinnal deal or pselect
 	bool SelectSwitch::operator()()
 	{
@@ -23,34 +23,10 @@ namespace Csz
 		using Task= Csz::TaskQueue<SelectSwitch::Parameter,THREADNUM>::Type;
 		auto thread_pool= SingletonThread<SelectSwitch::Parameter,THREADNUM>::GetInstance();
 		auto peer_manager= PeerManager::GetInstance();
-		auto peer_list= std::move(peer_manager->RetSocketList());
-		//auto need_piece= NeedPiece::GetInstance();
-		if (peer_list.empty())
-		{
-			Csz::ErrMsg("[Select Switch Run]->can't switch message type,peer list is empty");
-			return false;
-		}
 
-		//1.set check record
-		fd_set rset;
-        int fd_max= -1;
-		//init
-		for (const auto& val : peer_list)
-		{
-			if (val>= 0)
-			{
-				//set horizontal mark
-				int lowat= 4;
-				setsockopt(val,SOL_SOCKET,SO_RCVLOWAT,&lowat,sizeof(lowat));
-				if (val > fd_max)
-					fd_max= val;
-				FD_SET(val,&rset_save);
-			}
-		}
-		rset= rset_save;
 		timeval time_out;
 		//5min
-		time_out.tv_sec= 600;
+		time_out.tv_sec= 10* 60;
 		time_out.tv_usec= 0;
 		int code;
 		//30s
@@ -58,208 +34,220 @@ namespace Csz
 		//10s calculate
 		auto calculate_start= optimistic_start;
 		auto down_speed= DownSpeed::GetInstance();
+			
 		//2.select
-		while ((code= select(fd_max+ 1,&rset,NULL,NULL,&time_out))>= 0)
+		while (true)
 		{
-			//update status
-			auto stop= butil::gettimeofday_s();
-			if (stop- calculate_start>= 10)
+			auto peer_list= std::move(peer_manager->RetSocketList());
+			if (peer_list.empty())
 			{
-				down_speed->CalculateSpeed();
-				calculate_start= stop;
-			}
-			if (stop- optimistic_start>= 30)
-			{
-				peer_manager->Optimistic();
-				optimistic_start= stop;
-			}
-			if (0 == code)
-			{
-				//time out
-				Csz::ErrMsg("[Select Switch Run]->time out");
+				Csz::ErrMsg("[Select Switch Run]->can't switch message type,peer list is empty");
 				break;
 			}
-			//3.switch
-			int32_t len= 0;
+
+			//1.set check record
+			fd_set rset;
+			int fd_max= -1;
+			//init
+			FD_ZERO(&rset);
 			for (const auto& val : peer_list)
 			{
-                if (val< 0)
-                    continue;
-				if (FD_ISSET(val,&rset))
+				if (val>= 0)
 				{
-					--code;
-					//TODO time out
-					int error_code= recv(val,(char*)&len,4,MSG_WAITALL);
-					//fix bug
-					len= ntohl(len);
-					if (4== error_code)
-					{
-						//catch message
-						//keep alive
-						if (0== len)
-						{
-							DKeepAlive(NULL);
-							continue;
-						}
-						char id;
-						error_code= recv(val,&id,1,MSG_DONTWAIT);
-						if (error_code!= 1)
-						{
-							//100ms
-							bthread_usleep(100000);
-							error_code= recv(val,&id,1,MSG_DONTWAIT);
-						}
-						if (error_code!= 1)
-						{
-							FD_CLR(val,&rset_save);
-							peer_manager->CloseSocket(val);
-							continue;
-						}
-                        
-						//normal socket
-						//thorw exception new
-						std::unique_ptr<Parameter> data(new(std::nothrow) Parameter());
-						if (nullptr== data)
-						{
-                            //TODO wait,bug socket already take data(eg len and id),should close socket
-							Csz::ErrMsg("[Select Switch Run]->failed,new parameter is nullptr");
-                            peer_manager->CloseSocket(val);
-                            FD_CLR(val,&rset_save);
-							continue;
-						}
-						data->socket= val;
-                        
-                        if(0== id)
-                        {
-                            auto orgin= data.get();
-                            data.release();
-                            DChoke(orgin);
-                            continue;
-                        }
-                        else if(1== id)
-                        {
-                            auto orgin= data.get();
-                            data.release();
-                            DUnChoke(orgin);
-                            continue;
-                        }
-                        else if(2== id)
-                        {
-                            auto orgin= data.get();
-                            data.release();
-                            DInterested(orgin);
-                            continue;
-                        }
-                        else if(3== id)
-                        {
-                            auto orgin= data.get();
-                            data.release();
-                            DUnInterested(orgin);
-                            continue;
-                        }
-#ifdef CszTest
-                        Csz::LI("[Select Switch Run]->id=%d,len=%d",(int)id,len-1);
-#endif
-						//reduce id len
-						--len;
-						data->buf= new(std::nothrow) char[len];
-						if (nullptr== data->buf)
-						{
-                            //TODO wait,bug socket already take data(eg len and id),should close socket
-							Csz::ErrMsg("[Select Switch Run]->failed,new buf is nullptr");
-                            peer_manager->CloseSocket(data->socket);
-                            FD_CLR(data->socket,&rset_save);
-							continue;
-						}
-						data->len= len;
-						error_code= Csz::RecvTimeP_us(data->socket,data->buf,reinterpret_cast<int32_t*>(&data->len),TIMEOUT300MS);
-						if (-1== error_code)
-						{
-/*
-							if (errno== EAGAIN || errno== EWOULDBLOCK)
-							{
-                                data->cur_len= len- data->len;
-								if (5== id)
-								{
-                                    auto orgin= data.get();
-                                    data.release();
-                                    FD_CLR(data->socket,&rest_save);
-									//Task task(std::make_pair(&AsyncDBitField,orgin));
-									//thread_pool->Push(&task);
-									AsyncDBitField(orgin);
-                                    continue;
-								}
-								else if (7== id)
-								{
-                                    auto orgin= data.get();
-                                    data.release();
-                                    FD_CLR(data->socket,&rset_save);
-									//Task task(std::make_pair(&AsyncDPiece,orgin));
-									//thread_pool->Push(&task);
-									AsyncDPiece(orgin);
-                                    continue;
-								}
-							}
-*/
-                            peer_manager->CloseSocket(data->socket);
-                            FD_CLR(data->socket,&rset_save);
-                            continue;
-						}
-                        //success recv all data
-                        data->cur_len= len;
-                        //Task task;
-                        auto orgin= data.get();
-                        data.release();
-                        //task.second= orgin;
-                        if (4== id)
-                        {
-                            //task.first= &DHave;
-                            //thread_pool->Push(&task);
-							DHave(orgin);
-                            continue;
-                        }
-                        else if (5== id)
-                        {
-                            //task.first= &DBitField;
-                            //thread_pool->Push(&task);
-							DBitField(orgin);
-                            continue;
-                        }
-                        else if (6== id)
-                        {
-                            //task.first= &DRequest;
-                            //thread_pool->Push(&task);
-							DRequest(orgin);
-                            continue;
-                        }
-                        else if (7== id)
-                        {
-                            //task.first= &DPiece;
-                            //thread_pool->Push(&task);
-                            FD_CLR(orgin->socket,&rset_save);
-							DPiece(orgin);
-                            continue;
-                        }
-                        else if (8== id)
-                        {
-                            //task.first= &DCancle;
-                            //thread_pool->Push(&task);
-                            DCancle(orgin);
-                            continue;
-                        }
-                        else if (9== id)
-                        {
-                            //task.first= &DPort;
-                            //thread_pool->Push(&task);
-                            DPort(orgin);
-                            continue;
-                        }
-					}
+					//set horizontal mark
+					int lowat= 4;
+					setsockopt(val,SOL_SOCKET,SO_RCVLOWAT,&lowat,sizeof(lowat));
+					if (val > fd_max)
+						fd_max= val;
+					FD_SET(val,&rset);
 				}
 			}
-		}
+			
+			if ((code = select(fd_max+ 1,&rset,NULL,NULL,&time_out))>= 0)
+			{
+				//update status
+				auto stop= butil::gettimeofday_s();
+				if (stop- calculate_start>= 10)
+				{
+					down_speed->CalculateSpeed();
+					calculate_start= stop;
+				}
+				if (stop- optimistic_start>= 30)
+				{
+					peer_manager->Optimistic();
+					optimistic_start= stop;
+				}
+				if (0 == code)
+				{
+					//time out
+					Csz::ErrMsg("[Select Switch Run]->time out");
+					break;
+				}
+				//3.switch
+				int32_t len= 0;
+				for (const auto& val : peer_list)
+				{
+#ifdef CszTest
+					if (val< 0)
+					{
+						Csz::LI("[Select Switch Run]->failed,socket< 0");
+						continue;
+					}
+#endif
+					if (FD_ISSET(val,&rset))
+					{
+						--code;
+						//TODO time out
+						int error_code= recv(val,(char*)&len,4,MSG_WAITALL);
+						//fix bug
+						len= ntohl(len);
+						if (4== error_code)
+						{
+							//catch message
+							//keep alive
+							if (0== len)
+							{
+								DKeepAlive(NULL);
+								continue;
+							}
+							char id;
+							error_code= recv(val,&id,1,MSG_DONTWAIT);
+							if (error_code!= 1)
+							{
+								//100ms
+								bthread_usleep(100000);
+								error_code= recv(val,&id,1,MSG_DONTWAIT);
+							}
+							if (error_code!= 1)
+							{	
+								peer_manager->CloseSocket(val);
+								continue;
+							}
+                        
+							//normal socket
+							//thorw exception new
+							std::unique_ptr<Parameter> data(new(std::nothrow) Parameter());
+							if (nullptr== data)
+							{
+								//TODO wait,bug socket already take data(eg len and id),should close socket
+								Csz::ErrMsg("[Select Switch Run]->failed,new parameter is nullptr");
+								peer_manager->CloseSocket(val);
+								continue;
+							}
+							data->socket= val;
+#ifdef CszTest
+							Csz::LI("[Select Switch Run]socket=%d",data->socket);
+#endif
+							if(0== id)
+							{
+								auto orgin= data.get();
+								data.release();
+								DChoke(orgin);
+								continue;
+							}
+							else if(1== id)
+							{
+								auto orgin= data.get();
+								data.release();
+								DUnChoke(orgin);
+								continue;
+							}
+							else if(2== id)
+							{
+								auto orgin= data.get();
+								data.release();
+								DInterested(orgin);
+								continue;
+							}
+							else if(3== id)
+							{
+								auto orgin= data.get();
+								data.release();
+								DUnInterested(orgin);
+								continue;
+							}
+#ifdef CszTest
+							Csz::LI("[Select Switch Run]->id=%d,len=%d",(int)id,len-1);
+#endif
+							//reduce id len
+							--len;
+							data->buf= new(std::nothrow) char[len];
+							if (nullptr== data->buf)
+							{
+								//TODO wait,bug socket already take data(eg len and id),should close socket
+								Csz::ErrMsg("[Select Switch Run]->failed,new buf is nullptr");
+								peer_manager->CloseSocket(data->socket);
+								continue;
+							}
+							data->len= len;
+							error_code= Csz::RecvTimeP_us(data->socket,data->buf,reinterpret_cast<int32_t*>(&data->len),TIMEOUT1000MS);
+							if (-1== error_code)
+							{
+								peer_manager->CloseSocket(data->socket);
+								continue;
+							}
+							//success recv all data
+							data->cur_len= len;
+							//Task task;
+							auto orgin= data.get();
+							data.release();
+							//task.second= orgin;
+							if (4== id)
+							{
+								//task.first= &DHave;
+								//thread_pool->Push(&task);
+								DHave(orgin);
+								continue;
+							}
+							else if (5== id)
+							{
+								//task.first= &DBitField;
+								//thread_pool->Push(&task);
+								DBitField(orgin);
+								continue;
+							}
+							else if (6== id)
+							{
+								//task.first= &DRequest;
+								//thread_pool->Push(&task);
+								DRequest(orgin);
+								continue;
+							}
+							else if (7== id)
+							{
+								//task.first= &DPiece;
+								//thread_pool->Push(&task);
+								DPiece(orgin);
+								continue;
+							}
+							else if (8== id)
+							{
+								//task.first= &DCancle;
+								//thread_pool->Push(&task);
+								DCancle(orgin);
+								continue;
+							}
+							else if (9== id)
+							{
+								//task.first= &DPort;
+								//thread_pool->Push(&task);
+								DPort(orgin);
+								continue;
+							}
+						}
+						else
+						{
+							peer_manager->CloseSocket(val);
+						}//recv len != 4
+					}//IS_SET
+				}//for
+			}//select
+		}//while
 		if (code < 0)
 			Csz::ErrRet("[Select Switch]->failed,not do sure:");
+#ifdef CszTest
+		Csz::LI("[Select Switch Run total=%d]",total);
+#endif
 		return false;
 	}
 
@@ -521,12 +509,10 @@ namespace Csz
         if (!real_end_slice.first && SLICESIZE!= length)
         {
             Csz::ErrMsg("[Select Switch piece]->recv piece is error,slice !=%d",SLICESIZE);
-            FD_SET(T_data->socket,&rset_save);
             return ;
         }
         if (real_end_slice.first && real_end_slice.second!= length)
         {
-            FD_SET(T_data->socket,&rset_save);
             Csz::ErrMsg("[Select Switch piece]->recv piece is error,slice !=%d",real_end_slice.second);
             return ;
         }
@@ -534,7 +520,6 @@ namespace Csz
         auto need_piece= NeedPiece::GetInstance();
         if (!need_piece->SetIndexW(index))
         {
-            FD_SET(T_data->socket,&rset_save);   
             Csz::ErrMsg("[Select Switch piece]->index alread lock,index=%d",index);
             return ;
         }
@@ -547,7 +532,6 @@ namespace Csz
         }
         else
         {
-            FD_SET(T_data->socket,&rset_save);
             need_piece->UnLockIndex(index);
 			Csz::ErrMsg("[Select Switch piece]->write memory failed");
             return ;
@@ -603,7 +587,7 @@ namespace Csz
         }
         if (code> 0 && fill== size && local_bit_field->CheckBitField(index))
         {
-            FD_SET(T_data->socket,&rset_save);
+			;
         }
         else
         {

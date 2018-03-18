@@ -60,7 +60,6 @@ int main(int argc,char** argv)
 
 	Csz::TorrentFile::GetInstance()->GetTrackInfo(&tracker);
 
-	tracker.Connect();
 	Csz::LocalBitField::GetInstance()->SetParameter(std::string(Csz::TorrentFile::GetInstance()->GetIndexBitTotal(),0),
 													Csz::TorrentFile::GetInstance()->GetIndexTotal());
 
@@ -69,15 +68,16 @@ int main(int argc,char** argv)
 										Csz::TorrentFile::GetInstance()->GetIndexNormalLength());
     //60s time out
 	Csz::PeerManager::GetInstance()->LoadPeerList(tracker.GetPeerList(60));
-    Csz::PeerManager::GetInstance()->COutInfo();
     //select
 	{
-		for (int i= 0; i< 1; i++)
+		for (int i= 0; i< 3; i++)
 		if (Csz::SelectSwitch()()== false && !Csz::LocalBitField::GetInstance()->GameOver())
 		{
 			//auto peer_list= tracker.GetPeerList(60);
 			//Csz::PeerManager::GetInstance()->LoadPeerList(peer_list);
 		}
 	}
+	std::cout<<"hello world\n";
+	exit(1);
 	return 0;
 }

@@ -64,7 +64,6 @@ namespace Csz
 {																														\
 			/*TODO lock*/                                                                                               \
 			std::unique_lock<bthread::Mutex> guard(mutex);                                                              \
-			guard.lock();                                                                                               \
 			/*not use flag in after unlock,iterator invalid*/                                                           \
 			auto flag= memory_pool.find(T_index);                                                                       \
             /*1.new memory*/																	                        \
@@ -198,8 +197,11 @@ namespace Csz
             return true;
         }
         //2.deal normal index
-        MEMORYPOOL_DEAL(length_normal);
-        return true;
+		else
+		{
+			MEMORYPOOL_DEAL(length_normal);
+			return true;
+		}
     }
 
 #undef  MEMORYPOOL_DEAL

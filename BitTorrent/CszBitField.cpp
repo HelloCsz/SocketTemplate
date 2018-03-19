@@ -270,7 +270,7 @@ namespace Csz
 		}
 		if (!bit_info.empty())
 		{
-			Csz::LI("%s,%d -> %d = %d",bit_info.c_str(),cur_sum,total,cur_sum/ total);
+			Csz::LI("%s,cur_sum=%d -> total=%d,= %d",bit_info.c_str(),cur_sum,total,cur_sum/ total);
 		}
 		return ;
 	}

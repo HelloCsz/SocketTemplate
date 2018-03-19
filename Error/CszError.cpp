@@ -7,7 +7,7 @@ namespace Csz
 {
 	#define STRBUFMAX 4096
 	//set nonzero by DaemonInit()
-	int daemon_proc= 0;
+	int daemon_proc= 1;
 	//static限制ErrDoit函数的作用范围
 	static void ErrDoit(int,int,const char*,va_list); 
 	//fatal error related to system call

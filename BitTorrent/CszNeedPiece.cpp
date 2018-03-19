@@ -90,10 +90,13 @@ namespace Csz
 			//2.1 check lock piece
 			if (result->index_status & 0x01)
 			{
-				if (time(NULL)- result->expire>= EXPIRETIME)
+                if (!(result->index_status & 0x02))
 				{
-					judge= true;
-				}
+                    if (time(NULL)- result->expire>= NEEDEXPIRETIME)
+				    {
+					    judge= true;
+				    }
+                }
 			}
 			else
 			{
@@ -561,6 +564,13 @@ namespace Csz
 #ifdef CszTest
             Csz::LI("[Need Piece send req]->index=%d,socket=%d",ret.first,fd);
 #endif
+            if (!peer_manager->ReqPiece(fd))
+            {
+#ifdef CszTest
+                Csz::LI("[Need Piece send req]->index=%d,socket=%d,alread request piece",ret.first,fd);
+#endif
+                continue;
+            }
             //socket mutex
             auto mutex= peer_manager->GetSocketMutex(fd);
             if (nullptr== mutex)

@@ -35,7 +35,7 @@ namespace Csz
         }
         for (auto& val : peer_list)
         {
-            if (val.first>= 0)
+            if (val.first>= 0 && 0==(((val.second)->status).recv_piece))
                 ret.emplace_back(val.first);
         }
         pthread_rwlock_unlock(&lock);
@@ -878,6 +878,102 @@ namespace Csz
         pthread_rwlock_unlock(&lock);
 		return ;
 	}
+
+    bool PeerManager::ReqPiece(int T_socket)
+    {
+#ifdef CszTest
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+#endif
+        bool ret= false;
+        if (T_socket< 0)
+        {
+            Csz::ErrMsg("[Peer Manager req piece]->failed,socket< 0");
+            return ret;
+        }
+        if (pthread_rwlock_wrlock(&lock)!= 0)
+        {
+            Csz::ErrMsg("[Peer Manager req piece]->failed,write lock failed");
+            return ret;
+        }
+        auto flag= peer_list.find(T_socket);
+        if (flag!= peer_list.end())
+        {
+            if ((flag->second->status).request_piece)
+            {
+                if (!(flag->second->status).recv_piece)
+                {
+                    if (time(NULL)- flag->second->expire>= PEERPIECETIME)
+                    {
+                        ret= true;
+                        flag->second->expire= time(NULL);
+                    }
+                }
+            }
+            else
+            {
+                ret= true;
+                (flag->second->status).request_piece= 1;
+                flag->second->expire= time(NULL);
+            }
+        }
+        pthread_rwlock_unlock(&lock);
+        return ret;
+    }
+
+    bool PeerManager::RecvPiece(int T_socket)
+    {
+#ifdef CszTest
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+#endif
+        bool ret= false;
+        if (T_socket< 0)
+        {
+            Csz::ErrMsg("[Peer Manager recv piece]->failed,socket< 0");
+            return ret;
+        }
+        if (pthread_rwlock_wrlock(&lock)!= 0)
+        {
+            Csz::ErrMsg("[Peer Manager recv piece]->failed,write lock failed");
+            return ret;
+        }
+        auto flag= peer_list.find(T_socket);
+        if (flag!= peer_list.end())
+        {
+            if (!(flag->second->status).recv_piece)
+            {
+                ret= true;
+                (flag->second->status).recv_piece= 1;
+            }
+        }
+        pthread_rwlock_unlock(&lock);
+        return ret;
+    }
+
+    void PeerManager::ClearPieceStatus(int T_socket)
+    {
+#ifdef CszTest
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+#endif
+        if (T_socket< 0)
+        {
+            Csz::ErrMsg("[Peer Manager clear piece status]->failed,socket< 0");
+            return ;
+        }
+        if (pthread_rwlock_wrlock(&lock)!= 0)
+        {
+            Csz::ErrMsg("[Peer Manager clear piece status]->failed,write lock failed");
+            return ;
+        }
+        auto flag= peer_list.find(T_socket);
+        if (flag!= peer_list.end())
+        {
+            flag->second->expire= 0;
+            (flag->second->status).request_piece= 0;
+            (flag->second->status).recv_piece= 0;
+        }
+        pthread_rwlock_unlock(&lock);
+        return ;
+    }
 
 	void PeerManager::COutInfo() const
 	{

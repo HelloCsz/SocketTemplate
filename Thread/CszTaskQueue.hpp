@@ -65,8 +65,8 @@ namespace Csz
 		}
 		std::pop_heap(task_queue.begin(),task_queue.end(),TQComp);
 		auto& ret= task_queue.back();
-		T_task->first= std::move(ret->func);
-		T_task->second= ret->parameter;
+		T_task->first= std::move(ret.func);
+		T_task->second= ret.parameter;
 		task_queue.pop_back();
 		guard.unlock();
 		push_cond.notify_one();

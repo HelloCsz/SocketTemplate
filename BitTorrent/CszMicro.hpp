@@ -29,7 +29,7 @@
 
 //
 //Slice Size
-#define SLICESIZE       (1460* 1024)
+#define SLICESIZE       (16* 1024)
 
 //socket timeout s to us
 #define TIMEOUT300MS	{300000}
@@ -40,7 +40,10 @@
 //in select switch operator()
 #define THREADNUM		(150)
 
-//NeedPiece
-#define EXPIRETIME		(60* 2)
+//NeedPiece index
+#define NEEDEXPIRETIME		(2* 60)
+
+//Peer wait piece time
+#define PEERPIECETIME       (1* 30)
 
 #endif //CszMICRO_HPP

@@ -308,6 +308,7 @@ namespace Csz
             return ;
         }     
 		queue.sort(DSComp);
+        uint32_t speed= 0;
 		//send
 		auto peer_manager= PeerManager::GetInstance();
 		int unchoke_count= 4;
@@ -316,6 +317,7 @@ namespace Csz
 		//TODO die lock(may be),PeerManager call DownSpeed,alter socket status
 		for (auto & val : queue)
 		{
+            speed+= val.total;
             //bug
             //interested not have 4 num
 			if (val.status.peer_interested && unchoke_count> 0)
@@ -327,6 +329,7 @@ namespace Csz
 			{
                 result.emplace_back(std::make_pair(true,val.socket));
 			}
+            val.total= 0;
 		}
         pthread_rwlock_unlock(&lock);
         //unlock
@@ -345,7 +348,9 @@ namespace Csz
 #ifdef CszTest
         Csz::LI("[Down Speed calculate speed]INFO:");
         COutInfo();
+        LocalBitField::GetInstance()->ProgressBar();
 #endif
+        std::cout<<"speed="<<speed/ 1024<<"kb"<<"\n";
 		return ;
 	}
 

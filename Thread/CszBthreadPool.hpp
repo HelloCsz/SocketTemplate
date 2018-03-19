@@ -28,7 +28,7 @@ namespace Csz
 	template<class Parameter,int TASKNUM>
 	bool BthreadPool<Parameter,TASKNUM>::Pop(typename TaskQueue<Parameter,TASKNUM>::Type* T_task)
 	{
-		return task_list.Push(T_task);
+		return task_list.Pop(T_task);
 	}
 
 
@@ -36,7 +36,7 @@ namespace Csz
 	void* BthreadPool<Parameter,TASKNUM>::Run(void* T_this)
 	{       
 		auto cur_this= static_cast<BthreadPool*>(T_this);
-		TaskQueue<Parameter,TASKNUM> task;
+		typename TaskQueue<Parameter,TASKNUM>::Type task;
 		while (cur_this->Pop(&task))
 		{
 			task.first(task.second);

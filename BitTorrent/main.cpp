@@ -34,6 +34,7 @@ int main(int argc,char** argv)
     Csz::NeedPiece::GetInstance();
     Csz::DownSpeed::GetInstance();
     Csz::BitMemory::GetInstance();
+    Csz::SingletonThread<Csz::SelectSwitch::Parameter,THREADNUM>::GetInstance()->Init(4);
 	Csz::Tracker tracker;
 	//计算info hash val
 	{

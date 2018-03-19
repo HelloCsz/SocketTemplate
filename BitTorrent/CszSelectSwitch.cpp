@@ -39,12 +39,13 @@ namespace Csz
 		while (true)
 		{
 			auto peer_list= std::move(peer_manager->RetSocketList());
+/*
 			if (peer_list.empty())
 			{
 				Csz::ErrMsg("[Select Switch Run]->can't switch message type,peer list is empty");
 				break;
 			}
-
+*/
 			//1.set check record
 			fd_set rset;
 			int fd_max= -1;
@@ -101,7 +102,14 @@ namespace Csz
 						int error_code= recv(val,(char*)&len,4,MSG_WAITALL);
 						//fix bug
 						len= ntohl(len);
-						if (4== error_code)
+						if (error_code!= 4)
+						{
+#ifdef CszTest
+                            Csz::LI("[Select Switch Run]->failed,socket recv_code=%d",error_code);
+#endif
+							peer_manager->CloseSocket(val);
+						}//recv len != 4
+						else if (4== error_code)
 						{
 							//catch message
 							//keep alive
@@ -188,57 +196,58 @@ namespace Csz
 							}
 							//success recv all data
 							data->cur_len= len;
-							//Task task;
+							Task task;
 							auto orgin= data.get();
 							data.release();
-							//task.second= orgin;
+							task.second= orgin;
 							if (4== id)
 							{
-								//task.first= &DHave;
-								//thread_pool->Push(&task);
-								DHave(orgin);
+								task.first= &DHave;
+								thread_pool->Push(&task);
+								//DHave(orgin);
 								continue;
 							}
 							else if (5== id)
 							{
-								//task.first= &DBitField;
-								//thread_pool->Push(&task);
-								DBitField(orgin);
+								task.first= &DBitField;
+								thread_pool->Push(&task);
+								//DBitField(orgin);
 								continue;
 							}
 							else if (6== id)
 							{
-								//task.first= &DRequest;
-								//thread_pool->Push(&task);
-								DRequest(orgin);
+								task.first= &DRequest;
+								thread_pool->Push(&task);
+								//DRequest(orgin);
 								continue;
 							}
 							else if (7== id)
 							{
-								//task.first= &DPiece;
-								//thread_pool->Push(&task);
-								DPiece(orgin);
+                                if (!(peer_manager->RecvPiece(orgin->socket)))
+                                {
+                                    Csz::ErrMsg("[Select Switch Run]->socket=%d alread recv other index",orgin->socket);
+                                    continue;
+                                }   
+								task.first= &DPiece;
+								thread_pool->Push(&task);
+								//DPiece(orgin);
 								continue;
 							}
 							else if (8== id)
 							{
-								//task.first= &DCancle;
-								//thread_pool->Push(&task);
-								DCancle(orgin);
+								task.first= &DCancle;
+								thread_pool->Push(&task);
+								//DCancle(orgin);
 								continue;
 							}
 							else if (9== id)
 							{
-								//task.first= &DPort;
-								//thread_pool->Push(&task);
-								DPort(orgin);
+								task.first= &DPort;
+								thread_pool->Push(&task);
+								//DPort(orgin);
 								continue;
 							}
-						}
-						else
-						{
-							peer_manager->CloseSocket(val);
-						}//recv len != 4
+						}//recv len== 4
 					}//IS_SET
 				}//for
 			}//select
@@ -246,7 +255,7 @@ namespace Csz
 		if (code < 0)
 			Csz::ErrRet("[Select Switch]->failed,not do sure:");
 #ifdef CszTest
-		Csz::LI("[Select Switch Run total=%d]",total);
+		//Csz::LI("[Select Switch Run total=%d]",total);
 #endif
 		return false;
 	}
@@ -516,14 +525,23 @@ namespace Csz
             Csz::ErrMsg("[Select Switch piece]->recv piece is error,slice !=%d",real_end_slice.second);
             return ;
         }
-
+        //bug multi thread meanwhile recv one socket
+        auto peer_manager= PeerManager::GetInstance();
+/*
+        if (!(peer_manager->RecvPiece(T_data->socket)))
+        {
+            Csz::ErrMsg("[Select Switch piece]->socket=%d alread recv other index",T_data->socket);
+            return ;
+        }   
+*/            
         auto need_piece= NeedPiece::GetInstance();
         if (!need_piece->SetIndexW(index))
         {
+            peer_manager->ClearPieceStatus(T_data->socket);   
             Csz::ErrMsg("[Select Switch piece]->index alread lock,index=%d",index);
             return ;
         }
-
+        
         auto down_speed= DownSpeed::GetInstance()->GetInstance();
         //1.write memory
         if (true== BitMemory::GetInstance()->Write(index,begin,T_data->buf+ 8,length))
@@ -532,10 +550,15 @@ namespace Csz
         }
         else
         {
+            peer_manager->ClearPieceStatus(T_data->socket);
             need_piece->UnLockIndex(index);
 			Csz::ErrMsg("[Select Switch piece]->write memory failed");
             return ;
         }
+
+#ifdef CszTest
+        Csz::LI("[Select Switch piece]->success lock index=%d,socket=%d",index,T_data->socket);
+#endif
 
         //2.lock piece
         std::vector<uint8_t> over(torrent_file->GetPieceBit(index),0);
@@ -580,7 +603,7 @@ namespace Csz
                     }
                 }
             }
-            if (code< 0)
+            if (code<= 0)
             {    
                 break;
             }  
@@ -592,8 +615,9 @@ namespace Csz
         else
         {
 		    need_piece->UnLockIndex(index);
-            PeerManager::GetInstance()->CloseSocket(T_data->socket);
+            peer_manager->CloseSocket(T_data->socket);
         }
+        peer_manager->ClearPieceStatus(T_data->socket);
         return ;
 	}
     
@@ -609,24 +633,25 @@ namespace Csz
             auto mutex= PeerManager::GetInstance()->GetSocketMutex(T_socket);
             if (nullptr== mutex)
             {
-                Csz::ErrMsg("[Select Switch look piece]->failed,return mutex is nullptr");
+                Csz::ErrMsg("[Select Switch look_piece]->failed,return mutex is nullptr");
                 return 0;
             }
             std::lock_guard<bthread::Mutex> mutex_guard(*mutex);
-            if (send(T_socket,request.GetSendData(),request.GetDataSize(),0)!= T_length)
+            if (send(T_socket,request.GetSendData(),request.GetDataSize(),0)!= request.GetDataSize())
             {
-                Csz::ErrMsg("[Select Switch lock piece]->failed,send size!=%d",T_length);
+                Csz::ErrMsg("[Select Switch lock_piece]->failed,send size!=%d",request.GetDataSize());
                 return 0;
             }
         }
         int ret= 0;
-        for (int i= 0; i< 3; ++i)
+        for (int i= 0; i< 6; ++i)
         {
             int32_t len;
+            //int error_code= recv(T_socket,(char*)&len,sizeof(len),0);
 		    int error_code= Csz::RecvTime_us(T_socket,(char*)&len,sizeof(len),TIMEOUT3000MS);
 			//fix bug
 			len= ntohl(len);
-			if (4== error_code)
+			if (0== error_code)
 			{
 				//catch message
 				//keep alive
@@ -654,7 +679,7 @@ namespace Csz
 				if (nullptr== data)
 				{
                     //TODO wait,bug socket already take data(eg len and id),should close socket
-					Csz::ErrMsg("[Select Switch lock piece]->failed,new parameter is nullptr");
+					Csz::ErrMsg("[Select Switch lock_piece]->failed,new parameter is nullptr");
 					break;
 			    }
 				data->socket= T_socket;
@@ -688,7 +713,7 @@ namespace Csz
                     continue;
                 }
 #ifdef CszTest
-                Csz::LI("[Select Switch lock piece]->id=%d,len=%d",(int)id,len-1);
+                Csz::LI("[Select Switch lock_piece]->id=%d,len=%d,socket=%d",(int)id,len-1,T_socket);
 #endif
 				//reduce id len
 			    --len;
@@ -696,7 +721,7 @@ namespace Csz
 			    if (nullptr== data->buf)
 				{
                     //TODO wait,bug socket already take data(eg len and id),should close socket
-					Csz::ErrMsg("[Select Switch lock piece]->failed,new buf is nullptr");
+					Csz::ErrMsg("[Select Switch lock_piece]->failed,new buf is nullptr");
 					break;
 				}
 			    data->len= len;
@@ -751,7 +776,7 @@ namespace Csz
                     }
                     else
                     {
-                        Csz::ErrMsg("[Select Switch lock piece]->recv other piece");
+                        Csz::ErrMsg("[Select Switch lock_piece]->recv other piece");
                         //TODO delete i
                         --i;
                         continue;
@@ -774,6 +799,9 @@ namespace Csz
             }
             else
             {
+#ifdef CszTest
+                Csz::LI("[Select Switch lock_piece]->failed,socket=%d,index=%d,begin=%d,error_code=%d,len=%d,i=%d",T_socket,T_index,T_begin,error_code,len,i);
+#endif
                 break;
             }
         }

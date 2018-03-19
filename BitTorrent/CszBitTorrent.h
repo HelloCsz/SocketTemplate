@@ -210,12 +210,14 @@ namespace Csz
     //Peer Status
     struct PeerStatus
     {
-        PeerStatus():am_choke(1),am_interested(0),peer_choke(1),peer_interested(0),unused(0){}
+        PeerStatus():am_choke(1),am_interested(0),peer_choke(1),peer_interested(0),request_piece(0),recv_piece(0),unused(0){}
         unsigned char am_choke:1;
         unsigned char am_interested:1;
         unsigned char peer_choke:1;
         unsigned char peer_interested:1;
-        unsigned char unused:4;
+        unsigned char request_piece:1;
+        unsigned char recv_piece:1;
+        unsigned char unused:2;
     };
 
     class PeerManager
@@ -257,6 +259,9 @@ namespace Csz
 			void PrUnInterested(int T_socket);
 			void Optimistic();
             void SetHadFile(){had_file= true;}
+            bool ReqPiece(int T_socket);
+            bool RecvPiece(int T_socket);
+            void ClearPieceStatus(int T_socket);
 			void COutInfo()const;
         private:
             void _LoadPeerList(const std::string& T_socket_list);
@@ -267,8 +272,10 @@ namespace Csz
             bool had_file;
             struct DataType
             {
+                DataType():id(0),expire(0){}
 				PeerStatus status;
                 int id;
+                uint32_t expire;
                 std::shared_ptr<bthread::Mutex> mutex;
             };
             //socket have singleton id
@@ -911,15 +918,15 @@ namespace Csz
 			Parameter():socket(-1),len(0),buf(nullptr),cur_len(0)
             {
 #ifdef  CszTest
-                ++total;
-                Csz::LI("[Select Switch parameter]->constructor->%s->%s->%d",__FILE__,__func__,__LINE__);
+                //++total;
+                //Csz::LI("[Select Switch parameter]->constructor->%s->%s->%d",__FILE__,__func__,__LINE__);
 #endif
             }
 			~Parameter()
             {
 #ifdef CszTest
-                --total;
-                Csz::LI("[Select Switch parameter]->destructor->%s->%s->%d",__FILE__,__func__,__LINE__);
+               // --total;
+               // Csz::LI("[Select Switch parameter]->destructor->%s->%s->%d",__FILE__,__func__,__LINE__);
 #endif
                 if (buf!= nullptr) 
                 {

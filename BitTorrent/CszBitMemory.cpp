@@ -225,6 +225,7 @@ namespace Csz
                 resource_pool->return_resource(val.id);
             }
             (flag->second->data).clear();
+            //TODO delete flag
         }
         else
         {

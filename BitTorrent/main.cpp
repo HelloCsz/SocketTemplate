@@ -54,10 +54,12 @@ int main(int argc,char** argv)
 	    Csz::HandShake::GetInstance()->SetParameter(nullptr,info_buf,tracker.GetAmId().c_str());
 	}
 
-	Csz::BDict match;
-	match.Decode(data);
+	{
+        Csz::BDict match;
+	    match.Decode(data);
 
-	match.ReadData("",Csz::TorrentFile::GetInstance());
+	    match.ReadData("",Csz::TorrentFile::GetInstance());
+    }
 
 	Csz::TorrentFile::GetInstance()->GetTrackInfo(&tracker);
 
@@ -69,18 +71,17 @@ int main(int argc,char** argv)
 										Csz::TorrentFile::GetInstance()->GetIndexNormalLength());
     //60s time out
 	Csz::PeerManager::GetInstance()->LoadPeerList(tracker.GetPeerList(60));
+    auto start= time(NULL);
     //select
 	{
-		for (int i= 0; i< 6; i++)
-		{
-			if (Csz::SelectSwitch()()== false && !Csz::LocalBitField::GetInstance()->GameOver())
-			{
-				auto peer_list= tracker.GetPeerList(60);
-				Csz::PeerManager::GetInstance()->LoadPeerList(peer_list);
-			}
+	    while (Csz::SelectSwitch()()== false && !Csz::LocalBitField::GetInstance()->GameOver())
+	    {
+		    auto peer_list= tracker.GetPeerList(60);
+			Csz::PeerManager::GetInstance()->LoadPeerList(peer_list);
 		}
 	}
-	std::cout<<"hello world\n";
-	exit(1);
+    auto stop= time(NULL);
+	std::cout<<"hello world:"<<stop- start<<"\n";
+	//exit(1);
 	return 0;
 }

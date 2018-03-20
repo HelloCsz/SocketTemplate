@@ -3,8 +3,9 @@
 
 namespace Csz
 {
-	HttpRequest::HttpRequest():head_end("\r\n\r\n")
-	{
+	HttpRequest::HttpRequest()
+    {
+        head_end.assign("\r\n\r\n");
         //first line may be at header after write
 		data.push_back("");
 	}

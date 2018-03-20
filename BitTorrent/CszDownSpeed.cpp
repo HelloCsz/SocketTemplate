@@ -8,27 +8,29 @@ namespace Csz
 #ifdef CszTest
         Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
 #endif
+        //RAII LOCK
+        if (0!= pthread_rwlock_wrlock(&lock))
+        {
+            Csz::ErrMsg("[Down Speed]->failed,write lock failed");
+            return ;
+        }
+
 		if (queue.empty())
 		{
 			Csz::ErrMsg("[Down Speed]->add total failed,queue is empty");
 			return ;
 		}
+
 		for (auto& val : queue)
 		{
 			if (T_socket== val.socket)
 			{
-                //RAII LOCK
-                if (0!= pthread_rwlock_wrlock(&lock))
-                {
-                    Csz::ErrMsg("[Down Speed]->failed,write lock failed");
-                    break;
-                }
 				val.total+= T_speed;
-                pthread_rwlock_unlock(&lock);
-                //unlock
 				break;
 			}
 		}
+        pthread_rwlock_unlock(&lock);
+        //unlock
 		return ;
 	}
 
@@ -53,7 +55,7 @@ namespace Csz
 		std::vector<int> ret;
 		ret.reserve(5);
         int count= 0;
-        //lock
+        //TODO RAII lock
         if (0!= pthread_rwlock_rdlock(&lock))
         {
             Csz::ErrMsg("[Down Speed ret socket]->failed,read lock failed");
@@ -72,7 +74,6 @@ namespace Csz
         }
         pthread_rwlock_unlock(&lock);
         //unlock
-
 		return std::move(ret);
 	}
 
@@ -125,20 +126,21 @@ namespace Csz
 #ifdef CszTest
         Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
 #endif
+        if (0!= pthread_rwlock_wrlock(&lock))
+        {
+            Csz::ErrMsg("[Down Speed am choke]->failed,write lock failed");
+            return ;
+        }
 		for (auto& val : queue)
 		{
 			if (val.socket== T_socket)
 			{
-                if (0!= pthread_rwlock_wrlock(&lock))
-                {
-                    Csz::ErrMsg("[Down Speed am choke]->failed,write lock failed");
-                    break;
-                }
 				val.status.am_choke= 1;
-                pthread_rwlock_unlock(&lock);
 				break;
 			}
 		}
+        pthread_rwlock_unlock(&lock);
+        //unlock
 		return ;
 	}
 
@@ -147,20 +149,21 @@ namespace Csz
 #ifdef CszTest
         Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
 #endif
+        if (0!= pthread_rwlock_wrlock(&lock))
+        {
+            Csz::ErrMsg("[Down Speed am unchoke]->failed,write lock failed");
+            return ;
+        }
 		for (auto& val : queue)
 		{
 			if (val.socket== T_socket)
 			{
-                if (0!= pthread_rwlock_wrlock(&lock))
-                {
-                    Csz::ErrMsg("[Down Speed am unchoke]->failed,write lock failed");
-                    break;
-                }
 				val.status.am_choke= 0;
-                pthread_rwlock_unlock(&lock);
 				break;
 			}
 		}
+        pthread_rwlock_unlock(&lock);
+        //unlock
 		return ;
 	}
 
@@ -169,20 +172,21 @@ namespace Csz
 #ifdef CszTest
         Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
 #endif
+        if (0!= pthread_rwlock_wrlock(&lock))
+        {
+            Csz::ErrMsg("[Down Speed am interested]->failed,write lock failed");
+            return ;
+        }
 		for (auto& val : queue)
 		{
 			if (val.socket== T_socket)
 			{
-                if (0!= pthread_rwlock_wrlock(&lock))
-                {
-                    Csz::ErrMsg("[Down Speed am interested]->failed,write lock failed");
-                    break;
-                }
 				val.status.am_interested= 1;
-                pthread_rwlock_unlock(&lock);
 				break;
 			}
 		}
+        pthread_rwlock_unlock(&lock);
+        //unlock
 		return ;
 	}
 
@@ -191,20 +195,21 @@ namespace Csz
 #ifdef CszTest
         Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
 #endif
+        if (0!= pthread_rwlock_wrlock(&lock))
+        {
+            Csz::ErrMsg("[Down Speed am uninterested]->failed,write lock failed");
+            return ;
+        }
 		for (auto& val : queue)
 		{
 			if (val.socket== T_socket)
 			{
-                if (0!= pthread_rwlock_wrlock(&lock))
-                {
-                    Csz::ErrMsg("[Down Speed am uninterested]->failed,write lock failed");
-                    break;
-                }
 				val.status.am_interested= 0;
-                pthread_rwlock_unlock(&lock);
 				break;
 			}
 		}
+        pthread_rwlock_unlock(&lock);
+        //unlock
 		return ;
 	}
 
@@ -213,20 +218,21 @@ namespace Csz
 #ifdef CszTest
         Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
 #endif
+        if (0!= pthread_rwlock_wrlock(&lock))
+        {
+            Csz::ErrMsg("[Down Speed pr choke]->failed,write lock failed");
+            return ;
+        }
 		for (auto& val : queue)
 		{
 			if (val.socket== T_socket)
 			{
-                if (0!= pthread_rwlock_wrlock(&lock))
-                {
-                    Csz::ErrMsg("[Down Speed pr choke]->failed,write lock failed");
-                    break;
-                }
 				val.status.peer_choke= 1;
-                pthread_rwlock_unlock(&lock);
 				break;
 			}
 		}
+        pthread_rwlock_unlock(&lock);
+        //unlock
 		return ;
 	}
 
@@ -235,20 +241,21 @@ namespace Csz
 #ifdef CszTest
         Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
 #endif
+        if (0!= pthread_rwlock_wrlock(&lock))
+        {
+            Csz::ErrMsg("[Down Speed pr unchoke]->failed,write lock failed");
+            return ;
+        }
 		for (auto& val : queue)
 		{
 			if (val.socket== T_socket)
 			{
-                if (0!= pthread_rwlock_wrlock(&lock))
-                {
-                    Csz::ErrMsg("[Down Speed pr unchoke]->failed,write lock failed");
-                    break;
-                }
 				val.status.peer_choke= 0;
-                pthread_rwlock_unlock(&lock);
 				break;
 			}
 		}
+        pthread_rwlock_unlock(&lock);
+        //unlock
 		return ;
 	}
 
@@ -257,20 +264,21 @@ namespace Csz
 #ifdef CszTest
         Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
 #endif
+        if (0!= pthread_rwlock_wrlock(&lock))
+        {
+            Csz::ErrMsg("[Down Speed pr interested]->failed,write lock failed");
+            return ;
+        }
 		for (auto& val : queue)
 		{
 			if (val.socket== T_socket)
 			{
-                if (0!= pthread_rwlock_wrlock(&lock))
-                {
-                    Csz::ErrMsg("[Down Speed pr interested]->failed,write lock failed");
-                    break;
-                }
 				val.status.peer_interested= 1;
-                pthread_rwlock_unlock(&lock);
 				break;
 			}
 		}
+        pthread_rwlock_unlock(&lock);
+        //unlock
 		return ;
 	}
 
@@ -279,20 +287,20 @@ namespace Csz
 #ifdef CszTest
         Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
 #endif
+        if (0!= pthread_rwlock_wrlock(&lock))
+        {
+            Csz::ErrMsg("[Down Speed pr uninterested]->failed,write lock failed");
+            return ;
+        }
 		for (auto& val : queue)
 		{
 			if (val.socket== T_socket)
 			{
-                if (0!= pthread_rwlock_wrlock(&lock))
-                {
-                    Csz::ErrMsg("[Down Speed pr uninterested]->failed,write lock failed");
-                    break;
-                }
 				val.status.peer_interested= 0;
-                pthread_rwlock_unlock(&lock);
 				break;
 			}
 		}
+        pthread_rwlock_unlock(&lock);
 		return ;
 	}
 

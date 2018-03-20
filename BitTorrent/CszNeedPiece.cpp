@@ -126,7 +126,7 @@ namespace Csz
 #ifdef CszTest
 					else
 					{
-						Csz::LI("[Need Piece pop need]->failed,not found id=%d",val.second);
+//						Csz::LI("[Need Piece pop need]->failed,not found id=%d",val.second);
 					}
 #endif
                     pthread_rwlock_unlock(&id_lock);
@@ -567,7 +567,7 @@ namespace Csz
             if (!peer_manager->ReqPiece(fd))
             {
 #ifdef CszTest
-                Csz::LI("[Need Piece send req]->index=%d,socket=%d,alread request piece",ret.first,fd);
+                //Csz::LI("[Need Piece send req]->index=%d,socket=%d,alread request piece",ret.first,fd);
 #endif
                 continue;
             }

@@ -26,7 +26,7 @@ namespace Csz
 
 		timeval time_out;
 		//5min
-		time_out.tv_sec= 30* 10;
+		time_out.tv_sec= 6* 10;
 		time_out.tv_usec= 0;
 		int code;
 		//30s
@@ -81,7 +81,16 @@ namespace Csz
 				{
 					//time out
 					Csz::ErrMsg("[Select Switch Run]->time out");
-					break;
+                    if (peer_list.size()< 35)
+					{ 
+                       break;
+                    }
+                    else
+                    {
+                        time_out.tv_sec= 1* 10;
+                        time_out.tv_usec= 0;
+                        continue;
+                    }
 				}
 				//3.switch
 				int32_t len= 0;
@@ -475,10 +484,11 @@ namespace Csz
 			auto read_byte= file.Read(val.second.first,(&piece_data[0])+ cur_read,val.second.second);
 			if (val.second.second!= read_byte)
 			{
-				Csz::ErrMsg("[Select Switch send piece]->failed,length!= read byte,file name %a",val.first.c_str());
+				Csz::ErrMsg("[Select Switch send piece]->failed,length!= read byte,file name %s",val.first.c_str());
 				file.Close();
 				return ;
 			}
+            file.Close();
 		}
 		Piece piece;
 		piece.SetParameter(T_index,T_begin,piece_data);

@@ -1,4 +1,7 @@
 #include <bitset>
+#include <butil/files/file.h>
+#include <butil/files/file_path.h>
+#include "sha1.h"
 #include "CszBitTorrent.h"
 
 const uint8_t bit_hex[8]={0x80,0x40,0x20,0x10,0x08,0x04,0x02,0x01};
@@ -249,6 +252,64 @@ namespace Csz
 		return true;
 */
 	}
+    
+    void BitField::LoadLocalFile()
+    {
+        auto torrent_file= TorrentFile::GetInstance();
+        std::string sha1_str;
+        std::string sha1_data;
+        sha1_data.resize(20);
+        sha1_str.reserve(torrent_file->GetIndexNormalLength());
+        for (int index= 0,max_index= torrent_file->GetIndexTotal(); index< max_index; ++index)
+        {
+            auto file_name= torrent_file->GetFileName(index);
+            if (file_name.empty())
+            {
+                Csz::ErrQuit("[Bit Field load local file]->failed,file name is empty");
+                return ;
+            }
+            sha1_str.resize(torrent_file->GetPieceLength(index),'\0');
+            int32_t cur_read= 0;
+            for (const auto& val : file_name)
+            {
+                butil::FilePath file_path(val.first);
+                butil::File file(file_path,butil::File::FLAG_OPEN | butil::File::FLAG_READ);
+                if (!file.IsValid())
+                {
+                    Csz::ErrMsg("[Bit Field load local file]->failed,name=%s,%s",val.first.c_str(),butil::File::ErrorToString(file.error_details()).c_str());
+                    file.Close();
+                    continue;
+                }
+
+                auto read_byte= file.Read(val.second.first,(&sha1_str[0])+ cur_read,val.second.second);
+                if (val.second.second!= read_byte && read_byte!= 0)
+                {
+                    Csz::ErrMsg("[Bit Field load local file]->failed,length!= read byte,file name=%s,index=%d,max_index=%d,need=%d,real=%d",val.first.c_str(),index,max_index,val.second.second,read_byte);
+                    file.Close();
+                    exit(0);
+                    return ;
+                }
+                file.Close();
+            }
+
+            Sha1(sha1_str.c_str(),sha1_str.size(),reinterpret_cast<unsigned char*>(&sha1_data[0]));
+            if (sha1_data== torrent_file->GetHash(index))
+            {
+                FillBitField(index);
+            }   
+        }
+        return ;
+    }    
+
+    uint32_t BitField::DownLoad() const
+    {
+        return cur_sum* TorrentFile::GetInstance()->GetIndexNormalLength();
+    }
+
+    uint32_t BitField::LeftSize() const
+    {
+        return (total- cur_sum)* TorrentFile::GetInstance()->GetIndexNormalLength();
+    }
 
 	void BitField::ProgressBar()
 	{
@@ -274,6 +335,8 @@ namespace Csz
 		}
 		return ;
 	}
+
+    
 
 	void BitField::COutInfo() const
 	{

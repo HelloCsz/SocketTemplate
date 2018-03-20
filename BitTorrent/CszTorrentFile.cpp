@@ -9,19 +9,19 @@ namespace Csz
 #endif
 		name_data["announce"]=std::function<void(void*)>([this](void*T_data)
 				{
-					announce_list.push_back(std::move(*((std::string*)T_data)));
+					announce_list.push_back((*((std::string*)T_data)).c_str());
 				});
 		name_data["announce-list"]= std::function<void(void*)>([this](void* T_data)
 				{
-					announce_list.push_back(std::move(*((std::string*)T_data)));
+					announce_list.push_back((*((std::string*)T_data)).c_str());
 				});
 		name_data["comment"]=std::function<void(void*)>([this](void*T_data)
 				{
-					comment= std::move(*((std::string*)T_data));
+					comment.assign((*((std::string*)T_data)).c_str());
 				});
 		name_data["create by"]= std::function<void(void*)>([this](void*T_data)
 				{
-					create_by= std::move(*((std::string*)T_data));
+					create_by.assign((*((std::string*)T_data)).c_str());
 				});
 
 		name_data["creation data"]=std::function<void(void*)>([this](void*T_data)
@@ -35,7 +35,7 @@ namespace Csz
 				});
 		name_data["infopieces"]= std::function<void(void*)>([this](void*T_data)
 				{
-					infos.pieces= std::move(*((std::string*)T_data));
+					infos.pieces.assign((*((std::string*)T_data)).c_str());
 				});
 
 		name_data["infofileslength"]=std::function<void(void*)>([this](void*T_data)
@@ -60,21 +60,21 @@ namespace Csz
 					infos.single= false;
 					if (infos.files.empty())
 					{
-						infos.files.emplace_back(*(std::string*)T_data,0);
+						infos.files.emplace_back(std::string((*(std::string*)T_data).c_str()),0);
 					}
 					else if (infos.files.back().file_path.empty()== 0)
 					{
-						infos.files.back().file_path.assign(std::move(*((std::string*)T_data)));
+						infos.files.back().file_path.assign((*((std::string*)T_data)).c_str());
 					}
 					else
 					{
-						infos.files.emplace_back(*(std::string*)T_data,0);
+						infos.files.emplace_back(std::string((*(std::string*)T_data).c_str()),0);
 					}
 				});
 		
 		name_data["infoname"]= std::function<void(void*)>([this](void* T_data)
 				{
-					infos.name= std::move(*(std::string*)T_data);
+					infos.name.assign((*(std::string*)T_data).c_str());
 				});
 		name_data["infolength"]= std::function<void(void*)>([this](void* T_data)
 				{
@@ -272,8 +272,16 @@ namespace Csz
 			//check begin+ length < sizeof(BT)
 			TorrentFile::FILEINFO data;
 			data.first= infos.name;
-			data.second.first= T_index* infos.piece_length+ T_begin;
-			data.second.second= T_length;
+            if (T_index== GetIndexEnd())
+            {
+                data.second.first= T_index* infos.piece_length;
+                data.second.second= GetFileTotal()- data.second.first;   
+            }
+            else
+			{
+			    data.second.first= T_index* infos.piece_length+ T_begin;
+                data.second.second= T_length;
+            }
 			ret.emplace_back(std::move(data));
 			return std::move(ret);
 		}

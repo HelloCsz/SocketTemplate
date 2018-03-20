@@ -20,10 +20,6 @@ namespace Csz
 #ifdef CszTest
         Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
 #endif
-#ifdef CszTest
-        Csz::LI("[Peer Manager ret socket list]INFO:");
-        COutInfo();
-#endif
         std::vector<int> ret;
         ret.reserve(peer_list.size());
         //TODO RAII lock
@@ -33,6 +29,11 @@ namespace Csz
             Csz::ErrMsg("[Peer Manager ret socket list]->failed,read lock failed");
             return ret;
         }
+
+#ifdef CszTest
+        Csz::LI("[Peer Manager ret socket list]INFO:");
+        COutInfo();
+#endif
         for (auto& val : peer_list)
         {
             if (val.first>= 0 && 0==(((val.second)->status).recv_piece))
@@ -162,9 +163,7 @@ namespace Csz
 #ifdef CszTest
         Csz::LI("[Peer Manager load peer list]connected size=%d",ret.size());
 #endif
-		//6.send bit field
-		if (had_file)
-		    _SendBitField(ret);
+		_SendBitField(ret);
 		//7.recv hand shake and delete failed socket
 		_Verification(ret);
 #ifdef CszTest
@@ -177,6 +176,12 @@ namespace Csz
         auto down_speed= DownSpeed::GetInstance();
         for (const auto& val : ret)
         {
+			//TODO lock id
+			if (0!= pthread_rwlock_wrlock(&lock))
+            {
+                Csz::ErrMsg("[Peer Manager peer list]->failed,write lock failed");
+                continue ;
+            }
 #ifdef CszTest
             if (peer_list.find(val)!= peer_list.end())
             {
@@ -184,12 +189,6 @@ namespace Csz
                 continue;  
             }
 #endif
-			//TODO lock id
-			if (0!= pthread_rwlock_wrlock(&lock))
-            {
-                Csz::ErrMsg("[Peer Manager peer list]->failed,write lock failed");
-                continue ;
-            }
             std::shared_ptr<PeerManager::DataType> data= std::make_shared<PeerManager::DataType>();
 			data->id= cur_id++;
             data->mutex= std::make_shared<bthread::Mutex>();
@@ -237,7 +236,7 @@ namespace Csz
         
         //1.time out
         struct timeval time_val;
-        time_val.tv_sec= 20;
+        time_val.tv_sec= 60;
         time_val.tv_usec= 0;  
         
         FD_ZERO(&wset);
@@ -522,7 +521,9 @@ namespace Csz
             Csz::ErrMsg("[Peer Manager send have]->failed,index< 0");
             return ;
         }
-        std::vector<decltype(peer_list)::const_iterator> del_sockets;
+
+        //bug ,iterator invalid,upon data after unlock delete than down on invalid
+        std::vector<decltype(peer_list)::key_type> del_sockets;
         Have have;
         have.SetParameter(T_index);
         int code;
@@ -539,25 +540,25 @@ namespace Csz
             code= send(start->first,have.GetSendData(),have.GetDataSize(),0);
             if (-1== code || code != have.GetDataSize())
             {
-                del_sockets.emplace_back(start);
+                del_sockets.emplace_back(start->first);
             }      
         }
         pthread_rwlock_unlock(&lock);
         //unlock
-
+        
         if (0!= pthread_rwlock_wrlock(&lock))
         {
             Csz::ErrMsg("[Peer Manager send have]->failed,write lock failed");
             return ;
         }
+
         //TODO lock peer_list 
         for (const auto & val : del_sockets)
         {
-            peer_list.erase(val->first);
+            peer_list.erase(val);
         }
         pthread_rwlock_unlock(&lock);
         //unlock
-
         return ;
     }
     

@@ -25,8 +25,6 @@ namespace Csz
         am_id.assign(std::move(parameter));
         //init http request header
         _InitReq();
-        //init http parameter msg
-        _UpdateReq();
     }
 
 	Tracker::~Tracker()
@@ -145,6 +143,9 @@ namespace Csz
         Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
 #endif
 		Connect();
+        //init http parameter msg
+        _UpdateReq();
+
         std::vector<std::string> ret_str;
 		fd_set wset,rset,rset_save,wset_save;
 		int fd_max= -1;
@@ -340,15 +341,17 @@ namespace Csz
 		parameter.assign("compact=1");
 		SetParameter(std::move(parameter));
 
-		parameter.assign("uploaded=0");
+		parameter.assign("uploaded=");
+        parameter.append(std::to_string(LocalBitField::GetInstance()->DownLoad()));
 		SetParameter(std::move(parameter));
 
-		parameter.assign("downloaded=0");
+		parameter.assign("downloaded=");
+        parameter.append(std::to_string(LocalBitField::GetInstance()->DownLoad()));
 		SetParameter(std::move(parameter));
 
         //TODO update local file
 		parameter.assign("left=");
-		parameter.append(std::to_string(TorrentFile::GetInstance()->GetFileTotal()));
+		parameter.append(std::to_string(LocalBitField::GetInstance()->LeftSize()));
 		SetParameter(std::move(parameter));
 
 		parameter.assign("event=started");

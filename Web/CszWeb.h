@@ -34,7 +34,7 @@ namespace Csz
 			void COutInfo()const;
 #endif
 		private:
-			const std::string head_end;
+			std::string head_end;
 			std::vector<std::string> data;
 	};
 

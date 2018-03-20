@@ -189,6 +189,8 @@ namespace Csz
 			std::vector<std::string> GetPeerList(int T_timeout);
 			//const std::string& GetInfoHash()const {return info_hash;}
 			std::string& GetAmId(){return am_id;}
+            void Stopped();
+            void Completed();
 			void COutInfo();
 		private:
 			void SetParameter(std::string);
@@ -224,7 +226,7 @@ namespace Csz
     {
 		private:
             //PeerManager(const std::vector<std::string> &T_socket_list);
-			PeerManager():cur_id(0),had_file(false)
+			PeerManager():cur_id(0)
             {
 #ifdef CszTest
                 Csz::LI("construct Peer Manager");
@@ -258,7 +260,6 @@ namespace Csz
 			void PrInterested(int T_socket);
 			void PrUnInterested(int T_socket);
 			void Optimistic();
-            void SetHadFile(){had_file= true;}
             bool ReqPiece(int T_socket);
             bool RecvPiece(int T_socket);
             void ClearPieceStatus(int T_socket);
@@ -269,7 +270,6 @@ namespace Csz
             void _Verification(std::vector<int>& T_ret);
 			void _SendBitField(std::vector<int>& T_ret);
         private:
-            bool had_file;
             struct DataType
             {
                 DataType():id(0),expire(0){}
@@ -460,6 +460,7 @@ namespace Csz
                 Csz::LI("constructor Have");
 #endif
 				bzero(have,sizeof(have));
+                //set len
 				*reinterpret_cast<int32_t*>(have)= htonl(5);
 				//set id
 				have[4]= 4;
@@ -533,6 +534,9 @@ namespace Csz
 			std::vector<int32_t> LackNeedPiece(const char* T_bit_field,const int T_len);
 			std::vector<int32_t> LackNeedPiece(const std::string);
 			void ProgressBar();
+            void LoadLocalFile();
+            uint32_t DownLoad() const;
+            uint32_t LeftSize() const;
 			void COutInfo() const;
 		private:
 			void _SetParameter(std::string T_bit_field);
@@ -728,6 +732,7 @@ namespace Csz
             void SetParameter(std::string T_bit_field,int32_t T_total)
             {
                 bit_field.SetParameter(T_bit_field,T_total);
+                //bit_field.LoadLocalFile();
 #ifdef CszTest
                 Csz::LI("[Local Bit Field set parameter]INFO:");
                 COutInfo();
@@ -740,6 +745,8 @@ namespace Csz
                 return bit_field.GetSendData();
             }
             int32_t GetDataSize()const {return bit_field.GetDataSize();}
+            uint32_t DownLoad()const {return bit_field.DownLoad();}
+            uint32_t LeftSize()const {return bit_field.LeftSize();}
 			void COutInfo() const;
 	};
 
@@ -787,8 +794,17 @@ namespace Csz
             //init total
 			void AddSocket(const int T_socket)
 			{
+#ifdef CszTest
+                Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+#endif
+                if (0!= pthread_rwlock_wrlock(&lock))
+                {
+                    Csz::ErrMsg("[Down Speed add socket]->failed,write lock failed");
+                    return ;
+                }
                 DataType data(T_socket);
 				queue.push_back(std::move(data));
+                pthread_rwlock_unlock(&lock);
                 return ;
 			}
 			void AddTotal(const int T_socket,const uint32_t T_speed);

@@ -39,16 +39,16 @@ OBJECTS= $(addsuffix .o, $(basename $(SOURCES)))
 OBJECTS+= $(PROTOS:.proto=.pb.o)
 
 HDR_DIR+= $(BRPC_SRC_DIR)/output/include 
-HDR_DIR+= /usr/include	
+#HDR_DIR+= /usr/include	
 HDR_DIR+= $(PROTOS_DIR)	
 
 LIB_DIR= $(BRPC_SRC_DIR)/output/lib	
-LIB_DIR+= /usr/lib
+#LIB_DIR+= /usr/lib
 
 HDR_INCLUDE= $(addprefix -I, $(HDR_DIR))
 LIB_LINK= $(addprefix -L, $(LIB_DIR))
 
-CXXFLAGS= -g -std=c++11 -W -fsanitize=address -lasan
+CXXFLAGS= -g -std=c++11 -W #-fsanitize=leak -lasan
 STATICLINK_FLAGS= -lgflags -lprotobuf -lbrpc
 DYNAMICLINK_FLAGS= -pthread -lssl 
 

@@ -71,11 +71,13 @@ int main(int argc,char** argv)
 	Csz::PeerManager::GetInstance()->LoadPeerList(tracker.GetPeerList(60));
     //select
 	{
-		for (int i= 0; i< 3; i++)
-		if (Csz::SelectSwitch()()== false && !Csz::LocalBitField::GetInstance()->GameOver())
+		for (int i= 0; i< 6; i++)
 		{
-			//auto peer_list= tracker.GetPeerList(60);
-			//Csz::PeerManager::GetInstance()->LoadPeerList(peer_list);
+			if (Csz::SelectSwitch()()== false && !Csz::LocalBitField::GetInstance()->GameOver())
+			{
+				auto peer_list= tracker.GetPeerList(60);
+				Csz::PeerManager::GetInstance()->LoadPeerList(peer_list);
+			}
 		}
 	}
 	std::cout<<"hello world\n";

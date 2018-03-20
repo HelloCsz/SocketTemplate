@@ -140,6 +140,13 @@ namespace Csz
 		}
 		return std::move(ret_str);
 	}
+
+	void CacheRegio::Clear()
+	{
+		read_ptr= read_buf;
+		read_cnt= 0;
+		return ;
+	}
 }
 
 #undef CACHESIZE

@@ -308,6 +308,10 @@ namespace Csz
             return ;
         }     
 		queue.sort(DSComp);
+#ifdef CszTest
+        Csz::LI("[Down Speed calculate speed]INFO:");
+        COutInfo();
+#endif
         uint32_t speed= 0;
 		//send
 		auto peer_manager= PeerManager::GetInstance();
@@ -345,11 +349,6 @@ namespace Csz
                 peer_manager->AmUnChoke(val.second);
             }
         }
-#ifdef CszTest
-        Csz::LI("[Down Speed calculate speed]INFO:");
-        COutInfo();
-        LocalBitField::GetInstance()->ProgressBar();
-#endif
         std::cout<<"speed="<<speed/ 1024<<"kb"<<"\n";
 		return ;
 	}

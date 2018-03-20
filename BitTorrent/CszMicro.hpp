@@ -36,7 +36,7 @@
 #define TIMEOUT1000MS   (1000000)
 #define TIMEOUT2000MS   (2000000)
 #define TIMEOUT3000MS   (3000000)
-
+#define TIMEOUT6000MS	(6000000)
 //in select switch operator()
 #define THREADNUM		(150)
 

@@ -26,7 +26,7 @@ namespace Csz
 
 		timeval time_out;
 		//5min
-		time_out.tv_sec= 10* 60;
+		time_out.tv_sec= 30* 10;
 		time_out.tv_usec= 0;
 		int code;
 		//30s
@@ -39,13 +39,12 @@ namespace Csz
 		while (true)
 		{
 			auto peer_list= std::move(peer_manager->RetSocketList());
-/*
+
 			if (peer_list.empty())
 			{
 				Csz::ErrMsg("[Select Switch Run]->can't switch message type,peer list is empty");
 				break;
 			}
-*/
 			//1.set check record
 			fd_set rset;
 			int fd_max= -1;
@@ -610,14 +609,13 @@ namespace Csz
         }
         if (code> 0 && fill== size && local_bit_field->CheckBitField(index))
         {
-			;
+			peer_manager->ClearPieceStatus(T_data->socket);
         }
         else
         {
 		    need_piece->UnLockIndex(index);
             peer_manager->CloseSocket(T_data->socket);
         }
-        peer_manager->ClearPieceStatus(T_data->socket);
         return ;
 	}
     
@@ -648,7 +646,7 @@ namespace Csz
         {
             int32_t len;
             //int error_code= recv(T_socket,(char*)&len,sizeof(len),0);
-		    int error_code= Csz::RecvTime_us(T_socket,(char*)&len,sizeof(len),TIMEOUT3000MS);
+		    int error_code= Csz::RecvTime_us(T_socket,(char*)&len,sizeof(len),TIMEOUT6000MS);
 			//fix bug
 			len= ntohl(len);
 			if (0== error_code)

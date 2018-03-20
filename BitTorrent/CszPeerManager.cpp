@@ -111,7 +111,16 @@ namespace Csz
         //1.load length num
         //throw invalid_argument or out_of_range
         size_t num_length;
-        int num= std::stoi(std::string(T_socket_list.begin()+ flag,T_socket_list.begin()+ flag+ 3),&num_length);
+		int num= 0;
+		try
+		{
+			num= std::stoi(std::string(T_socket_list.begin()+ flag,T_socket_list.begin()+ flag+ 3),&num_length);
+		}
+		catch (...)
+		{
+			Csz::ErrMsg("[Peer Manager load peer list]->failed,read num,line=%d",__LINE__);
+			return ;
+		}
         //peersxxx:
         auto start= T_socket_list.c_str()+ flag+ num_length+ 1;
         auto stop= start+ num;
@@ -228,7 +237,7 @@ namespace Csz
         
         //1.time out
         struct timeval time_val;
-        time_val.tv_sec= 30;
+        time_val.tv_sec= 20;
         time_val.tv_usec= 0;  
         
         FD_ZERO(&wset);

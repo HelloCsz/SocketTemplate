@@ -259,13 +259,11 @@ namespace Csz
 		}
 #ifdef CszTest
         COutInfo();
-/*
         for (const auto& val : ret_str)
         {
-            Csz::LI("%s",val.c_str());
+            Csz::LI("body:%s",val.c_str());
 			//std::cout<<val<<"\n";
         }
-*/
 #endif
 		return std::move(ret_str);
 	}
@@ -311,6 +309,7 @@ namespace Csz
 #endif
         response.Clear();
 		response.Capturer(T_socket,&cache);
+		cache.Clear();
 #ifdef CszTest
 		response.COutInfo();
 #endif
@@ -355,7 +354,7 @@ namespace Csz
 		parameter.assign("event=started");
 		SetParameter(std::move(parameter));
 
-		parameter.assign("numwant=20");
+		parameter.assign("numwant=50");
 		SetParameter(std::move(parameter));
         return ;
     }

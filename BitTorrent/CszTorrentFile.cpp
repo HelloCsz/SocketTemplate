@@ -207,51 +207,6 @@ namespace Csz
 		return ret% 8== 0? ret/ 8 : ret/ 8 + 1;
 	}
 
-/*
-	char TorrentFile::GetEndBit()const
-	{
-		int choice= (infos.pieces.size()/ 20)% 8;
-		char ret= 0x00;
-		switch (choice)
-		{
-			case 0:
-				ret= 0x00;
-				break;
-			case 1:
-				//0000 0001
-				ret= 0x01;
-				break;
-			case 2:
-				//0000 0011
-				ret= 0x03;
-				break;
-			case 3:
-				//0000 0111
-				ret= 0x07;
-				break;
-			case 4:
-				//0000 1111
-				ret= 0x0F;
-				break;
-			case 5:
-				//0001 1111
-				ret= 0x1F;
-				break;
-			case 6:
-				//0011 1111
-				ret= 0x3F;
-				break;
-			case 7:
-				//0111 1111
-				ret= 0x7F;
-				break;
-			default:
-				Csz::ErrSys("get end bit failed");
-		}
-		return ret;
-	}
-*/
-
 	//file name | begin | length
 	//send piece,wirte piece
 	std::vector<TorrentFile::FILEINFO> TorrentFile::GetFileName(int32_t T_index,int32_t T_begin,int32_t T_length) const

@@ -70,6 +70,8 @@ namespace Csz
 		public:
             CacheRegio();
 			~CacheRegio();
+			CacheRegio(const CacheRegio&)= delete;
+			CacheRegio& operator=(const CacheRegio&)= delete;
 			std::string ReadLine(int T_socket);
 			std::string ReadBuf(const int T_socket,int T_save_num);
 			//empty

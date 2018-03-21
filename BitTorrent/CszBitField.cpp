@@ -308,7 +308,7 @@ namespace Csz
 
     uint32_t BitField::LeftSize() const
     {
-        return (total- cur_sum)* TorrentFile::GetInstance()->GetIndexNormalLength();
+        return TorrentFile::GetInstance()->GetFileTotal()- DownLoad();
     }
 
 	void BitField::ProgressBar()

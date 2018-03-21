@@ -272,7 +272,7 @@ namespace Csz
         private:
             struct DataType
             {
-                DataType():id(0),expire(0){}
+                DataType():id(0),expire(0),mutex(nullptr){}
 				PeerStatus status;
                 int id;
                 uint32_t expire;
@@ -862,7 +862,7 @@ namespace Csz
 			//index->sockets|id
 			struct DataType
             {
-				DataType():index(-1),index_status(0){}
+				DataType():index(-1),index_status(0),expire(0){}
                 //read 0x01 write 0x02
 				uint8_t index_status;
                 int32_t index;
@@ -952,6 +952,9 @@ namespace Csz
 #endif
                 }
             }
+			Parameter(const Parameter&)= delete;
+			Parameter& operator=(const Parameter&)= delete;
+
 			int socket;
 			//not include id len
 			int32_t len;
@@ -988,7 +991,7 @@ namespace Csz
     class BitMemory
     {
         private:
-            BitMemory()
+            BitMemory():index_end(0),length_end(0),length_normal(0)
             {
 #ifdef CszTest
                 Csz::LI("constructor Bit Memory");

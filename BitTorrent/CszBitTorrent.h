@@ -526,7 +526,7 @@ namespace Csz
 			//total bit len
 			void SetParameter(std::string T_bit_field,int32_t T_total);
 			void FillBitField(int32_t T_index);
-			bool CheckPiece(int32_t& T_index);
+			bool CheckPiece(int32_t T_index);
 			const char* GetSendData()const{return prefix_and_bit_field.c_str();}
 			const char* operator()(){return GetSendData();}
 			int GetDataSize()const {return prefix_and_bit_field.size();}

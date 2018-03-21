@@ -30,6 +30,11 @@ namespace Csz
 			return ;
 		}
 		prefix_and_bit_field.append(std::move(T_bit_field));
+        if (prefix_and_bit_field.size()<= 264)
+        {
+            std::cout<<"size= "<<prefix_and_bit_field.size()<<"\n";
+            exit(0);
+        }
 		_SetPrefixLength();
 		return ;
 	}
@@ -126,7 +131,7 @@ namespace Csz
 		return ;
 	}
 
-	bool BitField::CheckPiece(int32_t& T_index)
+	bool BitField::CheckPiece(int32_t T_index)
 	{
 #ifdef CszTest
         if (T_index+1>= total)
@@ -152,7 +157,8 @@ namespace Csz
 		}
 		//every bit express one field
 		auto index= T_index/ 8+ 5;
-		auto& val= prefix_and_bit_field[index];
+        Csz::LI("Debug:index=%d,real index=%d,real size=%d",index,T_index,prefix_and_bit_field.size());
+		auto val= prefix_and_bit_field[index];
 		bool ret= false;
 		switch (T_index% 8)
 		{

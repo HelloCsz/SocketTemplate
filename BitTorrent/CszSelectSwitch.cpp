@@ -205,8 +205,7 @@ namespace Csz
 							//success recv all data
 							data->cur_len= len;
 							Task task;
-							auto orgin= data.get();
-							data.release();
+							auto orgin= data.release();
 							task.second= orgin;
 							if (4== id)
 							{

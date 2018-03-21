@@ -48,7 +48,7 @@ LIB_DIR+= /usr/lib
 HDR_INCLUDE= $(addprefix -I, $(HDR_DIR))
 LIB_LINK= $(addprefix -L, $(LIB_DIR))
 
-CXXFLAGS= -g -std=c++11 -W -fsanitize=address #-fno-omit-frame-pointer
+CXXFLAGS= -g -std=c++11 -W -fsanitize=address -fno-omit-frame-pointer
 # -Winit-self -Wlogical-op -Weffc++  -fsanitize=address -lasan -fsanitize-leak -Warray-bounds -Wtype-limits
 STATICLINK_FLAGS= -lgflags -lprotobuf -lbrpc #-fsanitize=address
 DYNAMICLINK_FLAGS= -pthread -lssl 

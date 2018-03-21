@@ -59,10 +59,13 @@ int main(int argc,char** argv)
 	    match.Decode(data);
 
 	    match.ReadData("",Csz::TorrentFile::GetInstance());
+        std::cout<<Csz::TorrentFile::GetInstance()->GetIndexBitTotal()<<"\n";
+        return 0;
     }
 
 	Csz::TorrentFile::GetInstance()->GetTrackInfo(&tracker);
 
+    std::cout<<"size="<<Csz::TorrentFile::GetInstance()->GetIndexBitTotal()<<"\n";
 	Csz::LocalBitField::GetInstance()->SetParameter(std::string(Csz::TorrentFile::GetInstance()->GetIndexBitTotal(),0),
 													Csz::TorrentFile::GetInstance()->GetIndexTotal());
 

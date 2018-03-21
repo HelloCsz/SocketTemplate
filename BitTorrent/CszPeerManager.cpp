@@ -236,7 +236,7 @@ namespace Csz
         
         //1.time out
         struct timeval time_val;
-        time_val.tv_sec= 60;
+        time_val.tv_sec= 16;
         time_val.tv_usec= 0;  
         
         FD_ZERO(&wset);
@@ -321,6 +321,8 @@ namespace Csz
 					auto hand_shake= HandShake::GetInstance();
 					send(val,hand_shake->GetSendData(),hand_shake->GetDataSize(),0);
                 }
+				if (--code<= 0)
+					break;
             }
             rset= rset_save;
             wset= wset_save;
@@ -355,7 +357,7 @@ namespace Csz
         
         //1.time out
         struct timeval time_val;
-        time_val.tv_sec= 30;
+        time_val.tv_sec= 4;
         time_val.tv_usec= 0;  
         
         FD_ZERO(&rset_save);
@@ -438,6 +440,8 @@ namespace Csz
 						val= -1;
 					}
                 }
+				if (--code<= 0)
+					break;
             }
             rset= rset_save;
         }

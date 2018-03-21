@@ -6,12 +6,14 @@
 //#include <bthread/bthread.h>
 #include "CszBitTorrent.h"
 #include "../Thread/CszSingletonThread.hpp"
+#include "../Signal/CszSignal.h"
 #include "sha1.h"
 
 int main(int argc,char** argv)
 {
 	if (argc< 2)
 		return -1;
+	Csz::Signal(SIGPIPE,SIG_IGN);
     butil::FilePath file_path(argv[1]);
     butil::File file(file_path,butil::File::FLAG_OPEN | butil::File::FLAG_READ);
     if (!file.IsValid())
@@ -57,15 +59,11 @@ int main(int argc,char** argv)
 	{
         Csz::BDict match;
 	    match.Decode(data);
-
 	    match.ReadData("",Csz::TorrentFile::GetInstance());
-        std::cout<<Csz::TorrentFile::GetInstance()->GetIndexBitTotal()<<"\n";
-        return 0;
     }
 
 	Csz::TorrentFile::GetInstance()->GetTrackInfo(&tracker);
 
-    std::cout<<"size="<<Csz::TorrentFile::GetInstance()->GetIndexBitTotal()<<"\n";
 	Csz::LocalBitField::GetInstance()->SetParameter(std::string(Csz::TorrentFile::GetInstance()->GetIndexBitTotal(),0),
 													Csz::TorrentFile::GetInstance()->GetIndexTotal());
 
@@ -77,7 +75,8 @@ int main(int argc,char** argv)
     auto start= time(NULL);
     //select
 	{
-	    while (Csz::SelectSwitch()()== false && !Csz::LocalBitField::GetInstance()->GameOver())
+		for (int i= 0; i< 6; ++i)
+	    if(Csz::SelectSwitch()()== false && !Csz::LocalBitField::GetInstance()->GameOver())
 	    {
 		    auto peer_list= tracker.GetPeerList(60);
 			Csz::PeerManager::GetInstance()->LoadPeerList(peer_list);

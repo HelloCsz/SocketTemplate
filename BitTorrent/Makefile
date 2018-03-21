@@ -33,7 +33,8 @@ SOURCES= $(SRC)/BitTorrent/main.cpp\
 		 $(SRC)/Sock/CszCreateSocket.cpp\
 		 $(SRC)/Sock/CszSocketHostServNull.cpp\
 		 $(SRC)/Sock/CszRecvTime_us.cpp\
-		 $(SRC)/Sock/CszClose.cpp
+		 $(SRC)/Sock/CszClose.cpp\
+		 $(SRC)/Signal/CszSignal.cpp
 
 OBJECTS= $(addsuffix .o, $(basename $(SOURCES)))
 OBJECTS+= $(PROTOS:.proto=.pb.o)
@@ -48,7 +49,7 @@ LIB_DIR+= /usr/lib
 HDR_INCLUDE= $(addprefix -I, $(HDR_DIR))
 LIB_LINK= $(addprefix -L, $(LIB_DIR))
 
-CXXFLAGS= -g -std=c++11 -W -fsanitize=address -fno-omit-frame-pointer
+CXXFLAGS= -g -std=c++11 -W -fsanitize=leak #-lasan #-fno-omit-frame-pointer
 # -Winit-self -Wlogical-op -Weffc++  -fsanitize=address -lasan -fsanitize-leak -Warray-bounds -Wtype-limits
 STATICLINK_FLAGS= -lgflags -lprotobuf -lbrpc #-fsanitize=address
 DYNAMICLINK_FLAGS= -pthread -lssl 
@@ -66,7 +67,7 @@ brpc:$(BRPC_SRC_DIR)/Makefile brpc-conf
 
 $(TARGET):brpc $(OBJECTS)
 	@echo "Linking $@"
-	@$(CXX) $(CXXFLAGS) $(LIB_LINK) -Xlinker "-(" $(OBJECTS) -Wl,-Bstatic $(STATICLINK_FLAGS) -Wl,-Bdynamic -Xlinker "-)" $(DYNAMICLINK_FLAGS) -o $@
+	@$(CXX) $(CXXFLAGS) $(LIB_LINK) -Xlinker "-(" $(OBJECTS) -Wl,-Bstatic $(STATICLINK_FLAGS) -Wl,-Bdynamic -Xlinker "-)" $(DYNAMICLINK_FLAGS) -o $@ -llsan
 
 .PHONY:
 clean:
@@ -81,8 +82,8 @@ clean:
 
 %.o:%.cpp
 	@echo "Compiling $@"
-	@$(CXX) -c $(HDR_INCLUDE) $(CXXFLAGS) $< -o $@
+	@$(CXX) -c $(HDR_INCLUDE) $(CXXFLAGS) $< -o $@ -llsan
 
 %.o:%.c
 	@echo "Compiling $@"
-	@$(CXX) -c $(HDR_INCLUDE) $(CXXFLAGS) $< -o $@
+	@$(CXX) -c $(HDR_INCLUDE) $(CXXFLAGS) $< -o $@ -llsan

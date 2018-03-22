@@ -339,7 +339,8 @@ namespace Csz
 			}
 			else
 			{
-                result.emplace_back(std::make_pair(true,val.socket));
+                //TODO delte false
+                result.emplace_back(std::make_pair(false,val.socket));
 			}
             val.total= 0;
 		}

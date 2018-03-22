@@ -40,16 +40,16 @@ OBJECTS= $(addsuffix .o, $(basename $(SOURCES)))
 OBJECTS+= $(PROTOS:.proto=.pb.o)
 
 HDR_DIR+= $(BRPC_SRC_DIR)/output/include 
-HDR_DIR+= /usr/include	
+#HDR_DIR+= /usr/include	
 HDR_DIR+= $(PROTOS_DIR)	
 
 LIB_DIR= $(BRPC_SRC_DIR)/output/lib	
-LIB_DIR+= /usr/lib
+#LIB_DIR+= /usr/lib
 
 HDR_INCLUDE= $(addprefix -I, $(HDR_DIR))
 LIB_LINK= $(addprefix -L, $(LIB_DIR))
 
-CXXFLAGS= -g -std=c++11 -W -fsanitize=leak #-lasan #-fno-omit-frame-pointer
+CXXFLAGS= -std=c++11 -O2 #-W -g #-fsanitize=leak #-lasan #-fno-omit-frame-pointer
 # -Winit-self -Wlogical-op -Weffc++  -fsanitize=address -lasan -fsanitize-leak -Warray-bounds -Wtype-limits
 STATICLINK_FLAGS= -lgflags -lprotobuf -lbrpc #-fsanitize=address
 DYNAMICLINK_FLAGS= -pthread -lssl 
@@ -67,7 +67,7 @@ brpc:$(BRPC_SRC_DIR)/Makefile brpc-conf
 
 $(TARGET):brpc $(OBJECTS)
 	@echo "Linking $@"
-	@$(CXX) $(CXXFLAGS) $(LIB_LINK) -Xlinker "-(" $(OBJECTS) -Wl,-Bstatic $(STATICLINK_FLAGS) -Wl,-Bdynamic -Xlinker "-)" $(DYNAMICLINK_FLAGS) -o $@ -llsan
+	@$(CXX) $(CXXFLAGS) $(LIB_LINK) -Xlinker "-(" $(OBJECTS) -Wl,-Bstatic $(STATICLINK_FLAGS) -Wl,-Bdynamic -Xlinker "-)" $(DYNAMICLINK_FLAGS) -o $@ #-llsan
 
 .PHONY:
 clean:
@@ -82,8 +82,8 @@ clean:
 
 %.o:%.cpp
 	@echo "Compiling $@"
-	@$(CXX) -c $(HDR_INCLUDE) $(CXXFLAGS) $< -o $@ -llsan
+	@$(CXX) -c $(HDR_INCLUDE) $(CXXFLAGS) $< -o $@ #-llsan
 
 %.o:%.c
 	@echo "Compiling $@"
-	@$(CXX) -c $(HDR_INCLUDE) $(CXXFLAGS) $< -o $@ -llsan
+	@$(CXX) -c $(HDR_INCLUDE) $(CXXFLAGS) $< -o $@ #-llsan

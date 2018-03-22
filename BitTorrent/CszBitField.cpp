@@ -13,9 +13,15 @@ namespace Csz
 #ifdef CszTest
         Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
 #endif
+        if (0!= pthread_rwlock_wrlock(&lock))
+        {
+            Csz::ErrMsg("[Bit Field set parameter]->failed,write lock failed,line=%d",__LINE__);
+            return ;
+        }
 		_Clear();
 		_SetParameter(std::move(T_bit_field));
 		total= T_total;
+        pthread_rwlock_unlock(&lock);
 		return ;
 	}
 
@@ -77,6 +83,11 @@ namespace Csz
 			Csz::ErrMsg("[Bit Field fill bit field]->failed,index < 0,can't fill bit field");
 			return ;
 		}
+        if (0!= pthread_rwlock_wrlock(&lock))
+        {
+            Csz::ErrMsg("[Bit Field fill bit field]->failed,write lock failed");
+            return ;
+        }
 		if (prefix_and_bit_field.size()<= 5)
 		{
 			Csz::ErrMsg("[Bit Field fill bit field]->failed, too small,can't fill bit field");
@@ -92,6 +103,8 @@ namespace Csz
 		//1.check exist bit
 		if (val & bit_hex[T_index])
 		{
+            pthread_rwlock_unlock(&lock);
+            //unlock
 			return ;
 		}
 		//2.lack bit,set fill bit
@@ -123,10 +136,12 @@ namespace Csz
 				val|= bit_hex[7];
 				break;
 		}
+        pthread_rwlock_unlock(&lock);
+        //unlock
 		return ;
 	}
 
-	bool BitField::CheckPiece(int32_t T_index)
+	bool BitField::CheckPiece(int32_t& T_index)
 	{
 #ifdef CszTest
         if (T_index+1>= total)
@@ -144,8 +159,16 @@ namespace Csz
             T_index= -1;
 			return true;
 		}
+        //lock
+        if (0!= pthread_rwlock_rdlock(&lock))
+        {
+            Csz::ErrMsg("[Bit Field check piece]->failed,read lock failed");
+            return true;
+        }
 		if (prefix_and_bit_field.size()<= 5)
 		{
+            pthread_rwlock_unlock(&lock);
+            //unlock
 			Csz::ErrMsg("[Bit Field check piece]->failed,too small,not found index");
             T_index= -1;
 			return true;
@@ -153,6 +176,8 @@ namespace Csz
 		//every bit express one field
 		auto index= T_index/ 8+ 5;
 		auto val= prefix_and_bit_field[index];
+        pthread_rwlock_unlock(&lock);
+        //unlock
 		bool ret= false;
 		switch (T_index% 8)
 		{
@@ -190,13 +215,23 @@ namespace Csz
         Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
 #endif
 		std::vector<int32_t> ret;
+        //lock
+        if (0!= pthread_rwlock_rdlock(&lock))
+        {
+            Csz::ErrMsg("[Bit Field lack need piece]->failed,read lock failed");
+            return ret;
+        }
 		if (prefix_and_bit_field.size()<= 5)
 		{
+            pthread_rwlock_unlock(&lock);
+            //unlock
 			Csz::ErrMsg("[Bit Field lack need piece]->failed,too small,found lack need piece failed");
 			return ret;
 		}
 		if (nullptr== T_bit_field || T_len+ 5!= (int)prefix_and_bit_field.size() )
 		{
+            pthread_rwlock_unlock(&lock);
+            //unlock
 			Csz::ErrMsg("[Bit Field lack need piece]->failed,not found bit field,bit field is nullptr or len != bit field len");
 			return ret;
 		}
@@ -223,34 +258,30 @@ namespace Csz
 			}
 			++cur_len;
 		}
+        
+        pthread_rwlock_unlock(&lock);
+        //unlock
 		return std::move(ret);
 	}
 
-	bool BitField::GameOver()const
+	bool BitField::GameOver()
 	{
 #ifdef CszTest
         Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
 #endif
+        bool ret= false;
+        if (0!= pthread_rwlock_rdlock(&lock))
+        {
+            Csz::ErrMsg("[Bit Field game over]->failed,read lock failed");
+            return ret;
+        }
 		if (total== cur_sum)
-			return true;
-		return false;
-/*
-		if (prefix_and_bit_field.size()<= 5)
-		{
-			return false;
-		}
-		for (auto start= prefix_and_bit_field.cbegin()+ 5,stop= prefix_and_bit_field.cend(); start< stop; ++start)
-		{
-			const char temp= 0xff;
-			if (*start!= temp)
-			{
-				if (start== (stop- 1) && T_end_bit!= 0x00 && *start== T_end_bit)
-					return true;
-				return false;
-			}
-		}
-		return true;
-*/
+	    {
+            ret= true;
+        }
+        pthread_rwlock_unlock(&lock);
+        //unlock
+		return ret;
 	}
     
     void BitField::LoadLocalFile()
@@ -296,7 +327,10 @@ namespace Csz
             if (sha1_data== torrent_file->GetHash(index))
             {
                 FillBitField(index);
-            }   
+            } 
+#ifdef CszTest
+            Csz::LI("[Run]->index=%d",index);
+#endif
         }
         return ;
     }    
@@ -316,6 +350,11 @@ namespace Csz
 #ifdef CszTest
         Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
 #endif
+        if (0!= pthread_rwlock_rdlock(&lock))
+        {
+            Csz::ErrMsg("[Bit Field progress bar]->failed,read lock failed");
+            return ;
+        }
         //bug!!
 		char* data= const_cast<char*>(&prefix_and_bit_field[0]);
 		std::vector<std::bitset<8>> bit_field;
@@ -323,6 +362,8 @@ namespace Csz
 		{
 			bit_field.emplace_back(prefix_and_bit_field[i]);
 		}
+        pthread_rwlock_unlock(&lock);
+        //unlock
 		std::string bit_info;
 		bit_info.reserve(bit_field.size()* 8);
 		for (auto& val : bit_field)
@@ -331,13 +372,12 @@ namespace Csz
 		}
 		if (!bit_info.empty())
 		{
-			Csz::LI("%s,cur_sum=%d -> total=%d,= %d",bit_info.c_str(),cur_sum,total,cur_sum/ total);
+			Csz::LI("%s,cur_sum=%d -> total=%d,= %f",bit_info.c_str(),cur_sum,total,(double)cur_sum/ (double)total);
 		}
 		return ;
 	}
 
-    
-
+/*
 	void BitField::COutInfo() const
 	{
 #ifdef CszTest
@@ -362,4 +402,6 @@ namespace Csz
 			Csz::LI("%s",bit_info.c_str());
 		return ;
 	}
+*/
+
 }

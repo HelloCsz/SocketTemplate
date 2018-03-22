@@ -269,6 +269,7 @@ namespace Csz
 			butil::File file(file_path,butil::File::FLAG_OPEN_ALWAYS | butil::File::FLAG_WRITE);
 			if (!file.IsValid())
 			{
+                flie.Close();
 				Csz::ErrMsg("[Bit Memory write]->failed,%s",butil::File::ErrorToString(file.error_details()).c_str());
 				return -1;
 			}
@@ -284,6 +285,7 @@ namespace Csz
 				++start;
 				if (start>= stop)
 				{
+                    file.Close();
 					Csz::ErrMsg("[Bit Memory write]->failed,read buf goto end,but have need write local file");
 					return -1;
 				}
@@ -293,10 +295,12 @@ namespace Csz
 			}
 			if (code!= val.second.second)
 			{
+                file.Close();
 				Csz::ErrMsg("[Bit Memory write]->failed,write byte != file need num,file name %s",val.first.c_str());
 				return -1;
 			}
 			write_byte+= code;
+            file.Close();
 		}
 		return  write_byte;
 	}

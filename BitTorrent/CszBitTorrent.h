@@ -516,9 +516,11 @@ namespace Csz
 				prefix_and_bit_field[4]= 5;
 				total= 0;
 				cur_sum= 0;
+                pthread_rwlock_init(&lock,NULL);
 			}
             ~BitField()
             {
+                pthread_rwlock_destroy(&lock);
 #ifdef CszTest
                 Csz::LI("destructor Bit Field");
 #endif
@@ -526,11 +528,11 @@ namespace Csz
 			//total bit len
 			void SetParameter(std::string T_bit_field,int32_t T_total);
 			void FillBitField(int32_t T_index);
-			bool CheckPiece(int32_t T_index);
+			bool CheckPiece(int32_t& T_index);
 			const char* GetSendData()const{return prefix_and_bit_field.c_str();}
 			const char* operator()(){return GetSendData();}
 			int GetDataSize()const {return prefix_and_bit_field.size();}
-			bool GameOver()const;
+			bool GameOver();
 			std::vector<int32_t> LackNeedPiece(const char* T_bit_field,const int T_len);
 			std::vector<int32_t> LackNeedPiece(const std::string);
 			void ProgressBar();
@@ -542,6 +544,8 @@ namespace Csz
 			void _SetParameter(std::string T_bit_field);
 			void _SetPrefixLength();
 			void _Clear();
+        private:
+            pthread_rwlock_t lock;
 	};
 
 	//9.request id= 6 or cancle= id= 8
@@ -722,7 +726,7 @@ namespace Csz
             BitField bit_field;
             //int32_t piece_length;
 		public:
-			bool GameOver()const{return bit_field.GameOver();}
+			bool GameOver(){return bit_field.GameOver();}
 			void RecvHave(int T_socket,int32_t T_index);
 			void RecvBitField(int T_socket,const char* T_bit_field,const int T_eln);
             //int32_t GetPieceLength()const {return piece_length;}
@@ -732,7 +736,7 @@ namespace Csz
             void SetParameter(std::string T_bit_field,int32_t T_total)
             {
                 bit_field.SetParameter(T_bit_field,T_total);
-                //bit_field.LoadLocalFile();
+                bit_field.LoadLocalFile();
 #ifdef CszTest
                 Csz::LI("[Local Bit Field set parameter]INFO:");
                 COutInfo();
@@ -747,7 +751,7 @@ namespace Csz
             int32_t GetDataSize()const {return bit_field.GetDataSize();}
             uint32_t DownLoad()const {return bit_field.DownLoad();}
             uint32_t LeftSize()const {return bit_field.LeftSize();}
-			void COutInfo() const;
+			void COutInfo();
 	};
 
 	//DownSpeed

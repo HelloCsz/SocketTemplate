@@ -79,13 +79,13 @@ namespace Csz
         return ;
     }
 
-	void LocalBitField::COutInfo() const
+	void LocalBitField::COutInfo()
 	{
 #ifdef CszTest
         Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
 #endif
         Csz::LI("[Local Bit Field INFO]:");
-		bit_field.COutInfo();
+		bit_field.ProgressBar();
 		return ;
 	}
 }

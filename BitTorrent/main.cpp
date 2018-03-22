@@ -22,7 +22,7 @@ int main(int argc,char** argv)
         file.Close();
         return -1;
     }
-	std::string data(file.GetLength()+ 1,0);
+	std::string data(file.GetLength(),0);
     if (file.GetLength()!= file.Read(0,&data[0],data.size()))
     {
         Csz::ErrQuit("read byte num!= %d",file.GetLength());
@@ -36,7 +36,7 @@ int main(int argc,char** argv)
     Csz::NeedPiece::GetInstance();
     Csz::DownSpeed::GetInstance();
     Csz::BitMemory::GetInstance();
-    Csz::SingletonThread<Csz::SelectSwitch::Parameter,THREADNUM>::GetInstance()->Init(4);
+    Csz::SingletonThread<Csz::SelectSwitch::Parameter,THREADNUM>::GetInstance()->Init(11);
 	Csz::Tracker tracker;
 	//计算info hash val
 	{
@@ -47,6 +47,11 @@ int main(int argc,char** argv)
 			return -1;
 		}
 		auto info_num= Csz::GetDictLength()(data.c_str()+ info_flag+ 4,data.size()- info_flag- 4);
+        if (info_num<= 0)
+        {
+            Csz::ErrMsg("calculate info hash length error,length=%d",info_num);
+            return 0;
+        }
 		//20*8= 160bit
 		char info_buf[21]={0};
 		Sha1(data.c_str()+ info_flag+ 4,info_num,(unsigned char*)info_buf);
@@ -71,12 +76,11 @@ int main(int argc,char** argv)
 										Csz::TorrentFile::GetInstance()->GetIndexEndLength(),
 										Csz::TorrentFile::GetInstance()->GetIndexNormalLength());
     //60s time out
-	Csz::PeerManager::GetInstance()->LoadPeerList(tracker.GetPeerList(60));
+	Csz::PeerManager::GetInstance()->LoadPeerList(tracker.GetPeerList(16));
     auto start= time(NULL);
     //select
 	{
-		for (int i= 0; i< 6; ++i)
-	    if(Csz::SelectSwitch()()== false && !Csz::LocalBitField::GetInstance()->GameOver())
+	    while(Csz::SelectSwitch()()== false && !Csz::LocalBitField::GetInstance()->GameOver())
 	    {
 		    auto peer_list= tracker.GetPeerList(60);
 			Csz::PeerManager::GetInstance()->LoadPeerList(peer_list);

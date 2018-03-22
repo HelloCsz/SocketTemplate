@@ -321,8 +321,8 @@ namespace Csz
 					auto hand_shake= HandShake::GetInstance();
 					send(val,hand_shake->GetSendData(),hand_shake->GetDataSize(),0);
                 }
-				if (--code<= 0)
-					break;
+				//if (--code<= 0)
+				//	break;
             }
             rset= rset_save;
             wset= wset_save;
@@ -440,8 +440,8 @@ namespace Csz
 						val= -1;
 					}
                 }
-				if (--code<= 0)
-					break;
+				//if (--code<= 0)
+				//	break;
             }
             rset= rset_save;
         }
@@ -870,8 +870,14 @@ namespace Csz
         {
             Csz::ErrMsg("[Peer Manager pr choke]->failed,write lock failed");
             return ;
-        }   
-		int optimistic= butil::gettimeofday_us() % (peer_list.size()- 4);
+        }  
+        //fix bug floating point exception
+        int num= peer_list.size()- 4;
+        if (num<= 0)
+        {
+            num= 1;  
+        }
+		int optimistic= butil::gettimeofday_us() % num;
 		for (auto& val : peer_list)
 		{
 			if (((val.second)->status).am_choke)

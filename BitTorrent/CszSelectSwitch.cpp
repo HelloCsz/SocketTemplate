@@ -13,7 +13,6 @@ namespace Csz
 #ifdef CszTest
     int SelectSwitch::total= 0;
 #endif
-
 	//TODO sinnal deal or pselect
 	bool SelectSwitch::operator()()
 	{
@@ -23,24 +22,20 @@ namespace Csz
 		using Task= Csz::TaskQueue<SelectSwitch::Parameter,THREADNUM>::Type;
 		auto thread_pool= SingletonThread<SelectSwitch::Parameter,THREADNUM>::GetInstance();
 		auto peer_manager= PeerManager::GetInstance();
-
-		timeval time_out;
-		//5min
-		time_out.tv_sec= 6* 10;
-		time_out.tv_usec= 0;
 		int code;
 		//30s
 		auto optimistic_start= butil::gettimeofday_s();
 		//10s calculate
 		auto calculate_start= optimistic_start;
 		auto down_speed= DownSpeed::GetInstance();
-			
+		const int MAX_EVENTS= 50;
+		
 		//2.select
 		while (true)
 		{
 			auto peer_list= std::move(peer_manager->RetSocketList());
 
-			if (peer_list.size()< 35)
+			if (peer_list.size()<= 16)
 			{
 				Csz::ErrMsg("[Select Switch Run]->can't switch message type,peer list size < 35");
 				break;

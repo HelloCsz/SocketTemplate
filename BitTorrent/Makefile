@@ -49,7 +49,7 @@ LIB_DIR= $(BRPC_SRC_DIR)/output/lib
 HDR_INCLUDE= $(addprefix -I, $(HDR_DIR))
 LIB_LINK= $(addprefix -L, $(LIB_DIR))
 
-CXXFLAGS= -std=c++11 -O2 #-W -g #-fsanitize=leak #-lasan #-fno-omit-frame-pointer
+CXXFLAGS= -std=c++11 -O2 -W -g -fsanitize=address #-lasan #-fno-omit-frame-pointer
 # -Winit-self -Wlogical-op -Weffc++  -fsanitize=address -lasan -fsanitize-leak -Warray-bounds -Wtype-limits
 STATICLINK_FLAGS= -lgflags -lprotobuf -lbrpc #-fsanitize=address
 DYNAMICLINK_FLAGS= -pthread -lssl 

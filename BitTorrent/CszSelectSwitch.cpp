@@ -40,9 +40,9 @@ namespace Csz
 		{
 			auto peer_list= std::move(peer_manager->RetSocketList());
 
-			if (peer_list.empty())
+			if (peer_list.size()< 35)
 			{
-				Csz::ErrMsg("[Select Switch Run]->can't switch message type,peer list is empty");
+				Csz::ErrMsg("[Select Switch Run]->can't switch message type,peer list size < 35");
 				break;
 			}
 			//1.set check record

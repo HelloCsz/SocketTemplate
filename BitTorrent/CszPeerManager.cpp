@@ -295,7 +295,7 @@ namespace Csz
                 else if (errno_save)
                 {
                     //strerror non-sofathread
-                    Csz::ErrMsg("[Peer Manager _connected]->failed line:%d,can't connect peer:%s",strerror(errno_save),__LINE__);
+                    Csz::ErrMsg("[Peer Manager _connected]->failed line:%d,can't connect peer:%s",__LINE__,strerror(errno_save));
                     if (-1== epoll_ctl(epollfd,EPOLL_CTL_DEL,events[n].data.fd,NULL))
                     {
                         Csz::ErrRet("[Peer Manager _connected]->failed line:%d,",__LINE__);

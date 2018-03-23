@@ -266,9 +266,9 @@ namespace Csz
 			void COutInfo()const;
         private:
             void _LoadPeerList(const std::string& T_socket_list);
-			void _Connected(std::vector<int>& T_ret);
-            void _Verification(std::vector<int>& T_ret);
-			void _SendBitField(std::vector<int>& T_ret);
+			std::vector<int> _Connected(std::vector<int> T_ret);
+            std::vector<int> _Verification(std::vector<int> T_ret);
+			std::vector<int> _SendBitField(std::vector<int> T_ret);
         private:
             struct DataType
             {
@@ -744,6 +744,7 @@ namespace Csz
                 return ;
             }
 			void ProgressBar(){bit_field.ProgressBar();return ;}
+            //bug,should lock
             const char* GetSendData()const
             {
                 return bit_field.GetSendData();

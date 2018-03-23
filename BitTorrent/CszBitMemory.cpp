@@ -269,7 +269,7 @@ namespace Csz
 			butil::File file(file_path,butil::File::FLAG_OPEN_ALWAYS | butil::File::FLAG_WRITE);
 			if (!file.IsValid())
 			{
-                flie.Close();
+                file.Close();
 				Csz::ErrMsg("[Bit Memory write]->failed,%s",butil::File::ErrorToString(file.error_details()).c_str());
 				return -1;
 			}

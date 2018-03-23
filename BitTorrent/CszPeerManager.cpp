@@ -159,15 +159,19 @@ namespace Csz
             ret.emplace_back(socket);
         }
 		//5.ensure connect and send hand shake
-		_Connected(ret);
+		ret= std::move(_Connected(std::move(ret)));
 #ifdef CszTest
         Csz::LI("[Peer Manager load peer list]connected size=%d",ret.size());
 #endif
-		_SendBitField(ret);
-		//7.recv hand shake and delete failed socket
-		_Verification(ret);
+		//6.recv hand shake and delete failed socket
+		ret= std::move(_Verification(std::move(ret)));
 #ifdef CszTest
         Csz::LI("[Peer Manager load peer list]verification size=%d",ret.size());
+#endif
+        //7. send bit field
+		ret= std::move(_SendBitField(std::move(ret)));
+#ifdef CszTest
+        Csz::LI("[Peer Manager load peer list]send bit field size=%d",ret.size());
 #endif
 		//TODO 8.lock and update peer list and socket_map_id
 		std::vector<int> socket_id;
@@ -219,264 +223,203 @@ namespace Csz
         }
     }
 
-    void PeerManager::_Connected(std::vector<int>& T_ret)
+    std::vector<int> PeerManager::_Connected(std::vector<int> T_ret)
     {
 #ifdef CszTest
         Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
 #endif
+        std::vector<int> ret;
 		if (T_ret.empty())
 		{
-            Csz::ErrMsg("[Peer Manager connected]->failed,parameter socket is empty");
-            return ;
+            Csz::ErrMsg("[Peer Manager _connected]->failed line:%d,parameter socket is empty",__LINE__);
+            return ret;
         }
-        //1.init select
-        fd_set wset,rset;
-        fd_set wset_save,rset_save;
-        int fd_max= -1;
-        
-        //1.time out
-        struct timeval time_val;
-        time_val.tv_sec= 16;
-        time_val.tv_usec= 0;  
-        
-        FD_ZERO(&wset);
+        const int MAX_EVENTS= 25;
+        struct epoll_event ev,events[MAX_EVENTS];
+        auto epollfd= epoll_create(T_ret.size());
+        if (-1== epollfd)
+        {
+            Csz::ErrRet("[Peer Manager _connected]->failed line:%d,epoll create,",__LINE__);
+            return ret;
+        }
+        int quit_num= 0;
         for (const auto& val : T_ret)
         {
             if (val>= 0)
             {
-                if (fd_max< val)
+                ev.events= EPOLLOUT;
+                ev.data.fd= val;
+                if (-1== epoll_ctl(epollfd,EPOLL_CTL_ADD,val,&ev))
                 {
-                    fd_max= val;
+                    Csz::ErrRet("[Peer Manager _connected]->failed line:%d,epoll ctl,",__LINE__);
                 }
-                FD_SET(val,&wset);
+                else
+                {
+                    ++quit_num;
+                }
             }
         }
-		int stop= T_ret.size();
-        rset_save= rset= wset_save= wset;
         //3.wait socket change able read or write
 		int code;
-        while (stop> 0)
+        while (quit_num> 0)
         {
-            if (0==(code=select(fd_max+ 1,&rset,&wset,NULL,&time_val)))
+            if (0==(code= epoll_wait(epollfd,events,MAX_EVENTS,16 *1000)))
             {
                 //time out
                 errno= ETIMEDOUT;
-                Csz::ErrMsg("[Peer Manager connected]->failed,wait peer time out");
+                Csz::ErrMsg("[Peer Manager _connected]->failed line:%d,wait peer time out",__LINE__);
                 //TODO 继续循环
-				for (auto& val : T_ret)
-				{
-					if (FD_ISSET(val,&rset_save) || FD_ISSET(val,&wset_save))
-					{
-						Csz::Close(val);
-						val= -1;
-                        --stop;
-					}
-				}
-				//clear failed socket
-				std::vector<int> ret;
-				for (const auto& val : T_ret)
-				{
-					if (val >= 0)
-					{
-						ret.emplace_back(val);
-					}
-				}
-				T_ret.swap(ret);
-                return ;
+                break ;
             }
 			if (code< 0)
 			{
-				Csz::ErrSys("[Peer Manager connected]->failed,select can't used");
-				return ;
+				Csz::ErrSys("[Peer Manager _connected]->failed line:%d,epoll wait can't used",__LINE__);
+				break ;
 			}
-            for (auto& val : T_ret)
+            quit_num-= code;
+            for (int n= 0; n< code; ++n)
             {
-                if (val< 0)
-                    continue ;
-                if (FD_ISSET(val,&wset) || FD_ISSET(val,&rset))
+                int errno_save= 0;
+                socklen_t errno_len= sizeof(errno_save);
+                if (getsockopt(events[n].data.fd,SOL_SOCKET,SO_ERROR,&errno_save,&errno_len)< 0)
                 {
-					FD_CLR(val,&rset_save);
-					FD_CLR(val,&wset_save);
-					--stop;
-                    int errno_save= 0;
-                    socklen_t errno_len= sizeof(errno_save);
-                    if (getsockopt(val,SOL_SOCKET,SO_ERROR,&errno_save,&errno_len)< 0)
+                    Csz::ErrRet("[Peer Manager _connected]->failed line:%d,can't connect peer",__LINE__);
+                    if (-1== epoll_ctl(epollfd,EPOLL_CTL_DEL,events[n].data.fd,NULL))
                     {
-                        Csz::ErrRet("[Peer Manager connected]->failed,can't connect peer");
-                        Csz::Close(val);
-                        val= -1;
-                        continue ;
+                        Csz::ErrRet("[Peer Manager _connected]->failed line:%d,",__LINE__);
                     }
-                    //getsockopt return 0 if error
-                    else if (errno_save)
-                    {
-                        //strerror non-sofathread
-                        Csz::ErrMsg("[Peer Manager connected]->failed,can't connect peer:%s",strerror(errno_save));
-                        Csz::Close(val);
-                        val= -1;
-                        continue ;
-                    }
-					//TODO auto
-                    //nonmal socket
-					auto hand_shake= HandShake::GetInstance();
-					send(val,hand_shake->GetSendData(),hand_shake->GetDataSize(),0);
+                    Csz::Close(events[n].data.fd);
+                    continue ;
                 }
-				//if (--code<= 0)
-				//	break;
+                //getsockopt return 0 if error
+                else if (errno_save)
+                {
+                    //strerror non-sofathread
+                    Csz::ErrMsg("[Peer Manager _connected]->failed line:%d,can't connect peer:%s",strerror(errno_save),__LINE__);
+                    if (-1== epoll_ctl(epollfd,EPOLL_CTL_DEL,events[n].data.fd,NULL))
+                    {
+                        Csz::ErrRet("[Peer Manager _connected]->failed line:%d,",__LINE__);
+                    }
+                    Csz::Close(events[n].data.fd);
+                    continue ;
+                }
+				//TODO auto
+                //nonmal socket
+			    auto hand_shake= HandShake::GetInstance();
+				send(events[n].data.fd,hand_shake->GetSendData(),hand_shake->GetDataSize(),0);
+                ret.push_back(events[n].data.fd);
+                if (-1== epoll_ctl(epollfd,EPOLL_CTL_DEL,events[n].data.fd,NULL))
+                {
+                    Csz::ErrRet("[Peer Manager _connected]->failed line:%d,",__LINE__);
+                }
             }
-            rset= rset_save;
-            wset= wset_save;
         }
-		//clear failed socket
-		std::vector<int> ret;
-		for (const auto& val : T_ret)
-		{
-			if (val >= 0)
-			{
-				ret.emplace_back(val);
-			}
-		}
-		T_ret.swap(ret);
-        return ;
+        return std::move(ret);
     }
 
-	void PeerManager::_Verification(std::vector<int>& T_ret)
+	std::vector<int> PeerManager::_Verification(std::vector<int> T_ret)
 	{
 #ifdef CszTest
         Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
 #endif
+        std::vector<int> ret;
 		if (T_ret.empty())
 		{
-            Csz::ErrMsg("[Peer Manager verification]->failed,parameter socket is empty");
-            return ;
+            Csz::ErrMsg("[Peer Manager _verification]->failed line:%d,parameter socket is empty",__LINE__);
+            return ret;
         }
 		auto hand_shake= HandShake::GetInstance();
-        //1.init select
-        fd_set rset,rset_save;
-        int fd_max= -1;
-        
-        //1.time out
-        struct timeval time_val;
-        time_val.tv_sec= 4;
-        time_val.tv_usec= 0;  
-        
-        FD_ZERO(&rset_save);
-        for (const auto& val : T_ret)
+        const int MAX_EVENTS= 25;
+        struct epoll_event ev,events[MAX_EVENTS];
+        auto epollfd= epoll_create(T_ret.size());
+        if (-1== epollfd)
+        {
+            Csz::ErrRet("[Peer Manager _verification]->failed line:%d,epoll create,",__LINE__);
+            return ret;
+        }
+        int quit_num= 0;
+        for (auto& val : T_ret)
         {
             if (val>= 0)
             {
-				//set horizontal mark
-				int lowat= 68;
-				setsockopt(val,SOL_SOCKET,SO_RCVLOWAT,&lowat,sizeof(lowat));
-                if (fd_max< val)
+                ev.events= EPOLLIN;
+                ev.data.fd= val;
+                if (-1== epoll_ctl(epollfd,EPOLL_CTL_ADD,val,&ev))
                 {
-                    fd_max= val;
+                    Csz::ErrRet("[Peer Manager _verification]->failed line:%d,epoll ctl,",__LINE__);
                 }
-                FD_SET(val,&rset_save);
+                else
+                {
+                    int lowat= 68;
+                    setsockopt(val,SOL_SOCKET,SO_RCVLOWAT,&lowat,sizeof(lowat));
+                    ++quit_num;
+                }
             }
         }
-		int stop= T_ret.size();
-        rset= rset_save;
-        //3.wait socket change able read
 		int code;
-        while (stop> 0)
+        char buf[69]={0};
+        while (quit_num> 0)
         {
-            if (0==(code=select(fd_max+ 1,&rset,NULL,NULL,&time_val)))
+            if (0==(code= epoll_wait(epollfd,events,MAX_EVENTS,16 *1000)))
             {
                 //time out
                 errno= ETIMEDOUT;
-                Csz::ErrMsg("[Peer Manager verification]->failed,wait peer time out");
+                Csz::ErrMsg("[Peer Manager _verification]->failed line:%d,wait peer time out",__LINE__);
                 //TODO 继续循环
-				for (auto& val : T_ret)
-				{
-					if (FD_ISSET(val,&rset_save))
-					{
-						Csz::Close(val);
-						val= -1;
-                        --stop;
-					}
-				}
-				//clear failed socket
-				std::vector<int> ret;
-				for (const auto& val : T_ret)
-				{
-					if (val >= 0)
-					{
-						ret.emplace_back(val);
-					}
-				}
-				T_ret.swap(ret);
-                return ;
+                break ;
             }
 			if (code< 0)
 			{
-				Csz::ErrSys("[Peer Manager verification]->failed,select can't used");
-				return ;
+				Csz::ErrSys("[Peer Manager _verification]->failed line:%d,epoll wait can't used",__LINE__);
+				break ;
 			}
-            for (auto& val : T_ret)
+            quit_num-= code;
+            for (int n= 0; n< code; ++n)
             {
-                if (val< 0)
-                    continue ;
-                if (FD_ISSET(val,&rset))
+                if (68!= recv(events[n].data.fd,buf,68,MSG_WAITALL))
                 {
-					FD_CLR(val,&rset_save);
-					--stop;
-					//TODO auto
-					char buf[69]={0};
-					if (68!=recv(val,buf,68,MSG_WAITALL))
-					{
-#ifdef CszTest
-                        Csz::LI("[Peer Manager verification]->failed,recv num!= 68");
-#endif	
-						Csz::Close(val);
-						val= -1;
-					}
-					else if (!(hand_shake->Varification(buf)))
-					{
-#ifdef CszTest
-                        Csz::LI("[Peer Manager verification]->failed,info error%s",UrlEscape()(std::string(buf+28,20)).c_str());
-#endif                          
-						Csz::Close(val);			
-						val= -1;
-					}
+                    Csz::ErrMsg("[Peer Manager _verification]->failed,recv num!= 68");;
+                    Csz::Close(events[n].data.fd);
                 }
-				//if (--code<= 0)
-				//	break;
+                else if (!(hand_shake->Varification(buf)))
+                {
+                    Csz::ErrMsg("[Peer Manager _verification]->failed,recv num!= 68");;
+                    Csz::Close(events[n].data.fd);
+                }
+                else
+                {
+                    ret.push_back(events[n].data.fd);
+                }
+                if (-1== epoll_ctl(epollfd,EPOLL_CTL_DEL,events[n].data.fd,NULL))
+                {
+                    Csz::ErrRet("[Peer Manager _verification]->failed line:%d,",__LINE__);
+                }
             }
-            rset= rset_save;
         }
-		//clear failed socket
-		std::vector<int> ret;
-		for (const auto& val : T_ret)
-		{
-			if (val >= 0)
-			{
-				//set horizontal mark
-				int lowat= 1;
-				setsockopt(val,SOL_SOCKET,SO_RCVLOWAT,&lowat,sizeof(lowat));
-				ret.emplace_back(val);
-			}
-		}
-		T_ret.swap(ret);
-        return ;
+        return std::move(ret);
 	}
 
-	void PeerManager::_SendBitField(std::vector<int>& T_ret)
+	std::vector<int> PeerManager::_SendBitField(std::vector<int> T_ret)
 	{
 #ifdef CszTest
         Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
 #endif
+        std::vector<int> ret;
 		if (T_ret.empty())
 	    {
             Csz::ErrMsg("[Peer Manager send bit field]->failed,parameter socket is empty");
-        	return ;
+        	return ret;
         }
-		auto local_bit_field= LocalBitField::GetInstance();
+        auto data= LocalBitField::GetInstance()->GetSendData();
+        auto len= LocalBitField::GetInstance()->GetDataSize();
 		for (const auto& val : T_ret)
 		{
-			send(val,local_bit_field->GetSendData(),local_bit_field->GetDataSize(),0);
+			if(send(val,data,len,0)== len)
+            {
+                ret.push_back(val);
+            }
 		}
-		return ;
+		return std::move(ret);
 	}
 
 	void PeerManager::CloseSocket(int T_socket)

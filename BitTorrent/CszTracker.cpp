@@ -201,7 +201,6 @@ namespace Csz
 						Csz::Close(val.socket_fd);
 						val.socket_fd= -1;
 						--quit_num;
-						//--count;
 						continue;
 					}
 					//移植问题 getsockopt return 0 if error
@@ -211,7 +210,6 @@ namespace Csz
 						Csz::Close(val.socket_fd);
 						val.socket_fd= -1;
 						--quit_num;
-						//--count;
 						continue;
 					}
 					//normal socket
@@ -232,10 +230,10 @@ namespace Csz
 						--quit_num;
 						continue ;
 					}	
-					//--count;
 				}
 				if (FD_ISSET(val.socket_fd,&rset))
 				{
+					--quit_num;
 					FD_CLR(val.socket_fd,&rset_save);
 					//tcp
 					if (val.socket_tcp)
@@ -252,7 +250,6 @@ namespace Csz
 					}
 					Csz::Close(val.socket_fd);
 					val.socket_fd= -1;
-					--quit_num;
 				}
 			}
 			rset= rset_save;

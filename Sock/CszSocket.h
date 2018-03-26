@@ -37,6 +37,6 @@ namespace Csz
 	int Listen(int T_socket,int T_backlog);
 	int Accept(int T_socket,struct sockaddr* addr,socklen_t* T_addrlen);
     int RecvTime_us(int T_socket,char* T_buf,int32_t T_len,int T_time);
-    int RecvTimeP_us(int T_socket,char* T_buf,int32_t* T_len,int T_time);
+ //   int RecvTimeP_us(int T_socket,char* T_buf,int32_t* T_len,int T_time);
 }
 #endif

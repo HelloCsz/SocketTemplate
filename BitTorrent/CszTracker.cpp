@@ -2,7 +2,10 @@
 #include <sys/types.h>
 #include <sys/socket.h> //connect
 #include <netdb.h> //freeaddrinfo
-#include <sys/select.h> //select
+//#include <sys/select.h> //select
+#include <sys/time.h>
+#include <unistd.h>
+
 #include <time.h> //time
 #include <stdlib.h> //rand,rand
 #include "CszBitTorrent.h"
@@ -352,6 +355,7 @@ namespace Csz
 		SetParameter(std::move(parameter));
 
 		parameter.assign("event=started");
+		//parameter.assign("event=completed");
 		SetParameter(std::move(parameter));
 
 		parameter.assign("numwant=50");

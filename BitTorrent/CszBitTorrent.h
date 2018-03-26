@@ -16,7 +16,6 @@
 #include <arpa/inet.h> //htonl
 #include <pthread.h> //pthread_rwlock_t
 //brpc
-//#include <bthread/bthread.h>
 //#include <bthread/condition_variable.h>
 #include <butil/memory/singleton_on_pthread_once.h> //butil::singleton
 #include <butil/resource_pool.h> //butil::ResourcePool
@@ -266,9 +265,14 @@ namespace Csz
 			void COutInfo()const;
         private:
             void _LoadPeerList(const std::string& T_socket_list);
-			std::vector<int> _Connected(std::vector<int> T_ret);
-            std::vector<int> _Verification(std::vector<int> T_ret);
-			std::vector<int> _SendBitField(std::vector<int> T_ret);
+			void _Connected(std::vector<int>& T_ret);
+			struct Parameter
+			{
+				Parameter():socket(-1),cur_this(nullptr){}
+				int socket;
+				PeerManager* cur_this;
+			};
+            static void* _Verification(void*);
         private:
             struct DataType
             {

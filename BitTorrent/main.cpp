@@ -80,7 +80,7 @@ int main(int argc,char** argv)
     auto start= time(NULL);
     //select
 	{
-	    while(Csz::SelectSwitch()()== false && !Csz::LocalBitField::GetInstance()->GameOver())
+	    while(Csz::SelectSwitch()()== false /*&& !Csz::LocalBitField::GetInstance()->GameOver()*/)
 	    {
 		    auto peer_list= tracker.GetPeerList(60);
 			Csz::PeerManager::GetInstance()->LoadPeerList(peer_list);

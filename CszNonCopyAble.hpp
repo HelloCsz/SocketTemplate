@@ -21,9 +21,7 @@ namespace Csz
 #else
 		private:
 			NonCopyAble(const NonCopyAble&);
-            NonCopyAble(const NonCopyAble&&);
 			NonCopyAble& operator=(const NonCopyAble&);
-            NonCopyAble& operator=(const NonCopyAble&&);
 #endif
 	};
 }

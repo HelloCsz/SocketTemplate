@@ -219,21 +219,21 @@ namespace Csz
         if (0!= pthread_rwlock_rdlock(&lock))
         {
             Csz::ErrMsg("[Bit Field lack need piece]->failed,read lock failed");
-            return ret;
+            return std::move(ret);
         }
 		if (prefix_and_bit_field.size()<= 5)
 		{
             pthread_rwlock_unlock(&lock);
             //unlock
 			Csz::ErrMsg("[Bit Field lack need piece]->failed,too small,found lack need piece failed");
-			return ret;
+			return std::move(ret);
 		}
 		if (nullptr== T_bit_field || T_len+ 5!= (int)prefix_and_bit_field.size() )
 		{
             pthread_rwlock_unlock(&lock);
             //unlock
 			Csz::ErrMsg("[Bit Field lack need piece]->failed,not found bit field,bit field is nullptr or len != bit field len");
-			return ret;
+			return std::move(ret);
 		}
 		int cur_len= 0;
 		int32_t index= 0;
@@ -243,17 +243,15 @@ namespace Csz
 		{
 			for (int i= 0; i< 8 && check_total> 0; ++i,++index,--check_total)
 			{
-				//1.have piece
+				//1.peer have piece
 				if(T_bit_field[cur_len] & bit_hex[i])
 				{
 					//2.check local bit
-					if (prefix_and_bit_field[cur_len] & bit_hex[i])
+					if (!(prefix_and_bit_field[cur_len+ 5] & bit_hex[i]))
 					{
-						//2.1 loca have piece
-						continue ;
+						//2.1local lack piece
+						ret.emplace_back(index);
 					}
-					//2.2local lack piece
-					ret.emplace_back(index);
 				}
 			}
 			++cur_len;
@@ -329,7 +327,7 @@ namespace Csz
                 FillBitField(index);
             } 
 #ifdef CszTest
-            Csz::LI("[Run]->index=%d",index);
+   //         Csz::LI("[Run]->index=%d",index);
 #endif
         }
         return ;
@@ -337,11 +335,15 @@ namespace Csz
 
     uint32_t BitField::DownLoad() const
     {
+		if (cur_sum== total)
+			return TorrentFile::GetInstance()->GetFileTotal();
         return cur_sum* TorrentFile::GetInstance()->GetIndexNormalLength();
     }
 
     uint32_t BitField::LeftSize() const
     {
+		if (cur_sum== total)
+			return 0;
         return TorrentFile::GetInstance()->GetFileTotal()- DownLoad();
     }
 
@@ -372,7 +374,7 @@ namespace Csz
 		}
 		if (!bit_info.empty())
 		{
-			Csz::LI("%s,cur_sum=%d -> total=%d,= %f",bit_info.c_str(),cur_sum,total,(double)cur_sum/ (double)total);
+			Csz::LI("%s,cur_sum=%d -> total=%d,= %f%%",bit_info.c_str(),cur_sum,total,((double)cur_sum/ (double)total)* 100);
 		}
 		return ;
 	}

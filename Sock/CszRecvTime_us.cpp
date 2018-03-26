@@ -6,9 +6,9 @@ namespace Csz
 {
     int RecvTime_us(int T_socket,char* T_buf,int32_t T_len,int T_time)
     {
-        if (T_time<= 0)
+        if (T_time<= 0 || nullptr== T_buf || T_len<= 0)
         {
-            Csz::ErrMsg("[Recv Timeus]->failed,time< 0");
+            Csz::ErrMsg("[%s->%d]->failed,time< 0 or buf is nullptr or len< 0",__func__,__LINE__);
             return -1;
         }
         //300ms once
@@ -18,7 +18,7 @@ namespace Csz
         for (int i= 0; i< time_count && T_len> 0; ++i)
         {
             code =recv(T_socket,T_buf+ cur_len,T_len,MSG_DONTWAIT);
-            if (-1== code)
+            if (code< 0)
             {
                 if (errno== EAGAIN || errno== EWOULDBLOCK)
                 {
@@ -26,103 +26,47 @@ namespace Csz
                     bthread_usleep(TIMEOUT300MS);
                     continue;
                 }
-                Csz::ErrRet("[Recv Timeus time out=%d,socket=%d]->failed,",T_time,T_socket);
+                Csz::ErrRet("[%s->%d=%dus,socket=%d]->failed,",__func__,__LINE__,T_time,T_socket);
                 break;
             }
             else if (0== code)
             {
-                Csz::ErrMsg("[Recv Timeus time out=%d,socket=%d]->failed,peer close",T_time,T_socket);
+                Csz::ErrMsg("[%s->%d time out=%dus,socket=%d]->failed,peer close",__func__,__LINE__,T_time,T_socket);
                 break;
             }
-            cur_len+= code;
-            T_len= T_len- code;
+			else
+			{
+				cur_len+= code;
+				T_len-= code;
+			}
         }
-        if (0== T_len)
-        {
-            return 0;
-        }
-		if (code!= 0)
+		if (0== T_len)
+		{
+			return cur_len;
+		}
+		if (code!= 0 && T_len> 0)
 		{
 			//four recv
 			code =recv(T_socket,T_buf+ cur_len,T_len,MSG_DONTWAIT);
-			if (-1== code)
+			if (code< 0)
 			{
 				if (errno== EAGAIN || errno== EWOULDBLOCK)
 				{
-					Csz::ErrRet("[Recv Timeus time out=%d,socket=%d]->failed",T_time,T_socket);
-					return -1;
+					Csz::ErrRet("[%s->%d time out=%dus,socket=%d]->failed",__func__,__LINE__,T_time,T_socket);
+					return cur_len;
 				}
 				else if (0== code)
 				{
-					Csz::ErrMsg("[Recv Timeus time out=%d,socket=%d]->failed,peer close",T_time,T_socket);
-					return -1;
+					Csz::ErrMsg("[%s->%d time out=%dus,socket=%d]->failed,peer close",__func__,__LINE__,T_time,T_socket);
+					return cur_len;
 				}
 			}
-			T_len= T_len- code;
-		}
-		if (0== T_len)
-			return 0;
-        return -1;
-    }
-
-    int RecvTimeP_us(int T_socket,char* T_buf,int32_t* T_len,int T_time)
-    {
-        if (T_time<= 0)
-        {
-            Csz::ErrMsg("[Recv Timeus]->failed,time< 0");
-            return -1;
-        }
-        //300ms once
-        int time_count= T_time/ TIMEOUT300MS;
-        int cur_len= 0;
-        int code= 0;
-        for (int i= 0; i< time_count && *T_len> 0; ++i)
-        {
-            code =recv(T_socket,T_buf+ cur_len,*T_len,MSG_DONTWAIT);
-            if (-1== code)
-            {
-                if (errno== EAGAIN || errno== EWOULDBLOCK)
-                {
-                    //300ms
-                    bthread_usleep(TIMEOUT300MS);
-                    continue;
-                }
-                Csz::ErrRet("[Recv Timeus time out=%d,socket=%d]->failed,",T_time,T_socket);
-                break;
-            }
-            else if (0== code)
-            {
-                Csz::ErrMsg("[Recv Timeus time out=%d,socket=%d]->failed,peer close",T_time,T_socket);
-                break;
-            }
-            cur_len+= code;
-            *T_len= *T_len- code;
-        }
-        if (0== *T_len)
-        {
-            return 0;
-        }
-		if (code!= 0)
-		{
-			//four recv
-			code =recv(T_socket,T_buf+ cur_len,*T_len,MSG_DONTWAIT);
-			if (-1== code)
+			else
 			{
-				if (errno== EAGAIN || errno== EWOULDBLOCK)
-				{
-					Csz::ErrRet("[Recv Timeus time out=%d,socket=%d]->failed,",T_time,T_socket);
-					return -1;
-				}
-				else if (0== code)
-				{
-					Csz::ErrMsg("[Recv Timeus time out=%d,socket=%d]->failed,peer close",T_time,T_socket);
-					return -1;
-				}
+				cur_len+= code;
+				T_len-= code;
 			}
-			*T_len= *T_len- code;
 		}
-		if (0== *T_len)
-			return 0;
-        return -1;
+        return cur_len;
     }
 }

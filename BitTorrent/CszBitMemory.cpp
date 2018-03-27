@@ -216,13 +216,20 @@ namespace Csz
         {
             return ;
         }
-    
+		//std::string out_info;
+		std::ostringstream out_info;
+        auto resource_pool= butil::ResourcePool<BT>::singleton();
+		out_info<< resource_pool->describe_resources();
+		Csz::LI("[%s->%d]:INFO:%s",__func__,__LINE__,out_info.str().c_str());
         if (0== T_len)
         {
-            auto resource_pool= butil::ResourcePool<BT>::singleton();
+            //auto resource_pool= butil::ResourcePool<BT>::singleton();
             for (auto& val : flag->second->data)
             {
-                resource_pool->return_resource(val.id);
+                if (0!= resource_pool->return_resource(val.id))
+				{
+					Csz::ErrMsg("[%s->%d]->failed,return resource failed",__func__,__LINE__);
+				}
             }
             (flag->second->data).clear();
             //TODO delete flag

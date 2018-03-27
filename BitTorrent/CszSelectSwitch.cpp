@@ -24,11 +24,6 @@ namespace Csz
 		auto thread_pool= SingletonThread<SelectSwitch::Parameter,THREADNUM>::GetInstance();
 		auto peer_manager= PeerManager::GetInstance();
 		int code;
-		//30s
-		auto optimistic_start= butil::gettimeofday_s();
-		//10s calculate
-		auto calculate_start= optimistic_start;
-		auto down_speed= DownSpeed::GetInstance();
 		const int MAX_EVENTS= 50;
 		struct epoll_event ev,events[MAX_EVENTS];	
 		//2.select
@@ -64,18 +59,6 @@ namespace Csz
 			
 			if ((code = epoll_wait(epollfd,events,MAX_EVENTS,10* 1000))>= 0)
 			{
-				//update status
-				auto stop= butil::gettimeofday_s();
-				if (stop- calculate_start>= 10)
-				{
-					down_speed->CalculateSpeed();
-					calculate_start= stop;
-				}
-				if (stop- optimistic_start>= 30)
-				{
-					peer_manager->Optimistic();
-					optimistic_start= stop;
-				}
 				if (0 == code)
 				{
 					Csz::Close(epollfd);	
@@ -94,9 +77,8 @@ namespace Csz
 				int32_t len= 0;
 				for (int i= 0; i< code; ++i)
 				{
-					auto val= events[i].data.fd;
 					//TODO time out
-					int error_code= recv(val,(char*)&len,4,MSG_WAITALL);
+					int error_code= recv(events[i].data.fd,(char*)&len,4,MSG_WAITALL);
 					//fix bug
 					len= ntohl(len);
 					if (error_code!= 4)
@@ -104,42 +86,42 @@ namespace Csz
 #ifdef CszTest
                         Csz::LI("[Select Switch Run]->failed,socket recv_code=%d",error_code);
 #endif
-						peer_manager->CloseSocket(val);
+						peer_manager->CloseSocket(events[i].data.fd);
 					}//recv len != 4
-					else if (4== error_code)
+					else 
 					{
-						//catch message
-						//keep alive
-						if (0== len)
-						{
-							DKeepAlive(NULL);
-							continue;
-						}
-						char id;
-						error_code= recv(val,&id,1,MSG_DONTWAIT);
-						if (error_code!= 1)
-						{
-							//100ms
-							bthread_usleep(100000);
-							error_code= recv(val,&id,1,MSG_DONTWAIT);
-						}
-						if (error_code!= 1)
-						{	
-							peer_manager->CloseSocket(val);
-							continue;
-						}
-                        
-						//normal socket
 						//thorw exception new
 						std::unique_ptr<Parameter> data(new(std::nothrow) Parameter());
 						if (nullptr== data)
 						{
 							//TODO wait,bug socket already take data(eg len and id),should close socket
 							Csz::ErrMsg("[Select Switch Run]->failed,new parameter is nullptr");
-							peer_manager->CloseSocket(val);
+							peer_manager->CloseSocket(events[i].data.fd);
 							continue;
 						}
-						data->socket= val;
+						data->socket= events[i].data.fd;
+						//catch message
+						//keep alive
+						if (0== len)
+						{
+							DKeepAlive(data.release());
+							continue;
+						}
+						char id;
+						error_code= recv(data->socket,&id,1,MSG_DONTWAIT);
+						if (error_code!= 1)
+						{
+							//100ms
+							bthread_usleep(100000);
+							error_code= recv(data->socket,&id,1,MSG_DONTWAIT);
+						}
+						if (error_code!= 1)
+						{	
+							peer_manager->CloseSocket(data->socket);
+							continue;
+						}
+                        
+						//normal socket
 #ifdef CszTest
 						Csz::LI("[Select Switch Run]socket=%d",data->socket);
 #endif
@@ -264,6 +246,7 @@ namespace Csz
 			return ;
 		}
 		std::unique_ptr<Parameter> guard(T_data);
+		PeerManager::GetInstance()->UpdateExpire(T_data->socket);
 		return ;
 	}
 
@@ -278,6 +261,7 @@ namespace Csz
 			return ;
 		}
 		std::unique_ptr<Parameter> guard(T_data);
+		PeerManager::GetInstance()->UpdateExpire(T_data->socket);
 		PeerManager::GetInstance()->PrChoke(T_data->socket);
 		return ;
 	}
@@ -293,6 +277,7 @@ namespace Csz
 			return ;
 		}
 		std::unique_ptr<Parameter> guard(T_data);
+		PeerManager::GetInstance()->UpdateExpire(T_data->socket);
 		PeerManager::GetInstance()->PrUnChoke(T_data->socket);
 		return ;
 	}
@@ -308,6 +293,7 @@ namespace Csz
 			return ;
 		}
 		std::unique_ptr<Parameter> guard(T_data);
+		PeerManager::GetInstance()->UpdateExpire(T_data->socket);
 		PeerManager::GetInstance()->PrInterested(T_data->socket);
 		return ;
 	}
@@ -323,6 +309,7 @@ namespace Csz
 			return ;
 		}
 		std::unique_ptr<Parameter> guard(T_data);
+		PeerManager::GetInstance()->UpdateExpire(T_data->socket);
 		PeerManager::GetInstance()->PrUnInterested(T_data->socket);
 		return ;
 	}
@@ -338,6 +325,7 @@ namespace Csz
 			return ;
 		}
 		std::unique_ptr<Parameter> guard(T_data);
+		PeerManager::GetInstance()->UpdateExpire(T_data->socket);
 		int32_t index= *reinterpret_cast<int32_t*>(T_data->buf);
 		//network byte
 		index= ntohl(index);
@@ -356,6 +344,7 @@ namespace Csz
 			return ;
 		}
 		std::unique_ptr<Parameter> guard(T_data);
+		PeerManager::GetInstance()->UpdateExpire(T_data->socket);
 		LocalBitField::GetInstance()->RecvBitField(T_data->socket,T_data->buf,T_data->cur_len);
 		return ;
 	}
@@ -424,6 +413,7 @@ namespace Csz
 			return ;
 		}
 		std::unique_ptr<Parameter> guard(T_data);
+		PeerManager::GetInstance()->UpdateExpire(T_data->socket);
         //1.check socket sort 1...4
 		if (DownSpeed::GetInstance()->CheckSocket(T_data->socket))
 		{
@@ -500,6 +490,7 @@ namespace Csz
 			return ;
 		}
 		std::unique_ptr<Parameter> guard(T_data);
+		PeerManager::GetInstance()->UpdateExpire(T_data->socket);
         //network byte
         int32_t index= ntohl(*reinterpret_cast<int32_t*>(T_data->buf));
         int32_t begin= ntohl(*reinterpret_cast<int32_t*>(T_data->buf+ 4));
@@ -535,11 +526,10 @@ namespace Csz
             return ;
         }
         
-        auto down_speed= DownSpeed::GetInstance()->GetInstance();
         //1.write memory
         if (true== BitMemory::GetInstance()->Write(index,begin,T_data->buf+ 8,length))
         {
-            down_speed->AddTotal(T_data->socket,length);
+            DownSpeed::GetInstance()->GetInstance()->AddTotal(T_data->socket,length);
         }
         else
         {
@@ -554,54 +544,45 @@ namespace Csz
 #endif
 
         //2.lock piece
-        std::vector<uint8_t> over(torrent_file->GetPieceBit(index),0);
-        over[begin/SLICESIZE]= 1;
-        int fill= 1;
-        const int size= over.size();
+        //std::vector<uint8_t> over(torrent_file->GetPieceBit(index),0);
+        //over[begin/SLICESIZE]= 1;
+        const int size= torrent_file->GetPieceBit(index);
         auto end_slice= torrent_file->CheckEndSlice(index);
 
         //if index is end_end,upon write is fill piece space
         //2.1 quick donwload piece
         int code= 0;
-        while (!local_bit_field->CheckBitField(index) && fill< size)
-        { 
-            int32_t cur_write= 0;
-            for (int i= 0; i< size; ++i)
+		auto mutex= peer_manager->GetSocketMutex(T_data->socket);
+		if (nullptr== mutex)
+		{
+			Csz::ErrMsg("[%s->%d]->failed,socket mutex is nullptr",__func__,__LINE__);
+		    need_piece->UnLockIndex(index);
+            peer_manager->CloseSocket(T_data->socket);
+			return ;
+		}
+		Request request;
+        for (int i= 1; i< size; ++i)
+        {
+			std::lock_guard<bthread::Mutex> guard(*mutex);
+            //2.1.1 end slice
+            if ((i== size- 1) && end_slice.first)
             {
-                //lack slice
-                if (over[i]== 0)
-                {   
-                    //2.1.1 end slice
-                    if ((i== size- 1) && end_slice.first)
-                    {
-                        code= _LockPiece(T_data->socket,index,i* SLICESIZE,end_slice.second);
-                        cur_write= end_slice.second;
-                    }
-                    //2.1.2 normal slice
-                    else
-                    {
-                        code= _LockPiece(T_data->socket,index,i* SLICESIZE,SLICESIZE);
-                        cur_write= SLICESIZE;
-                    }
-                    //success recv slice
-                    if (code> 0)
-                    {
-                        down_speed->AddTotal(T_data->socket,cur_write);
-                        over[i]= 1;
-                        ++fill;
-                    }
-                    else if (code<= 0)
-                    {   
-                        break;   
-                    }
-                }
+				request.SetParameter(index,i* SLICESIZE,end_slice.second);
             }
-            if (code<= 0)
-            {    
-                break;
-            }  
+            //2.1.2 normal slice
+            else
+            {
+				request.SetParameter(index,i* SLICESIZE,SLICESIZE);
+            }
+			if (send(T_data->socket,request.GetSendData(),request.GetDataSize(),0)!= request.GetDataSize())
+			{
+				code= -1;
+				break;
+			}
         }
-        if (code> 0 && fill== size && local_bit_field->CheckBitField(index))
+		//alread save 1 slice
+		code= _LockPiece(T_data->socket,index,size- 1);
+        if (code> 0 && local_bit_field->CheckBitField(index))
         {
 			peer_manager->ClearPieceStatus(T_data->socket);
         }
@@ -614,29 +595,14 @@ namespace Csz
 	}
     
     // bit memory error < 0 | socket close== 0 | success > 0
-    inline int8_t SelectSwitch::_LockPiece(int T_socket,int32_t T_index,int32_t T_begin,int32_t T_length)
+    inline int8_t SelectSwitch::_LockPiece(int T_socket,int32_t T_index,int32_t T_size)
     {
 #ifdef CszTest
         Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
 #endif
-        {
-            Request request;
-            request.SetParameter(T_index,T_begin,T_length);
-            auto mutex= PeerManager::GetInstance()->GetSocketMutex(T_socket);
-            if (nullptr== mutex)
-            {
-                Csz::ErrMsg("[Select Switch look_piece]->failed,return mutex is nullptr");
-                return 0;
-            }
-            std::lock_guard<bthread::Mutex> mutex_guard(*mutex);
-            if (send(T_socket,request.GetSendData(),request.GetDataSize(),0)!= request.GetDataSize())
-            {
-                Csz::ErrMsg("[Select Switch lock_piece]->failed,send size!=%d",request.GetDataSize());
-                return 0;
-            }
-        }
         int ret= 0;
-        for (int i= 0; i< 6; ++i)
+		auto down_speed= DownSpeed::GetInstance();
+        for (int i= 0; i< T_size; )
         {
             int32_t len;
             //int error_code= recv(T_socket,(char*)&len,sizeof(len),0);
@@ -645,27 +611,6 @@ namespace Csz
 			len= ntohl(len);
 			if (sizeof(len)== error_code)
 			{
-				//catch message
-				//keep alive
-				if (0== len)
-				{
-				    DKeepAlive(NULL);
-					continue;
-				}
-				char id;
-				error_code= recv(T_socket,&id,1,MSG_DONTWAIT);
-				if (error_code!= 1)
-				{
-					//1s
-					bthread_usleep(1000000);
-					error_code= recv(T_socket,&id,1,MSG_DONTWAIT);
-				}
-				if (error_code!= 1)
-				{
-					break;
-				}
-                        
-				//normal socket
 				//thorw exception new
 				std::unique_ptr<Parameter> data(new(std::nothrow) Parameter());
 				if (nullptr== data)
@@ -675,7 +620,27 @@ namespace Csz
 					break;
 			    }
 				data->socket= T_socket;
+				//catch message
+				//keep alive
+				if (0== len)
+				{
+				    DKeepAlive(data.release());
+					continue;
+				}
+				char id;
+				error_code= recv(data->socket,&id,1,MSG_DONTWAIT);
+				if (error_code!= 1)
+				{
+					//1s
+					bthread_usleep(1000000);
+					error_code= recv(data->socket,&id,1,MSG_DONTWAIT);
+				}
+				if (error_code!= 1)
+				{
+					break;
+				}
                         
+				//normal socket
                 if(0== id)
                 {
                     DChoke(data.release());
@@ -744,25 +709,27 @@ namespace Csz
                 else if (7== id)
                 {
                     data.reset(orgin);
+					PeerManager::GetInstance()->UpdateExpire(data->socket);
                     int32_t index= ntohl(*reinterpret_cast<int32_t*>(data->buf));
                     int32_t begin= ntohl(*reinterpret_cast<int32_t*>(data->buf+ 4));
-                    if (T_index== index && T_begin== begin && T_length== data->cur_len- 8)
+
+                    if (T_index== index)
                     {
-                        if (BitMemory::GetInstance()->Write(index,begin,data->buf+ 8,T_length))
+                        if (BitMemory::GetInstance()->Write(index,begin,data->buf+ 8,data->cur_len- 8))
                         {
-                            ret= 1;
+							down_speed->AddTotal(data->socket,data->cur_len- 8);
+                            ++i;
+							ret= 1;
                         }                      
                         else
                         {
                             ret= -1;
+							break ;
                         }
-                        break;
                     }
                     else
                     {
-                        Csz::ErrMsg("[Select Switch lock_piece]->recv other piece");
-                        //TODO delete i
-                        --i;
+                        Csz::ErrMsg("[Select Switch lock_piece]->recv other piece socket=%d,real index=%d,recv index=%d",data->socket,T_index,index);
                         continue;
                     }
                 }
@@ -784,7 +751,7 @@ namespace Csz
             else
             {
 #ifdef CszTest
-                Csz::LI("[Select Switch lock_piece]->failed,socket=%d,index=%d,begin=%d,error_code=%d,len=%d,i=%d",T_socket,T_index,T_begin,error_code,len,i);
+                Csz::LI("[Select Switch lock_piece]->failed,socket=%d,index=%d,error_code=%d,len=%d,i=%d",T_socket,T_index,error_code,len,i);
 #endif
                 break;
             }
@@ -829,6 +796,7 @@ namespace Csz
 			return ;
 		}
 		std::unique_ptr<Parameter> guard(T_data);
+		PeerManager::GetInstance()->UpdateExpire(T_data->socket);
 		return ;
 	}
 
@@ -843,20 +811,7 @@ namespace Csz
 			return ;
 		}
 		std::unique_ptr<Parameter> guard(T_data);
+		PeerManager::GetInstance()->UpdateExpire(T_data->socket);
 		return ;
 	}
-
-/*
-	void* SelectSwitch::RequestRuner(void*)
-	{
-		auto local_bit_field= LocalBitField::GetInstance();
-		auto need_piece= NeedPiece::GetInstance();
-		while (!local_bit_field->GameOver() && !need_piece->RunnerStatus())
-		{
-			need_piece->Runner();
-		}
-		return nullptr;
-	}
-*/
-
 }

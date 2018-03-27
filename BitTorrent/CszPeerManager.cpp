@@ -6,8 +6,11 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include <butil/time.h> //gettimeofday_us
+//brpc
+#include <butil/time.h> //gettimeofday_us,seconds_from_now
 #include <bthread/bthread.h>
+//#include <bthread/unstable.h> //bthread_timer_add
+
 #include "CszBitTorrent.h"
 #include "../Sock/CszSocket.h"
 
@@ -180,6 +183,11 @@ namespace Csz
 #ifdef CszTest
         Csz::LI("destructor Peer Manager");
 #endif
+		auto code= bthread_timer_del(id);
+		if (code!= 0)
+		{
+			Csz::ErrMsg("[%s->%d]->failed,optimistic still running or einval code=%d",__func__,__LINE__,code);
+		}
         pthread_rwlock_destroy(&lock);
         for (auto& val : peer_list)
         {
@@ -756,6 +764,10 @@ namespace Csz
             num= 1;  
         }
 		int optimistic= butil::gettimeofday_us() % num;
+		std::vector<int> del_socket;
+		del_socket.reserve(peer_list.size());
+		auto cur_time= time(NULL);
+		KeepAlive keep_alive;
 		for (auto& val : peer_list)
 		{
 			if (((val.second)->status).am_choke)
@@ -772,8 +784,26 @@ namespace Csz
 					break;
 				}
 			}
+			if ((cur_time- (val.second)->expire)>= PEERKEEPALIVETIME)
+			{
+				del_socket.emplace_back(val.first);
+			}
+			else
+			{
+				//TODO 2min
+				std::lock_guard<bthread::Mutex> guard(*(val.second)->mutex);
+				if (send(val.first,keep_alive.GetSendData(),keep_alive.GetDataSize(),0)!= keep_alive.GetDataSize())
+				{
+					del_socket.emplace_back(val.first);
+				}
+			}
 		}
         pthread_rwlock_unlock(&lock);
+		//unlock
+		for (const auto& val : del_socket)
+		{
+			CloseSocket(val);
+		}
 		return ;
 	}
 
@@ -872,6 +902,46 @@ namespace Csz
         pthread_rwlock_unlock(&lock);
         return ;
     }
+
+	void PeerManager::_Optimistic(void* T_this)
+	{
+		PeerManager* cur_this= static_cast<PeerManager*>(T_this);
+		cur_this->Optimistic();
+		//30s
+		auto until_time= butil::seconds_from_now(30);
+		auto code= bthread_timer_add(&cur_this->id,until_time,&_Optimistic,T_this);
+		if (code!= 0)
+		{
+			Csz::ErrMsg("[%s->%d]->failed,bthread timer add failed code=%d",__func__,__LINE__,code);
+		}
+		return ;
+	}
+
+	void PeerManager::UpdateExpire(int T_socket)
+	{
+		if (T_socket< 0)
+		{
+			Csz::ErrMsg("[%s->%d]->failed,socket< 0",__func__,__LINE__);
+			return ;
+		}
+		//lock
+		if (0!= pthread_rwlock_wrlock(&lock))
+		{
+			Csz::ErrMsg("[%s->%d]->failed,write lock failed",__func__,__LINE__);
+			return ;
+		}
+		auto flag= peer_list.find(T_socket);
+		if (flag== peer_list.end())
+		{
+			pthread_rwlock_unlock(&lock);
+			//unlock
+			return ;
+		}
+		flag->second->expire= time(NULL);
+		pthread_rwlock_unlock(&lock);
+		//unlock
+		return ;
+	}
 
 	void PeerManager::COutInfo() const
 	{

@@ -81,6 +81,7 @@ namespace Csz
 		index_queue.sort(NPComp);
 		auto start= index_queue.begin();
 		auto stop= index_queue.end();
+		bool game_end= LocalBitField::GetInstance()->GameEnd();
 		//TODO stop- start> 1
 		while (start!= stop)
 		{
@@ -96,6 +97,10 @@ namespace Csz
 				    {
 					    judge= true;
 				    }
+					else if (game_end)
+					{
+						judge= true;
+					}
                 }
 			}
 			else

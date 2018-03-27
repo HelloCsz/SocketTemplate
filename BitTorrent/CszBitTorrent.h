@@ -20,6 +20,7 @@
 #include <butil/memory/singleton_on_pthread_once.h> //butil::singleton
 #include <butil/resource_pool.h> //butil::ResourcePool
 #include <bthread/mutex.h> //Mutex
+#include <bthread/unstable.h>
 
 #include "CszMicro.hpp"
 
@@ -227,10 +228,11 @@ namespace Csz
             //PeerManager(const std::vector<std::string> &T_socket_list);
 			PeerManager():cur_id(0)
             {
+                pthread_rwlock_init(&lock,NULL);
+				_Optimistic(this);
 #ifdef CszTest
                 Csz::LI("construct Peer Manager");
 #endif
-                pthread_rwlock_init(&lock,NULL);
             }
             ~PeerManager();
 		public:
@@ -262,6 +264,7 @@ namespace Csz
             bool ReqPiece(int T_socket);
             bool RecvPiece(int T_socket);
             void ClearPieceStatus(int T_socket);
+			void UpdateExpire(int T_socket);
 			void COutInfo()const;
         private:
             void _LoadPeerList(const std::string& T_socket_list);
@@ -273,6 +276,7 @@ namespace Csz
 				PeerManager* cur_this;
 			};
             static void* _Verification(void*);
+			static void _Optimistic(void* T_this);
         private:
             struct DataType
             {
@@ -286,6 +290,7 @@ namespace Csz
             std::unordered_map<int,std::shared_ptr<PeerManager::DataType>> peer_list;
             int32_t cur_id;
             pthread_rwlock_t lock;
+			bthread_timer_t id;
     };
 
     //bt message type
@@ -543,6 +548,13 @@ namespace Csz
             void LoadLocalFile();
             uint32_t DownLoad() const;
             uint32_t LeftSize() const;
+			bool GameEnd()
+			{
+				auto rate= (double)cur_sum/ (double)total;
+				if (rate>= GAMEENDRATE)
+					return true;
+				return false;
+			}
 			void COutInfo() const;
 		private:
 			void _SetParameter(std::string T_bit_field);
@@ -756,6 +768,13 @@ namespace Csz
             int32_t GetDataSize()const {return bit_field.GetDataSize();}
             uint32_t DownLoad()const {return bit_field.DownLoad();}
             uint32_t LeftSize()const {return bit_field.LeftSize();}
+			bool GameEnd()
+			{
+#ifdef CszTest
+				Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+#endif
+				return bit_field.GameEnd();
+			}
 			void COutInfo();
 	};
 
@@ -766,12 +785,18 @@ namespace Csz
 			DownSpeed()
             {
                 pthread_rwlock_init(&lock,NULL);
+				_CalculateSpeed(this);
 #ifdef CszTest
                 Csz::LI("constructor Down Speed");
 #endif
             }
 			~DownSpeed()
             {
+				auto code= bthread_timer_del(id);
+				if (code!= 0)
+				{
+					Csz::ErrMsg("[%s->%d]->failed,calculate speed still running or einval,code=%d",__func__,__LINE__,code);
+				}
                 pthread_rwlock_destroy(&lock);
 #ifdef CszTest
                 Csz::LI("destructor Down Speed");
@@ -784,6 +809,7 @@ namespace Csz
 			}
 		private:
 			friend void butil::GetLeakySingleton<DownSpeed>::create_leaky_singleton();
+			static void _CalculateSpeed(void* T_this);
 		private:
 			//10s update
 			//priority queue
@@ -799,6 +825,7 @@ namespace Csz
 			//TODO hash table save status
 			std::list<DownSpeed::DataType> queue;
             pthread_rwlock_t lock;
+			bthread_timer_t id;
 		public:
             //init total
 			void AddSocket(const int T_socket)
@@ -886,12 +913,6 @@ namespace Csz
 			//lazy not delete when socker closed
 			pthread_rwlock_t id_lock;
 			std::unordered_map<int,PeerStatus> id_queue;
-/*
-			//producer and curtomer
-			bool stop_runner;
-			bthread::ConditionVariable pop_cond;
-			bthread::Mutex pop_mutex;
-*/
 		public:
 			void PushNeed(const std::vector<int32_t>* T_index,const int T_socket,int T_id);
 			void PushNeed(const int32_t T_index,int T_socket,int T_id);
@@ -915,17 +936,6 @@ namespace Csz
             void SendReq();
             static void* ASendReq(void* T_this);
             bool SetIndexW(int32_t T_index);
-/*
-			void Runner();
-			void SR()
-			{
-				//std::lock_guard<bthread::Mutex> guard(pop_mutex);
-				stop_runner= true;
-				pop_cond.notify_one();
-				return ;
-			}
-			bool RunnerStatus(){return stop_runner;}
-*/
 			void COutInfo();
         private:
             //TODO danger!!!
@@ -988,7 +998,7 @@ namespace Csz
 		//static void* RequestRuner(void*);
         private:
         static void _SendPiece(int T_socket,int32_t T_index,int32_t T_begin,int32_t T_length);
-        static int8_t _LockPiece(int T_socket,int32_t T_index,int32_t T_begin,int32_t T_length);
+        static int8_t _LockPiece(int T_socket,int32_t T_index,int T_size);
 	};
     
 	struct BT

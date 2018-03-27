@@ -376,6 +376,8 @@ namespace Csz
             ret.first= true;
             auto piece_len= GetPieceLength(T_index);
             ret.second= piece_len% SLICESIZE;
+			if (0== ret.second)
+				ret.second= SLICESIZE;
         }
         return std::move(ret);
     }

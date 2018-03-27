@@ -46,4 +46,10 @@
 //Peer wait piece time
 #define PEERPIECETIME       (1* 30)
 
+//peer keepalive time
+#define PEERKEEPALIVETIME	(1* 30)
+
+//Bit Field
+#define GAMEENDRATE			(0.95)
+
 #endif //CszMICRO_HPP

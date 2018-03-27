@@ -1,6 +1,10 @@
 #include "CszBitTorrent.h"
 #include <algorithm> //nth_element
 
+//brpc
+#include <butil/time.h> //seconds_from_now
+//#include <bthread/unstable.h> //bthread_timer_add,bthread_timer_del
+
 namespace Csz
 {
 	void DownSpeed::AddTotal(const int T_socket,const uint32_t T_speed)
@@ -359,6 +363,20 @@ namespace Csz
             }
         }
         std::cout<<"speed="<<speed/ 1024<<"kb"<<"\n";
+		return ;
+	}
+
+	void DownSpeed::_CalculateSpeed(void* T_this)
+	{
+		DownSpeed* cur_this= static_cast<DownSpeed*>(T_this);
+		cur_this->CalculateSpeed();
+		//10s
+		auto until_time= butil::seconds_from_now(10);
+		auto code= bthread_timer_add(&cur_this->id,until_time,&DownSpeed::_CalculateSpeed,T_this);
+		if (code!= 0)
+		{
+			Csz::ErrMsg("[%s->%d]->failed,bthread timer add failed code=%d",__func__,__LINE__,code);
+		}
 		return ;
 	}
 

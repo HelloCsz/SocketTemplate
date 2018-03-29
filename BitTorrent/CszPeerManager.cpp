@@ -76,6 +76,7 @@ namespace Csz
                 Csz::ErrMsg("[Peer Manager peer list]->failed,insert already exist");
             }
 #endif
+			++socket_num;
             data->mutex= std::make_shared<bthread::Mutex>();
 			data->id= cur_id++;
             auto temp_id= data->id;
@@ -379,6 +380,7 @@ namespace Csz
 		auto result= peer_list.find(T_socket);
 		if (result!= peer_list.end())
 		{
+			--socket_num;
 			Csz::Close(result->first);
             auto temp_id= result->second->id;
 			peer_list.erase(result);

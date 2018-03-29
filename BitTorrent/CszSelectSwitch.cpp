@@ -13,6 +13,7 @@ namespace Csz
 {
 #ifdef CszTest
     int SelectSwitch::total= 0;
+	bthread::Mutex SelectSwitch::mutex;
 #endif
 	//TODO sinnal deal or pselect
 	bool SelectSwitch::operator()()

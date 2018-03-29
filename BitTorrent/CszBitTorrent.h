@@ -247,6 +247,16 @@ namespace Csz
             void LoadPeerList(const std::vector<std::string> &T_socket_list);
             void AddSocket(const int T_socket);
 			std::vector<int> RetSocketList();
+			int RetSocketSize()
+			{
+				if (0!=pthread_rwlock_rdlock(&lock))
+				{
+					return 0;
+				}
+				auto ret= peer_list.size();
+				pthread_rwlock_unlock(&lock);
+				return ret;
+			}
 			void CloseSocket(int T_socket);
 			void CloseSocket(std::vector<int>* T_sockets);
             void SendHave(int32_t T_index);
@@ -291,6 +301,8 @@ namespace Csz
             int32_t cur_id;
             pthread_rwlock_t lock;
 			bthread_timer_t id;
+		public:
+			uint32_t socket_num;
     };
 
     //bt message type
@@ -752,7 +764,7 @@ namespace Csz
             void SetParameter(std::string T_bit_field,int32_t T_total)
             {
                 bit_field.SetParameter(T_bit_field,T_total);
-                bit_field.LoadLocalFile();
+           //     bit_field.LoadLocalFile();
 #ifdef CszTest
                 Csz::LI("[Local Bit Field set parameter]INFO:");
                 COutInfo();
@@ -953,14 +965,18 @@ namespace Csz
 			Parameter():socket(-1),len(0),buf(nullptr),cur_len(0)
             {
 #ifdef  CszTest
-                //++total;
+				SelectSwitch::mutex.lock();
+                ++total;
+				SelectSwitch::mutex.unlock();
                 //Csz::LI("[Select Switch parameter]->constructor->%s->%s->%d",__FILE__,__func__,__LINE__);
 #endif
             }
 			~Parameter()
             {
 #ifdef CszTest
-               // --total;
+				SelectSwitch::mutex.lock();
+                --total;
+				SelectSwitch::mutex.unlock();
                // Csz::LI("[Select Switch parameter]->destructor->%s->%s->%d",__FILE__,__func__,__LINE__);
 #endif
                 if (buf!= nullptr) 
@@ -999,6 +1015,7 @@ namespace Csz
         private:
         static void _SendPiece(int T_socket,int32_t T_index,int32_t T_begin,int32_t T_length);
         static int8_t _LockPiece(int T_socket,int32_t T_index,int T_size);
+		static bthread::Mutex mutex;
 	};
     
 	struct BT

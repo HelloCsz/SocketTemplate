@@ -47,12 +47,23 @@ namespace Csz
 	template<class Parameter,int TASKNUM>
 	void BthreadPool<Parameter,TASKNUM>::Stop()
 	{
+		Csz::LI("[%s->%d]bthread join",__func__,__LINE__);
 		task_list.Stop();
 		for (const auto& val : pool)
 		{
 			bthread_join(val,nullptr);
 		}
+		if (!pool.empty())
+		{
+			pool.clear();
+		}
         return ;
+	}
+
+	template<class Parameter,int TASKNUM>
+	BthreadPool<Parameter,TASKNUM>::~BthreadPool()
+	{
+		Stop();
 	}
 }
 

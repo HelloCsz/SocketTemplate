@@ -82,12 +82,18 @@ int main(int argc,char** argv)
 	{
 	    while(Csz::SelectSwitch()()== false && !Csz::LocalBitField::GetInstance()->GameOver())
 	    {
-		    auto peer_list= tracker.GetPeerList(60);
-			Csz::PeerManager::GetInstance()->LoadPeerList(peer_list);
+			if (Csz::PeerManager::GetInstance()->RetSocketSize()< 50)\
+			{
+				auto peer_list= tracker.GetPeerList(60);
+				Csz::PeerManager::GetInstance()->LoadPeerList(peer_list);
+			}
 		}
 	}
     auto stop= time(NULL);
 	std::cout<<"hello world:"<<stop- start<<"\n";
+    Csz::SingletonThread<Csz::SelectSwitch::Parameter,THREADNUM>::GetInstance()->Stop();
+	std::cout<<"select total="<<Csz::SelectSwitch::total<<"\n";
+	std::cout<<"peer manager socket="<<Csz::PeerManager::GetInstance()->socket_num<<"\n";
 	//exit(1);
 	return 0;
 }

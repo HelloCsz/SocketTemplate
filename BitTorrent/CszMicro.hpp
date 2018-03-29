@@ -50,6 +50,6 @@
 #define PEERKEEPALIVETIME	(1* 30)
 
 //Bit Field
-#define GAMEENDRATE			(0.95)
+#define GAMEENDRATE			(0.99)
 
 #endif //CszMICRO_HPP

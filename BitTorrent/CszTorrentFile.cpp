@@ -86,6 +86,7 @@ namespace Csz
 
 	TorrentFile::~TorrentFile()
 	{
+		name_data.clear();
 #ifdef CszTest
 		Csz::LI("destructor Torrent File");
 #endif

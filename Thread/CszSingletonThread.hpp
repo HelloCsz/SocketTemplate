@@ -24,6 +24,7 @@ namespace Csz
             void Init(int T_num){pool.Init(T_num);}
             void Push(typename TaskQueue<Parameter,TASKNUM>::Type* T_task){pool.Push(T_task);}
             void Pop(typename TaskQueue<Parameter,TASKNUM>::Type* T_task){pool.Pop(T_task);}
+			void Stop(){pool.Stop();}
     };
 }
 

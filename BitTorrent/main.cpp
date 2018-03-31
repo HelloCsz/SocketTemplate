@@ -91,9 +91,16 @@ int main(int argc,char** argv)
 	}
     auto stop= time(NULL);
 	std::cout<<"hello world:"<<stop- start<<"\n";
-    Csz::SingletonThread<Csz::SelectSwitch::Parameter,THREADNUM>::GetInstance()->Stop();
 	std::cout<<"select total="<<Csz::SelectSwitch::total<<"\n";
 	std::cout<<"peer manager socket="<<Csz::PeerManager::GetInstance()->socket_num<<"\n";
+
+    Csz::SingletonThread<Csz::SelectSwitch::Parameter,THREADNUM>::GetInstance()->Stop();
+    Csz::BitMemory::GetInstance()->Clear();
+    Csz::NeedPiece::GetInstance()->Clear();
+    Csz::DownSpeed::GetInstance()->Clear();
+    Csz::PeerManager::GetInstance()->Clear();
+    Csz::LocalBitField::GetInstance()->Clear();
+    Csz::TorrentFile::GetInstance()->Clear();
 	//exit(1);
 	return 0;
 }

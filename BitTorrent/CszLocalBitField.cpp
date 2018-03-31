@@ -79,6 +79,15 @@ namespace Csz
         return ;
     }
 
+	void LocalBitField::Clear()
+	{
+#ifdef CszTest
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+#endif
+		bit_field.Clear();
+		return ;
+	}
+
 	void LocalBitField::COutInfo()
 	{
 #ifdef CszTest

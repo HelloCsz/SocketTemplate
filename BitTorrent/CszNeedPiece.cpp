@@ -642,36 +642,17 @@ namespace Csz
 		return ret;
     }
 
-/*
-	void NeedPiece::Runner()
+	void NeedPiece::Clear()
 	{
-		std::lock_guard<bthread::Mutex> guard(pop_mutex);
-		//10s
-		pop_cond.wait_for(guard,10000000);
-		auto ret= PopNeed();
-		if (ret.second.empty())
-			return ;
-		//TODO for
-		Request request;
-		request.SetParameter(ret.first,0,SLICESIZE);
-		for (const auto& fd : ret.second)
-		{
-            //socket mutex
-			auto code= send(fd,request.GetSendData(),request.GetDataSize(),0);
-			if (code== request.GetDataSize())
-			{
-				break;
-			}
 #ifdef CszTest
-			else
-			{
-				Csz::LI("[Need Piece runner]->send request failed,send length!=%d",request.GetDataSize());
-			}
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
 #endif
-		}
+		pthread_rwlock_destroy(&id_lock);
+		index_lock.~Mutex();
+		index_queue.clear();
+		id_queue.clear();
 		return ;
 	}
-*/
 
 	void NeedPiece::COutInfo()
 	{

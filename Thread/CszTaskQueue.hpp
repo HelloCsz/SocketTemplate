@@ -95,6 +95,7 @@ namespace Csz
 		}
 		push_cond.notify_all();
 		pop_cond.notify_all();
+		task_queue.clear();
 		return ;
 	}
 }

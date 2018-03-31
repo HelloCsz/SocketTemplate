@@ -1,6 +1,7 @@
 BitTorrent/BitTorrent
 BitTorrent/record
 BitTorrent/*iso
+BitTorrent/*core*
 Web/Web
 Error/CszError.cpp
 record

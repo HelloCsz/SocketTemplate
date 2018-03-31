@@ -19,7 +19,7 @@ namespace Csz
 	bool SelectSwitch::operator()()
 	{
 #ifdef CszTest
-        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+        Csz::LI("[%s->%s->%d]may be total=%d",__FILE__,__func__,__LINE__,total);
 #endif
 		using Task= Csz::TaskQueue<SelectSwitch::Parameter,THREADNUM>::Type;
 		auto thread_pool= SingletonThread<SelectSwitch::Parameter,THREADNUM>::GetInstance();

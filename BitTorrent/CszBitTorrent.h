@@ -160,6 +160,7 @@ namespace Csz
             int32_t GetIndexNormalLength()const;
             std::pair<bool,int32_t> CheckEndSlice(int32_t T_index) const;
             std::pair<bool,int32_t> CheckEndSlice(int32_t T_index,int32_t T_begin) const;
+			void Clear();
 			void COutInfo();
 	};
 
@@ -275,6 +276,7 @@ namespace Csz
             bool RecvPiece(int T_socket);
             void ClearPieceStatus(int T_socket);
 			void UpdateExpire(int T_socket);
+			void Clear();
 			void COutInfo()const;
         private:
             void _LoadPeerList(const std::string& T_socket_list);
@@ -541,7 +543,6 @@ namespace Csz
 			}
             ~BitField()
             {
-                pthread_rwlock_destroy(&lock);
 #ifdef CszTest
                 Csz::LI("destructor Bit Field");
 #endif
@@ -567,6 +568,7 @@ namespace Csz
 					return true;
 				return false;
 			}
+			void Clear();
 			void COutInfo() const;
 		private:
 			void _SetParameter(std::string T_bit_field);
@@ -787,6 +789,7 @@ namespace Csz
 #endif
 				return bit_field.GameEnd();
 			}
+			void Clear();
 			void COutInfo();
 	};
 
@@ -804,12 +807,6 @@ namespace Csz
             }
 			~DownSpeed()
             {
-				auto code= bthread_timer_del(id);
-				if (code!= 0)
-				{
-					Csz::ErrMsg("[%s->%d]->failed,calculate speed still running or einval,code=%d",__func__,__LINE__,code);
-				}
-                pthread_rwlock_destroy(&lock);
 #ifdef CszTest
                 Csz::LI("destructor Down Speed");
 #endif
@@ -870,6 +867,7 @@ namespace Csz
 			void PrInterested(int T_socket);
 			void PrUnInterested(int T_socket);
 			void CalculateSpeed();
+			void Clear();
 			void COutInfo();
 	};
 
@@ -886,7 +884,6 @@ namespace Csz
             }
 			~NeedPiece()
             {
-                pthread_rwlock_destroy(&id_lock);
 #ifdef CszTest
                 Csz::LI("destructor Need Piece");
 #endif       
@@ -948,6 +945,7 @@ namespace Csz
             void SendReq();
             static void* ASendReq(void* T_this);
             bool SetIndexW(int32_t T_index);
+			void Clear();
 			void COutInfo();
         private:
             //TODO danger!!!
@@ -1063,9 +1061,9 @@ namespace Csz
             bool Write(int32_t T_index,int32_t T_begin,const char* T_buf,int32_t T_length);
             void Init(int32_t T_index_end,int32_t T_length_end,int32_t T_length_normal);
             void ClearIndex(int32_t T_index,int32_t T_len);
+            void Clear();
 			void COutInfo();
         private:
-            void _Clear();
             int32_t _Write(int32_t T_index);
     };
 }

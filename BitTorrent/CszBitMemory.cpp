@@ -12,10 +12,9 @@ namespace Csz
 #ifdef CszTest
         Csz::LI("destructor Bit Memory");
 #endif
-        _Clear();
     }
 
-    void BitMemory::_Clear()
+    void BitMemory::Clear()
     {
 #ifdef CszTest
         Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
@@ -32,6 +31,8 @@ namespace Csz
             }    
         }
         resource_pool->clear_resources();
+		memory_pool.clear();
+		mutex.~Mutex();
         return ;
     }    
 
@@ -81,7 +82,7 @@ namespace Csz
                     auto buf= resource_pool->get_resource(&id);									                        \
                     if (buf== nullptr)															                        \
                     {																			                        \
-                        _Clear();																                        \
+                        Clear();																                        \
                         /*TODO wait*/															                        \
                         Csz::ErrQuit("[Bit Memory write]->failed,new return null");				                        \
                         return false;															                        \

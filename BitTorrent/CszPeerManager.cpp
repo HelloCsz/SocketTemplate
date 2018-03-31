@@ -5,6 +5,7 @@
 #include <sys/time.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <unordered_set>
 
 //brpc
 #include <butil/time.h> //gettimeofday_us,seconds_from_now
@@ -184,19 +185,6 @@ namespace Csz
 #ifdef CszTest
         Csz::LI("destructor Peer Manager");
 #endif
-		auto code= bthread_timer_del(id);
-		if (code!= 0)
-		{
-			Csz::ErrMsg("[%s->%d]->failed,optimistic still running or einval code=%d",__func__,__LINE__,code);
-		}
-        pthread_rwlock_destroy(&lock);
-        for (auto& val : peer_list)
-        {
-            if (val.first>= 0)
-            {
-                Csz::Close(val.first);
-            }
-        }
     }
 
     void PeerManager::_Connected(std::vector<int>& T_ret)
@@ -244,6 +232,8 @@ namespace Csz
 		auto hs_data= HandShake::GetInstance()->GetSendData();
 		auto hs_data_l= HandShake::GetInstance()->GetDataSize();
         //4.wait socket change able read or write
+		//fix bug del socket after time out
+		std::unordered_set<int> success_socket;
 		int code;
 		int cur_tid= 0;
         while (quit_num> 0)
@@ -308,6 +298,7 @@ namespace Csz
 				}
 				else
 				{
+					success_socket.insert(events[n].data.fd);
 					++cur_tid;
 				}
 
@@ -322,6 +313,17 @@ namespace Csz
 		for (int i= 0; i< cur_tid; ++i)
 		{
 			bthread_join(tids[i],NULL);
+		}
+		for (const auto& val : T_ret)
+		{
+			if(success_socket.find(val)== success_socket.end())
+			{
+				Csz::Close(val);
+			}
+		}
+		if (success_socket.size()+ cur_tid!= T_ret.size())
+		{
+			Csz::ErrMsg("[%s->%s->%d]->failed,have failed socket,but not close",__FILE__,__func__,__LINE__);
 		}
         return ;
     }
@@ -437,20 +439,11 @@ namespace Csz
         }
         pthread_rwlock_unlock(&lock);
         //unlock
-        
-        if (0!= pthread_rwlock_wrlock(&lock))
-        {
-            Csz::ErrMsg("[%s->%d]->failed,write lock failed",__func__,__LINE__);
-            return ;
-        }
 
-        //TODO lock peer_list 
         for (const auto & val : del_sockets)
         {
-            peer_list.erase(val);
+            CloseSocket(val);
         }
-        pthread_rwlock_unlock(&lock);
-        //unlock
         return ;
     }
     
@@ -945,6 +938,28 @@ namespace Csz
 		return ;
 	}
 
+	void PeerManager::Clear()
+	{
+#ifdef CszTest
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+#endif
+		auto code= bthread_timer_del(id);
+		if (code!= 0)
+		{
+			Csz::ErrMsg("[%s->%d]->failed,optimistic still running or einval code=%d",__func__,__LINE__,code);
+		}
+        pthread_rwlock_destroy(&lock);
+        for (auto& val : peer_list)
+        {
+            if (val.first>= 0)
+            {
+                Csz::Close(val.first);
+            }
+        }
+		peer_list.clear();
+		return ;
+	}
+
 	void PeerManager::COutInfo() const
 	{
 #ifdef CszTest
@@ -958,7 +973,7 @@ namespace Csz
 			out_info.append("["+std::to_string(val.first)+":"+ std::to_string((val.second)->id)+"]");
 		}
 		if (!out_info.empty())
-			Csz::LI("%s,size=%d",out_info.c_str(),peer_list.size());
+			Csz::LI("%s,size=%d,socket_num=%d",out_info.c_str(),peer_list.size(),socket_num);
 		return ;
 	}
 }

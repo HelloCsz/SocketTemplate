@@ -461,6 +461,21 @@ namespace Csz
         return infos.piece_length;
     }
 
+	void TorrentFile::Clear()
+	{
+#ifdef CszTest
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+#endif
+		infos.files.clear();
+		infos.pieces.clear();
+		infos.name.clear();
+		announce_list.clear();
+		comment.clear();
+		create_by.clear();
+		name_data.clear();
+		return ;
+	}
+
 	void TorrentFile::COutInfo()
 	{
 #ifdef CszTest

@@ -380,6 +380,21 @@ namespace Csz
 		return ;
 	}
 
+	void DownSpeed::Clear()
+	{
+#ifdef CszTest
+        Csz::LI("[%s->%s->%d]",__FILE__,__func__,__LINE__);
+#endif
+		auto code= bthread_timer_del(id);
+		if (code!= 0)
+		{
+			Csz::ErrMsg("[%s->%s->%d]->failed,calculate speed still running or einval,code=%d",__FILE__,__func__,__LINE__,code);
+		}
+		pthread_rwlock_destroy(&lock);
+		queue.clear();
+		return ;
+	}
+
 	void DownSpeed::COutInfo()
 	{
 #ifdef CszTest

@@ -379,6 +379,13 @@ namespace Csz
 		return ;
 	}
 
+	void BitField::Clear()
+	{
+		pthread_rwlock_destroy(&lock);
+		prefix_and_bit_field.clear();
+		return ;
+	}
+
 /*
 	void BitField::COutInfo() const
 	{

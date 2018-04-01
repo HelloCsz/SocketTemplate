@@ -58,6 +58,11 @@ int main(int argc,char** argv)
         std::string info_hash= Csz::UrlEscape()(std::string(info_buf,20));
 		tracker.SetInfoHash(info_hash);
         //set reserved|info hash|peer id
+		char reserved[8]={0};
+		//extension protocol
+		reserved[5]|= 0x10;
+		//fast extension
+		reserved[7]|= 0x04;
 	    Csz::HandShake::GetInstance()->SetParameter(nullptr,info_buf,tracker.GetAmId().c_str());
 	}
 

@@ -766,7 +766,7 @@ namespace Csz
             void SetParameter(std::string T_bit_field,int32_t T_total)
             {
                 bit_field.SetParameter(T_bit_field,T_total);
-           //     bit_field.LoadLocalFile();
+                bit_field.LoadLocalFile();
 #ifdef CszTest
                 Csz::LI("[Local Bit Field set parameter]INFO:");
                 COutInfo();

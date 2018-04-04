@@ -49,7 +49,17 @@ namespace Csz
         }
 		if (0== memcmp(T_str,data,20) && 0== memcmp(T_str+28,data+ 28, 20))
 		{	
-            return true;
+			return true;
+			const char* reserved= data+ 20;
+			//extension protocol && fast extension
+			if ((reserved[5]& 0x10) && (reserved[7]& 0x04))
+			{
+				return true;
+			}
+			else
+			{
+				return false;
+			}
         }
 		return false;
 	}
